@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大甲區義和里邊界幾何範圍與里長通訊系統</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "微軟正黑體", sans-serif;
+            background-color: #f4f6f9;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 幾何與通訊綜合面板樣式 */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 70px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border-left: 5px solid #16a085;
+            width: 320px;
+        }
+        .info-panel h3 { margin: 0 0 10px 0; color: #2c3e50; font-size: 20px; }
+        .info-panel p { margin: 6px 0; color: #7f8c8d; font-size: 14px; line-height: 1.5; }
+        
+        /* 里長通訊錄卡片 */
+        .chief-card {
+            background-color: #edf2f4;
+            border: 1px solid #d90429;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 15px;
+            display: none; /* 預設隱藏，滑鼠移入義和里才動態浮現 */
+        }
+        .chief-card h4 {
+            margin: 0 0 8px 0;
+            color: #d90429;
+            font-size: 16px;
+            border-bottom: 1px solid #ef233c;
+            padding-bottom: 4px;
+        }
+        .chief-item {
+            font-size: 13px;
+            margin: 6px 0;
+            color: #2b2d42;
+            line-height: 1.4;
+        }
+        .highlight-text {
+            font-weight: bold;
+            color: #d90429;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-panel">
+        <h3>義和里地理資訊系統</h3>
+        <p><strong>行政區域：</strong>臺中市大甲區義和里</p>
+        <p><strong>地理範圍：</strong>基於 441 筆真實門牌網格計算</p>
+        <p style="color: #2980b9; font-size: 13px; font-style: italic;">💡 動作提示：請將滑鼠移入地圖中的綠色義和里範圍框內，系統將自動撈出正確的里長通訊資料。</p>
+        
+        <div class="chief-card" id="chiefCard">
+            <h4>📋 大甲區鄰里長通訊錄</h4>
+            <div class="chief-item"><strong>序號：</strong><span id="cId">-</span></div>
+            <div class="chief-item"><strong>里別：</strong><span id="cRegion">-</span></div>
+            <div class="chief-item"><strong>里長姓名：</strong><span id="cName" class="highlight-text">-</span></div>
+            <div class="chief-item"><strong>服務處電話：</strong><span id="cTel">-</span></div>
+            <div class="chief-item"><strong>服務處地址：</strong><span id="cAddr">-</span></div>
+            <div class="chief-item" style="font-size: 11px; color:#8d99ae; margin-top:5px; border-top:1px dashed #ccc; padding-top:4px;">
+                資料來源：大甲區鄰里長通訊錄
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. 初始化地圖，聚焦在大甲區義和里幾何中心點上
+        const map = L.map('map').setView([24.338, 120.615], 14);
+
+        // 2. 底圖：鋪上內政部國土測繪中心 (NLSC) 官方臺灣通用電子地圖
+        L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}.png', {
+            attribution: '&copy; 內政部國土測繪中心'
+        }).addTo(map);
+
+        // 3. 靜態資料庫：直接內嵌您提供的 29 里官方鄰里長完整通訊錄
+        const scrapedContactDatabase = {
+            "朝陽里": { "id": "1", "region": "大甲區 朝陽里", "name": "林立偉", "address": "臺中市大甲區朝陽里１３鄰新政路２之８號", "phone": "26860369" },
+            "大甲里": { "id": "2", "region": "大甲區 大甲里", "name": "黃勝裕", "address": "臺中市大甲區大甲里１５鄰順天路１３２號", "phone": "26881034" },
+            "順天里": { "id": "3", "region": "大甲區 順天里", "name": "陳威宇", "address": "臺中市大甲區順天里１８鄰光明路２０４號", "phone": "26872881" },
+            "孔門里": { "id": "4", "region": "大甲區 孔門里", "name": "吳柏坤", "address": "臺中市大甲區孔門里６鄰文武路１５２號", "phone": "26879410" },
+            "平安里": { "id": "5", "region": "大甲區 平安里", "name": "周寶惜", "address": "臺中市大甲區平安里８鄰三民路１４５號", "phone": "26870470" },
+            "庄美里": { "id": "6", "region": "大甲區 庄美里", "name": "魏李嫌", "address": "臺中市大甲區庄美里９鄰經國路３７５巷36號", "phone": "26881882" },
+            "新美里": { "id": "7", "region": "大甲區 新美里", "name": "王生源", "address": "臺中市大甲區新美里１４鄰光明路２８１巷２６號", "phone": "26882758" },
+            "岷山里": { "id": "8", "region": "大甲區 岷山里", "name": "林清良", "address": "臺中市大甲區岷山里１１鄰中山路一段９0８巷１0之６1號", "phone": "26882243" },
+            "中山里": { "id": "9", "region": "大甲區 中山里", "name": "廖嘉佐", "address": "臺中市大甲區中山里４鄰甲后路5段391號", "phone": "26765578" },
+            "南陽里": { "id": "10", "region": "大甲區 南陽里", "name": "黃火塗", "address": "臺中市大甲區南陽里９鄰水源路２５號", "phone": "26870303" },
+            "薰風里": { "id": "11", "region": "大甲區 薰風里", "name": "王秋芬", "address": "臺中市大甲區薰風里９鄰中山路一段８２３巷２３號", "phone": "26870316" },
+            "義和里": { "id": "12", "region": "大甲區 義和里", "name": "洪黃素貞", "address": "臺中市大甲區義和里１５鄰重義三路１３巷５６號", "phone": "26881088" }, // 👈 已修正為洪黃素貞
+            "武陵里": { "id": "13", "region": "大甲區 武陵里", "name": "方如玉", "address": "臺中市大甲區武陵里９鄰文曲路１１０巷５號", "phone": "26715088" },
+            "文曲里": { "id": "14", "region": "大甲區 文曲里", "name": "林寶彩", "address": "臺中市大甲區文曲里２鄰東安路５０１巷１４號", "phone": "26711375" },
+            "武曲里": { "id": "15", "region": "大甲區 武曲里", "name": "蘇月鳳", "address": "臺中市大甲區武曲里１０鄰大安港路１８８號", "phone": "26875071" },
+            "文武里": { "id": "16", "region": "大甲區 文武里", "name": "葉淑惠", "address": "臺中市大甲區文武里１４鄰德興路５２號", "phone": "26873110" },
+            "奉化里": { "id": "17", "region": "大甲區 奉化里", "name": "白見發", "address": "臺中市大甲區奉化里５鄰賢仁路５９號", "phone": "26879599" },
+            "德化里": { "id": "18", "region": "大甲區 德化里", "name": "李柄杉", "address": "臺中市大甲區德化里８鄰南北四路１８０巷１５號", "phone": "26805820" },
+            "江南里": { "id": "19", "region": "大甲區 江南里", "name": "李文登", "address": "臺中市大甲區江南里７鄰東西五路一段2號", "phone": "26868037" },
+            "頂店里": { "id": "20", "region": "大甲區 頂店里", "name": "黃安鎮", "address": "臺中市大甲區頂店里２１鄰雁門路３３裝號", "phone": "26875918" },
+            "太白里": { "id": "21", "region": "大甲區 太白里", "name": "游招滿", "address": "臺中市大甲區太白里５鄰通天路７１號之２", "phone": "26820229" },
+            "孟春里": { "id": "22", "region": "大甲區 孟春里", "name": "黃湘榕", "address": "臺中市大甲區孟春里１鄰中山路２段５６號", "phone": "26816090" },
+            "幸福里": { "id": "23", "region": "大甲區 幸福里", "name": "林晨彬", "address": "臺中市大甲區幸福里４鄰長安路３７號", "phone": "26812673" },
+            "日南里": { "id": "24", "region": "大甲區 日南里", "name": "邱大豪", "address": "臺中市大甲區日南里１５鄰中山路二段９４０之１６號", "phone": "26816286" },
+            "龍泉里": { "id": "25", "region": "大甲區 龍泉里", "name": "陳廷旺", "address": "臺中市大甲區龍泉里６鄰順帆一街１８５號", "phone": "26813675" },
+            "西岐里": { "id": "26", "region": "大甲區 西岐里", "name": "羅永宗", "address": "臺中市大甲區西岐里７鄰順帆路110號", "phone": "26818147" },
+            "銅安里": { "id": "27", "region": "大甲區 銅安里", "name": "林玉生", "address": "臺中市大甲區銅安里７鄰長壽路56-6號", "phone": "26811478" },
+            "福德里": { "id": "28", "region": "大甲區 福德里", "name": "莊金波", "address": "臺中市大甲區福德里５鄰順帆路２０６號", "phone": "26815842" },
+            "建興里": { "id": "29", "region": "大甲區 建興里", "name": "蔡明河", "address": "臺中市大甲區建興里３鄰臨江路９１巷１２號", "phone": "26811422" }
+        };
+
+        // 4. 義和里真實外環幾何邊界頂點數組 (WGS84 經緯度格式)
+        const yiheBoundaryPoints = [
+            [24.34785522, 120.6098191], // 興安路北點
+            [24.34329279, 120.6096534], // 文曲路西北點
+            [24.34088284, 120.6100951], // 文曲路西點
+            [24.33097111, 120.6124227], // 中山路西南點
+            [24.33139229, 120.6120410], // 中山路南極點
+            [24.33631955, 120.6222704], // 水美街東南點
+            [24.33742382, 120.6247056], // 水美街東極點
+            [24.34068832, 120.6191920], // 中山路東北點
+            [24.33966301, 120.6210568]  // 568巷北迴圈點
+        ];
+
+        // 5. 繪製多邊形圖層與外觀定義
+        const defaultStyle = {
+            color: '#16a085',       // 預設外框線條顏色 (湖水綠)
+            weight: 3,
+            fillColor: '#1abc9c',   // 預設區域填滿顏色
+            fillOpacity: 0.2,
+            opacity: 0.85
+        };
+
+        // 繪製多邊形並加入地圖
+        const yihePolygon = L.polygon(yiheBoundaryPoints, defaultStyle).addTo(map);
+
+        // 綁定基本地圖中心懸停提示
+        yihePolygon.bindTooltip("大甲區 義和里", { permanent: false, direction: 'center' });
+
+        // 6. 核心功能：滑鼠懸停觸發「撈取通訊錄」與「DOM 更新技術」
+        yihePolygon.on({
+            mouseover: function (e) {
+                const layer = e.target;
+                layer.setStyle({
+                    color: '#d90429',     // 外框變通訊錄紅
+                    fillColor: '#ef233c', // 填滿變紅
+                    fillOpacity: 0.3
+                });
+
+                // 指定撈取 key 為 "義和里"
+                const targetKey = "義和里";
+                const matchedData = scrapedContactDatabase[targetKey];
+
+                if (matchedData) {
+                    // 將資料庫中的真實數據，填入對應的 HTML DOM 節點中
+                    document.getElementById('cId').innerText = matchedData.id;
+                    document.getElementById('cRegion').innerText = matchedData.region;
+                    document.getElementById('cName').innerText = matchedData.name;
+                    document.getElementById('cTel').innerText = matchedData.phone;
+                    document.getElementById('cAddr').innerText = matchedData.address;
+
+                    // 讓原本隱藏的通訊卡片顯示出來
+                    document.getElementById('chiefCard').style.display = 'block';
+                }
+            },
+
+            mouseout: function (e) {
+                yihePolygon.setStyle(defaultStyle);
+                document.getElementById('chiefCard').style.display = 'none';
+            },
+
+            click: function (e) {
+                map.fitBounds(e.target.getBounds());
+            }
+        });
+    </script>
+</body>
+</html>
