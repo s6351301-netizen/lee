@@ -66,11 +66,38 @@
             color: #4106f1;
             font-size: 15px;
         }
+
+     
+   /* 影片固定在右下角，縮小成原來一半 */
+    #video-container {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;/**/
+      width: 410px;   /* 原來寬度 560 → 一半 */
+      height: 315px;  /* 原來高度 315 → 一半 */
+      z-index: 9999;  /* 確保在最上層 */
+      float: left;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+       
     </style>
 
     
 </head>
 <body>
+<div id="video-container">
+<iframe id="ytplayer"
+    src="https://www.youtube.com/embed/R-pHX0hppgo?autoplay=1"
+    title="YouTube video player"
+    allow="autoplay; encrypted-media"
+    allowfullscreen>
+</iframe>
+</div>>
+
     <div class="info-panel">
         <h3>民國115年(西元2026年),台中市<br>大甲區29個里的里長聯絡資料.</h3>
        <p style="color: #5c5656; font-size: 11px; font-style: italic;">
@@ -83,7 +110,8 @@
          <p style="color: #070707; font-size: 14px; font-style:normal;">    
             義雄爺廟位於大甲區義和里，李武略家族為紀念戴潮春事件<br>
             ，善心蓋廟宇供奉與紀念戰死將士以及村民(即義民)。</p>     
-       
+    
+
         <div class="chief-card" id="chiefCard">
             <h4>📋 大甲區鄰里長通訊錄</h4>
             <div class="chief-item"><strong>序號：</strong><span id="cId">-</span></div>
@@ -98,10 +126,13 @@
         </div>
     </div>
 
-    <div id="map"></div>
+    <div id="map">            
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        
         // 1. 初始化地圖，聚焦在大甲區義和里幾何中心點上
         const map = L.map('map').setView([24.338, 120.615], 14);
 
