@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "prev_id": "OLD001",
+    "name": "李明輝",
+    "gender": "男",
+    "birth": "1975-03-12",
+    "birthplace": "台北市萬華區",
+    "address": "台北市中正區重慶南路一段10號",
+    "note": "正常派下員",
+    "living_status": "存",
+    "remarks": "常參與春季祭祖"
+  },
+  {
+    "id": 2,
+    "prev_id": "OLD002",
+    "name": "張美麗",
+    "gender": "女",
+    "birth": "1932-08-25",
+    "birthplace": "新北市",
+    "address": "新北市板橋區文化路二段50號",
+    "note": "權利停權中",
+    "living_status": "亡",
+    "remarks": "民國112年除籍，家屬已辦理過戶"
+  },
+  {
+    "id": 3,
+    "prev_id": "OLD003",
+    "name": "王大山",
+    "gender": "男",
+    "birth": "1960-11-30",
+    "birthplace": "台中市",
+    "address": "台中市西屯區台灣大道三段99號",
+    "note": "正常派下員",
+    "living_status": "未知",
+    "remarks": "目前失聯中，書面信件遭退件"
+  },
+  {
+    "id": 4,
+    "prev_id": "OLD004",
+    "name": "陳志強",
+    "gender": "男",
+    "birth": "1968-05-14",
+    "birthplace": "高雄市",
+    "address": "高雄市苓雅區四維三路2號",
+    "note": "正常派下員",
+    "living_status": "存",
+    "remarks": "現任地方宗親會理事"
+  },
+  {
+    "id": 5,
+    "prev_id": "OLD005",
+    "name": "林秋香",
+    "gender": "女",
+    "birth": "1979-09-08",
+    "birthplace": "台南市",
+    "address": "台南市安平區安平路100號",
+    "note": "正常派下員",
+    "living_status": "存",
+    "remarks": "聯絡電話有更新"
+  },
+  {
+    "id": 6,
+    "prev_id": "OLD006",
+    "name": "黃文雄",
+    "gender": "男",
+    "birth": "1925-01-22",
+    "birthplace": "桃園市",
+    "address": "桃園市桃園區中正路300號",
+    "note": "喪失權利",
+    "living_status": "亡",
+    "remarks": "派下權已由長子繼承"
+  },
+  {
+    "id": 7,
+    "prev_id": "OLD007",
+    "name": "郭美玲",
+    "gender": "女",
+    "birth": "1983-04-17",
+    "birthplace": "新竹市",
+    "address": "新竹市東區光復路二段101號",
+    "note": "正常派下員",
+    "living_status": "未知",
+    "remarks": "出境國外未歸，狀態待確認"
+  },
+  {
+    "id": 8,
+    "prev_id": "OLD008",
+    "name": "曾建國",
+    "gender": "男",
+    "birth": "1972-12-05",
+    "birthplace": "彰化縣",
+    "address": "彰化縣彰化市中山路二段500號",
+    "note": "正常派下員",
+    "living_status": "存",
+    "remarks": "每年固定出席大會"
+  },
+  {
+    "id": 9,
+    "prev_id": "OLD009",
+    "name": "賴淑珍",
+    "gender": "女",
+    "birth": "1988-07-11",
+    "birthplace": "屏東縣",
+    "address": "屏東縣屏東市自由路80號",
+    "note": "正常派下員",
+    "living_status": "存",
+    "remarks": "無"
+  }
+]
