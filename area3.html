@@ -116,7 +116,7 @@
         const allCount = data.length;
 
         // ---------- 大甲 ----------
-        let dajia = data.filter(item => item.address && item.address.includes("大甲"));
+        let dajia = data.filter(item => item.address && item.address.includes("新北"));
         dajia.sort((a, b) => {
           const ya = parseBirthROC(a.birth)?.year || 9999;
           const yb = parseBirthROC(b.birth)?.year || 9999;
