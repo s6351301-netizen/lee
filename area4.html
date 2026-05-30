@@ -61,9 +61,9 @@
 </head>
 
 <body>
-  <h2 style="text-align:center;">區域的性別統計表</h2>
+  <h2 style="text-align:center;">大甲區性別統計表</h2>
   <div id="dajia-table">載入中...</div>
-  <div>&nbsp;&ensp;&emsp;</div>
+<div>&nbsp;&ensp;&emsp;</div>
   <h2 style="text-align:center;">女性資料表（依出生日期排序）</h2>
   <div id="female-table">載入中...</div>
 
@@ -75,22 +75,21 @@
       const rocMonth = today.getMonth() + 1;
       return { rocYear, rocMonth };
     }
-    /*
-        // 從出生年月日取出民國年份與月份
-        function parseBirthROC(birth) {
-          if (!birth) return null;
-          const match = birth.match(/民國\s*(\d+)\.(\d+)\./);
-          if (!match) return null;
-          const year = parseInt(match[1], 10);
-          const month = parseInt(match[2], 10);
-          return { year, month };
-        }
-        */
-
-    // 從出生年月日取出年份與月份（格式：YYYY-MM-DD）
+/*
+    // 從出生年月日取出民國年份與月份
     function parseBirthROC(birth) {
       if (!birth) return null;
-      const match = birth.match(/(\d{4})-(\d{2})-(\d{2})/);
+      const match = birth.match(/民國\s*(\d+)\.(\d+)\./);
+      if (!match) return null;
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      return { year, month };
+    }
+*/
+        function parseBirthROC(birth) {
+      if (!birth) return null;
+ /*     // ⭕ 改用 \d+ 來直接匹配點號前后的年與月，不再檢查「民國」字樣*/
+      const match = birth.match(/^(\d+)\.(\d+)\./);
       if (!match) return null;
       const year = parseInt(match[1], 10);
       const month = parseInt(match[2], 10);
