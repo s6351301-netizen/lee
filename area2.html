@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <title>大甲區性別統計表 + 女性資料表</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 95%;
+      margin: 20px auto;
+    }
+
+    th,
+    td {
+      border: 1px solid #666;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #eee;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    tr:nth-child(odd) {
+      background-color: #e6f2ff;
+    }
+
+    tr:hover {
+      background-color: #7fffd4;
+    }
+
+    .male-stats {
+      color: darkblue;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .female-stats {
+      color: darkred;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .total-stats {
+      color: darkgreen;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .all-stats {
+      color: purple;
+      font-weight: bold;
+      font-size: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2 style="text-align:center;">大甲區性別統計表</h2>
+  <div id="dajia-table">載入中...</div>
+<div>&nbsp;&ensp;&emsp;</div>
+  <h2 style="text-align:center;">女性資料表（依出生日期排序）</h2>
+  <div id="female-table">載入中...</div>
+
+  <script>
+    // 取得今天民國年月
+    function getTodayROC() {
+      const today = new Date();
+      const rocYear = today.getFullYear() - 1911;
+      const rocMonth = today.getMonth() + 1;
+      return { rocYear, rocMonth };
+    }
+
+    // 從出生年月日取出民國年份與月份
+    function parseBirthROC(birth) {
+      if (!birth) return null;
+      const match = birth.match(/民國\s*(\d+)\.(\d+)\./);
+      if (!match) return null;
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      return { year, month };
+    }
+
+    // 計算年齡（小數一位）
+    function calculateAge(birth) {
+      const birthROC = parseBirthROC(birth);
+      if (!birthROC) return "";
+      const { rocYear, rocMonth } = getTodayROC();
+      // 年月差
+      const diffYear = rocYear - birthROC.year;
+      const diffMonth = rocMonth - birthROC.month;
+      const age = diffYear + diffMonth / 12;
+      return age.toFixed(1);
+    }
+
+    fetch('data.json')
+      .then(res => res.json())
+      .then(data => {
+        const allCount = data.length;
+
+        // ---------- 大甲 ----------
+        let dajia = data.filter(item => item.address && item.address.includes("大甲"));
+        dajia.sort((a, b) => {
+          const ya = parseBirthROC(a.birth)?.year || 9999;
+          const yb = parseBirthROC(b.birth)?.year || 9999;
+          return ya - yb;
+        });
+
+        let maleCount = dajia.filter(i => i.gender === "男").length;
+        let femaleCount = dajia.filter(i => i.gender === "女").length;
+        const total = dajia.length;
+
+        let dajiaHtml = "<table>";
+        dajiaHtml += `<tr><th colspan="10">
+          <span class="male-stats">男性：${maleCount} 人</span>　
+          <span class="female-stats">女性：${femaleCount} 人</span>　
+          <span class="total-stats">符合條件：${total} 筆</span>　
+          <span class="all-stats">總共有：${allCount} 筆</span>
+        </th></tr>`;
+        dajiaHtml += "<tr><th>編號</th><th>姓名</th><th>性別</th><th>出生年月日</th><th>年紀 / 歲</th><th>出生地</th><th>住址</th><th>備註</th><th>變動前編號</th></tr>";
+        dajia.forEach(item => {
+          const age = calculateAge(item.birth);
+          dajiaHtml += `<tr>
+            <td>${item.id || ""}</td>
+            <td>${item.name || ""}</td>
+            <td>${item.gender || ""}</td>
+            <td>${item.birth || ""}</td>
+            <td>${age}</td>
+            <td>${item.birthplace || ""}</td>
+            <td style="text-align:left;">${item.address || ""}</td>
+            <td>${item.note || ""}</td>
+            <td>${item.prev_id || ""}</td>
+          </tr>`;
+        });
+        dajiaHtml += "</table>";
+        document.getElementById("dajia-table").innerHTML = dajiaHtml;
+
+
+        // ---------- 女性 ----------
+        let females = data.filter(item => item.gender === "女");
+        females.sort((a, b) => {
+          const ya = parseBirthROC(a.birth)?.year || 9999;
+          const yb = parseBirthROC(b.birth)?.year || 9999;
+          return ya - yb;
+        });
+
+        let femaleHtml = "<table>";
+        femaleHtml += `<tr><th colspan="10">
+          <span class="female-stats">女性總筆數：${females.length} 筆</span>　
+          <span class="total-stats">符合條件：${females.length} 筆</span>　
+          <span class="all-stats">總共有：${allCount} 筆</span>
+        </th></tr>`;
+        femaleHtml += "<tr><th>編號</th><th>姓名</th><th>性別</th><th>出生年月日</th><th>年紀 / 歲</th><th>出生地</th><th>住址</th><th>備註</th><th>變動前編號</th></tr>";
+        females.forEach(item => {
+          const age = calculateAge(item.birth);
+          femaleHtml += `<tr>
+            <td>${item.id || ""}</td>
+            <td>${item.name || ""}</td>
+            <td>${item.gender || ""}</td>
+            <td>${item.birth || ""}</td>
+            <td>${age}</td>
+            <td>${item.birthplace || ""}</td>
+            <td>${item.address || ""}</td>
+            <td>${item.note || ""}</td>
+            <td>${item.prev_id || ""}</td>
+          </tr>`;
+        });
+        femaleHtml += "</table>";
+        document.getElementById("female-table").innerHTML = femaleHtml;
+      })
+      .catch(err => {
+        document.getElementById("dajia-table").innerHTML = "載入失敗：" + err.message;
+        document.getElementById("female-table").innerHTML = "載入失敗：" + err.message;
+      });
+  </script>
+</body>
+
+</html>
