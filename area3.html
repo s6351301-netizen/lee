@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>大甲區性別統計表 + 女性資料表</title>
+  <title>區域的性別統計表 + 女性資料表</title>
   <style>
     table {
       border-collapse: collapse;
@@ -68,10 +68,10 @@
   <div id="female-table">載入中...</div>
 
   <script>
-    // 取得今天民國年月
+    // 取得今天西元年月
     function getTodayROC() {
       const today = new Date();
-      const rocYear = today.getFullYear() - 1911;
+      const rocYear = today.getFullYear();
       const rocMonth = today.getMonth() + 1;
       return { rocYear, rocMonth };
     }
