@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界高氏宗親總會 - 後台管理系統</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body,
+    html {
+      height: 100%;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      background-color: #f4f6f9;
+      overflow: hidden;
+    }
+
+    .header {
+      height: 60px;
+      /* background-color: #010111;
+       天藍到海軍藍linear-gradient(125deg, #22d3ee 0%, #3b82f6 52%, #0f172a 100%); */
+      background: radial-gradient(circle, #2892a0 0%, #05285f 54%, #0f172a 100%);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+
+    }
+
+    .main-container {
+      display: flex;
+      height: calc(100% - 60px);
+      width: 100%;
+    }
+
+    /* 1. 修改這裡：將左右的 padding 清空(改為 0) */
+    .sidebar {
+      width: 13%;
+      /*左邊選單占整體版面趴數*/
+      /* 藍色到綠色，帶透明度 */
+      /*background: linear-gradient(to bottom, rgba(1, 30, 75, 0.4), rgba(0, 51, 19, 0.8));
+      background-image: url();*/
+      border-right: 1px solid #dcdfe6;
+      /*右邊選單邊界的線之顏色*/
+      /* padding: 15px 0;*/
+      overflow-y: auto;
+
+    }
+
+    .content-area {
+      width: 86%;
+      /*右邊選單占整體版面趴數*/
+      height: 100%;
+      border: none;
+      background-color: #fcfcfc;
+    }
+
+    /* 2. 修改這裡：確保最外層與內層的列表縮排正確 */
+    .tree-view,
+    .tree-view ul {
+      list-style-type: none;
+      padding-left: 0px;
+      /*樹狀選單對於外框.sidebar {距離,若不要則註解或0PX*/
+      margin: 0;
+    }
+
+    /* 讓最外層的 第一層選單 完全靠左到底 */
+    .tree-view>ul {
+      padding-left: 0 !important;
+      margin-left: 0 !important;
+    }
+
+    .tree-node {
+      position: relative;
+      margin: 8px 0;
+    }
+
+    /* 3. 修改這裡：調整每一行內容的內縮，讓最左邊貼齊邊界 */
+    .node-content {
+      display: inline-flex;
+      align-items: center;
+      /*padding: 6px 8px;
+      padding-left: 10px;*/
+      cursor: pointer;
+      border-radius: 0 4px 4px 0;
+      color: #4a4a4a;
+      font-size: 14px;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .node-content:hover {
+      background-color: #fdf2f2;
+      color: #1b1b34;
+    }
+
+    /* 4. 修改這裡：如果最外層項目是葉子節點（例如首頁），直接靠左到底 */
+    .tree-view>ul>.is-leaf>.node-content {
+      padding-left: 0px;
+    }
+
+    .arrow {
+      display: inline-block;
+      /*width: 16px;*/
+      height: 16px;
+      margin-right: 4px;
+      text-align: center;
+      line-height: 16px;
+      font-size: 10px;
+      color: #0500ff;
+      transition: transform 0.3s;
+    }
+
+    .expanded>.node-content .arrow {
+      transform: rotate(90deg);
+    }
+
+    /* 隱藏箭頭但保留子層空間，最外層除外 */
+    .is-leaf>.node-content .arrow {
+      visibility: hidden;
+      width: 16px;
+      display: none;
+    }
+
+    /* 最外層的第一層葉子項目，直接不需要箭頭的佔位空間 */
+    .tree-view>ul>.is-leaf>.node-content .arrow {
+      display: none;
+    }
+
+    .icon {
+      margin-right: 6px;
+      font-size: 14px;
+    }
+
+    /* 最外層第一層葉子全都關閉display: none;全部打開display: block; */
+    .subtree {
+      display: none;
+    }
+
+    .expanded>.subtree {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    台中市
+    <span style="font-family: 'DFKai-sb', '標楷體', serif;font-size: 36px;">
+
+      李武略</span>
+    派下李氏宗親會 - 後台管理系統
+    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+    <img src="./icon/logo.svg" alt="Li Wulue's Li Clan Association李武略派下李氏宗親會" style="height: 50px; width: auto;">
+    <a href="index.html" title="前台首頁"
+      style="color: rgb(3, 162, 13); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
+      前台首頁
+    </a>
+    &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;
+    <a href="index.html" title="後台首頁"
+      style="color: rgb(4, 121, 167); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
+      後台首頁
+    </a>
+
+  </div>
+
+  </div>
+
+  <div class="main-container">
+    <aside class="sidebar">
+      <nav class="tree-view">
+        <ul id="menu-tree"></ul>
+      </nav>
+    </aside>
+
+    <iframe name="contentFrame" id="contentFrame" class="content-area" src="home.html"></iframe>
+  </div>
+
+  <script>
+    // 樹狀資料：將 url 直接綁定在資料結構中
+    const clanMenuData = [
+      { id: 1, name: "首頁歡迎資訊", url: "home.html", parentId: 0 },
+      { id: 2, name: "01 宗親會簡介", url: null, parentId: 0 },
+      { id: 3, name: "1-1.緣起與歷史沿革", url: "history.html", parentId: 2 },
+      { id: 4, name: "1-2. 組織章程與組織編制", url: "charter.html", parentId: 2 },
+      { id: 5, name: "02 始祖與開台源流", url: null, parentId: 0 },
+      { id: 6, name: "2-1.隴西堂號由來", url: "bohai.html", parentId: 5 },
+      { id: 7, name: "2-2.歷代昭穆字輩表", url: "genealogy.html", parentId: 5 },
+      { id: 7, name: "2-3.歷代昭穆字輩表json", url: "genealogy2.html", parentId: 5 },
+      { id: 8, name: "03 會務與祭祀管理", url: null, parentId: 0 },
+      { id: 9, name: "3-1.春季祭祖大典紀錄", url: "spring.html", parentId: 8 },
+      { id: 10, name: "3-2.派下員掃墓祭掃公告", url: "grave.html", parentId: 8 },
+      { id: 11, name: "04 派下員名冊管理", url: null, parentId: 0 },
+      { id: 12, name: "4-1.當屆會員代表名冊", url: "member_list.html", parentId: 11 },
+      /* { id: 13, name: "4-2.宗親優秀獎學金申請", url: "scholarship.html", parentId: 11 }*/
+      { id: 13, name: "4-2.優秀獎學金申請php", url: "clan_system.php", parentId: 11 },
+      { id: 14, name: "4-3.優秀獎學金申請json", url: "json.html", parentId: 11 }
+    ];
+
+    function buildTree(list, parentId = 0) {
+      const tree = [];
+      for (const item of list) {
+        if (item.parentId === parentId) {
+          const children = buildTree(list, item.id);
+          if (children.length > 0) item.children = children;
+          tree.push(item);
+        }
+      }
+      return tree;
+    }
+
+    function renderTree(treeData, container) {
+      treeData.forEach(node => {
+        const li = document.createElement('li');
+        li.className = 'tree-node';
+        const hasChildren = node.children && node.children.length > 0;
+        if (!hasChildren) li.classList.add('is-leaf');
+
+        const arrowHtml = `<span class="arrow"></span>`;
+        const iconHtml = hasChildren ? `<span class="icon">▼</span>` : `<span class="icon"></span>`;
+        //📜▶➤🏛️⏬✦🌿
+
+        li.innerHTML = `
+          <div class="node-content" data-url="${node.url || ''}">
+            ${arrowHtml}
+            ${iconHtml}
+            <span class="label">${node.name}</span>
+          </div>
+        `;
+
+        if (hasChildren) {
+          const subUl = document.createElement('ul');
+          subUl.className = 'subtree';
+          renderTree(node.children, subUl);
+          li.appendChild(subUl);
+
+          li.querySelector('.node-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+            li.classList.toggle('expanded');
+          });
+        } else {
+          li.querySelector('.node-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 直接將右側 iframe 導向點擊項目的獨立網頁
+            document.getElementById('contentFrame').src = node.url;
+          });
+        }
+        container.appendChild(li);
+      });
+    }
+
+    renderTree(buildTree(clanMenuData), document.getElementById('menu-tree'));
+  </script>
+</body>
+
+</html>

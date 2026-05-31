@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歷代昭穆字輩表</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        #content-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        /* 這裡可以針對你 JSON 匯入進來的 .content-box 進行視覺美化 */
+        .content-box {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .content-box h2 {
+            color: #8b0000;
+            border-bottom: 2px solid #8b0000;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .error-message {
+            color: #ff0000;
+            background: #fff0f0;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ffcccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="content-container">
+        <p style="color: #666; text-align: center;">系統正嘗試調閱 genealogy.json 宗族字輩資料庫...</p>
+    </div>
+
+    <script>
+        // 異步讀取外部 JSON 檔案
+        async function loadGenealogyData() {
+            const container = document.getElementById('content-container');
+            
+            try {
+                // 讀取同一個資料夾底下的 genealogy.json
+                const response = await fetch('genealogy.json');
+                
+                if (!response.ok) {
+                    throw new Error(`網頁讀取 JSON 失敗，錯誤代碼: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // 抓取陣列中第一個項目的 note 內容（即原汁原味的 HTML）
+                if (data && data[0] && data[0].note) {
+                    // 使用 innerHTML 完美還原 HTML 語法與樣式排版
+                    container.innerHTML = data[0].note;
+                } else {
+                    container.innerHTML = "<div class='error-message'>⚠️ JSON 格式正確，但找不到 \"note\" 欄位資料。</div>";
+                }
+                
+            } catch (error) {
+                console.error("載入失敗原因:", error);
+                container.innerHTML = `
+                    <div class="error-message">
+                        <h3>⚠️ 無法讀取資料</h3>
+                        <p>原因：${error.message}</p>
+                        <small>提示：請確保您是透過網頁伺服器（如 Apache, XAMPP, Live Server）打開本網頁。若直接雙擊點開 HTML 檔案，瀏覽器安全機制（CORS）會阻止讀取本地 JSON 檔案。</small>
+                    </div>
+                `;
+            }
+        }
+
+        // 當網頁載入完成後自動執行
+        window.addEventListener('DOMContentLoaded', loadGenealogyData);
+    </script>
+</body>
+</html>
