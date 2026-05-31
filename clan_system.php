@@ -254,7 +254,7 @@ function renderHtmlTree($treeData) {
                 </div>
                 <div class="form-group">
                     <label>密碼/管理員admin123/，一般會員member123</label>
-                    <input type="password" name="password" class="form-control" required placeholder="請輸入密碼">
+                    <input type="password" name="password" class="form-control" required placeholder="密碼admin123 或 member123">
                 </div>
                 <button type="submit" class="btn">安全登入</button>
             </form>
