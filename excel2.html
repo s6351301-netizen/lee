@@ -101,10 +101,17 @@
 
     <script>
         let allData = [];
+        /*
+                // 🌟 新增：萬用去 HTML 標籤輔助函式
+                function stripHtml(str) {
+                    if (typeof str !== 'string') return str || "";
+                    return str.replace(/<[^>]*>/g, '');
+                }
+        */
 
-        // 🌟 新增：萬用去 HTML 標籤輔助函式
         function stripHtml(str) {
-            if (typeof str !== 'string') return str || "";
+            // 異動點：新增型態判斷。如果不是字串（例如純數字的 ID），就強制轉成字串，避免 .replace() 噴錯
+            if (typeof str !== 'string') return str !== undefined && str !== null ? String(str) : "";
             return str.replace(/<[^>]*>/g, '');
         }
 
@@ -169,7 +176,7 @@
         <button id="downloadExcel" onclick="exportExcel()">下載 Excel</button>
       </th></tr>`;
             html += "<tr><th>編號</th><th>姓名</th><th>性別</th><th>出生年月日</th><th>年紀 / 歲</th><th>出生地</th><th>住址</th><th>備註</th><th>變動前編號</th></tr>";
-            
+
             // 畫面渲染依然輸出含原汁原味 HTML 語法的 JSON 值
             data.forEach(item => {
                 const age = calculateAge(item.birth);
@@ -213,28 +220,52 @@
             const textValue1 = document.getElementById("textFilter1").value.trim();
             const textValue2 = document.getElementById("textFilter2").value.trim();
             const regionValue = document.getElementById("regionFilter").value;
-            
-            const filtered = allData.filter(item => {
-                // 🌟 修改：比對前先把欄位值用 stripHtml 轉回乾淨的純文字
-                const cleanName = stripHtml(item.name);
-                const cleanAddress = stripHtml(item.address);
-                const cleanBirthplace = stripHtml(item.birthplace);
 
-                const matchText1 = textValue1 ? (
-                    cleanName.includes(textValue1) ||
-                    cleanAddress.includes(textValue1) ||
-                    cleanBirthplace.includes(textValue1)
-                ) : false;
-                
-                const matchText2 = textValue2 ? (
-                    cleanName.includes(textValue2) ||
-                    cleanAddress.includes(textValue2) ||
-                    cleanBirthplace.includes(textValue2)
-                ) : false;
-                
+            //修改：比對前先把欄位值用 stripHtml 轉回乾淨的純文字 
+            //異動點：獨立出一個萬用檢查函式，打包所有欄位
+            const checkMatch = (item, searchValue) => {
+                if (!searchValue) return false;
+
+                // 將所有原始 JSON 欄位都轉換並去除 HTML 標籤
+                const cleanId = stripHtml(item.id);
+                const cleanName = stripHtml(item.name);
+                const cleanGender = stripHtml(item.gender);
+                const cleanBirth = stripHtml(item.birth);
+                const cleanBirthplace = stripHtml(item.birthplace);
+                const cleanAddress = stripHtml(item.address);
+                const cleanNote = stripHtml(item.note);
+                const cleanPrevId = stripHtml(item.prev_id);
+
+                // 核心異動：因為原始資料沒年齡欄位，在此即時計算出「年紀」純文字以供搜尋
+                const cleanAge = calculateAge(item.birth);
+
+                // 檢查輸入的關鍵字是否包含在任一欄位中
+                return (
+                    cleanId.includes(searchValue) ||
+                    cleanName.includes(searchValue) ||
+                    cleanGender.includes(searchValue) ||
+                    cleanBirth.includes(searchValue) ||
+                    cleanAge.includes(searchValue) || // 年紀比對
+                    cleanBirthplace.includes(searchValue) ||
+                    cleanAddress.includes(searchValue) ||
+                    cleanNote.includes(searchValue) ||
+                    cleanPrevId.includes(searchValue)
+                );
+            };
+
+            const filtered = allData.filter(item => {
+                // 如果完全沒輸入任何條件，直接回傳 true 顯示全部
+                if (!textValue1 && !textValue2 && !regionValue) return true;
+
+                const matchText1 = textValue1 ? checkMatch(item, textValue1) : false;
+                const matchText2 = textValue2 ? checkMatch(item, textValue2) : false;
+
+                const cleanAddress = stripHtml(item.address);
                 const matchRegion = regionValue ? cleanAddress.includes(regionValue) : false;
+
                 return matchText1 || matchText2 || matchRegion;
             });
+
             buildTable(filtered, textValue1, textValue2, regionValue);
         }
 

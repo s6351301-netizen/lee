@@ -110,8 +110,8 @@
                 
                 const data = await response.json();
                 
-                if (data && data[0] && data[0].note) {
-                    const rawNote = data[0].note;
+                if (data && data[1] && data[1].note) {
+                    const rawNote = data[1].note;
                     
                     // 1. 建立一個暫時的 DOM 容器，用來正確解析裡面的 HTML 與 Script 標籤
                     const parser = new DOMParser();
