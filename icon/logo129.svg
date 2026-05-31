@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" width="360" height="160">
+    <style>
+        .chi { font: bold 64px sans-serif; fill: #3E2723; }
+        .eng { font: italic bold 14px sans-serif; fill: #3E2723; }
+        .icon { fill: #2E7D32; }
+    </style>
+    <!-- Background (Transparent) -->
+    <rect width="100%" height="100%" fill="none" />
+    
+    <!-- Chinese Characters -->
+    <text x="30" y="85" class="chi">李武略</text>
+    
+    <!-- Sprout Icon -->
+    <g class="icon" transform="translate(260, 40)">
+        <path d="M10 40 Q 0 20 20 0 Q 30 20 20 40 Z" />
+        <path d="M40 40 Q 50 15 75 10 Q 60 30 40 40 Z" />
+        <rect x="23" y="38" width="4" height="20" rx="2" />
+    </g>
+
+    <!-- English Text following a quadratic curve -->
+    <defs>
+        <path id="textPath" d="M30,135 Q180,115 330,135" />
+    </defs>
+    <text class="eng">
+        <textPath href="#textPath" startOffset="0%">
+            LI WULUE'S LI CLAN ASSOCIATION
+        </textPath>
+    </text>
+</svg>

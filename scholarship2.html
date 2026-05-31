@@ -1,17 +1,169 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <title>宗親優秀獎學金申請</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宗親優秀獎學金申請</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        input,
+        select {
+            margin: 10px;
+            padding: 5px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 95%;
+            margin: 20px auto;
+        }
+
+        th,
+        td {
+            border: 1px solid #666;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #e6f2ff;
+        }
+
+        tr:hover {
+            background-color: #87cefa;
+            /*文字顏色#7fffd4*/
+        }
+
+        /* 統計列樣式 */
+        .stats-row th {
+            text-align: center;
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+
+        .male-stats {
+            color: darkblue;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .female-stats {
+            color: darkred;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .total-stats {
+            color: darkgreen;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .all-stats {
+            color: purple;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        /* 錯誤訊息提示區優化 */
+        .error-message {
+            padding: 20px;
+            background: #fff0f0;
+            border: 1px solid #ffcccc;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 20px;
+            text-align: left;
+            max-width: 80%;
+        }
+        .error-message h3 {
+            margin-top: 0;
+            color: #cc0000;
+        }
+    </style>
 </head>
 <body>
-  <div class="content-box">
-    <h2>10. 獎學金申請網頁：scholarship.html  04.02 宗親優秀獎學金申請</h2>
-    <p>為鼓勵高氏優秀後代子弟黽勉好學，本會特設立宗親獎助學金。每年九月開放辦理申請。</p>
-    <ul>
-      <li><strong>公立大學組：</strong> 學業成績平均 85 分以上，獎學金新台幣 10,000 元。</li>
-      <li><strong>高中職組：</strong> 學業成績平均 80 分以上，獎學金新台幣 5,000 元。</li>
-    </ul>
-  </div>
+
+    <div id="content-container">
+        <p style="color: #666; text-align: center;">系統正嘗試調閱 genealogy2.json 宗族字輩資料庫...</p>
+    </div>
+
+    <script>
+        async function loadGenealogyData() {
+            const container = document.getElementById('content-container');
+            
+            try {
+                const response = await fetch('genealogy2.json');
+                if (!response.ok) throw new Error(`網頁讀取 JSON 失敗，錯誤代碼: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data && data[0] && data[0].note) {
+                    const rawNote = data[0].note;
+                    
+                    // 1. 建立一個暫時的 DOM 容器，用來正確解析裡面的 HTML 與 Script 標籤
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(rawNote, 'text/html');
+                    
+                    // 2. 把裡面的所有 <script> 標籤抓出來存成陣列，然後把它們從原本的 HTML 裡移除
+                    const scripts = Array.from(doc.querySelectorAll('script'));
+                    scripts.forEach(s => s.remove());
+                    
+                    // 3. 將乾淨的 HTML 殼子灌入網頁中
+                    container.innerHTML = doc.body.innerHTML;
+
+                    // 4. 🌟 重頭戲：依序重新建立真正的 Script 標籤（完美支援 src 外部檔案下載）
+                    for (let oldScript of scripts) {
+                        const newScript = document.createElement('script');
+                        
+                        // 檢查舊標籤有沒有帶屬性（如 src、type、charset）
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        
+                        // 處理內嵌的純 JavaScript 程式碼
+                        if (oldScript.textContent) {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        
+                        // 🌟 如果帶有 src 屬性，用 Promise 機制強制等待下載完畢，再塞下一個
+                        if (newScript.src) {
+                            await new Promise((resolve) => {
+                                newScript.onload = resolve;
+                                newScript.onerror = resolve;
+                                document.body.appendChild(newScript);
+                            });
+                        } else {
+                            // 純程式碼就直接塞入執行
+                            document.body.appendChild(newScript);
+                        }
+                    }
+                    
+                    console.log("✅ 全模組（含外部 CDN 套件）已成功依序完全加載並執行。");
+                    
+                } else {
+                    container.innerHTML = "<div class='error-message'>⚠️ JSON 找不到 \"note\" 欄位資料。</div>";
+                }
+                
+            } catch (error) {
+                console.error("載入失敗:", error);
+                container.innerHTML = `<div class="error-message"><h3>⚠️ 無法讀取資料</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadGenealogyData);
+    </script>
 </body>
 </html>
