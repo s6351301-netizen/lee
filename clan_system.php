@@ -249,11 +249,11 @@ function renderHtmlTree($treeData) {
             <form method="POST">
                 <input type="hidden" name="action" value="login">
                 <div class="form-group">
-                    <label>使用者帳號</label>
+                    <label>使用者帳號/管理者admin，一般會員member</label>
                     <input type="text" name="username" class="form-control" required placeholder="請輸入 admin 或 member">
                 </div>
                 <div class="form-group">
-                    <label>密碼</label>
+                    <label>密碼/管理員admin123/，一般會員member123</label>
                     <input type="password" name="password" class="form-control" required placeholder="請輸入密碼">
                 </div>
                 <button type="submit" class="btn">安全登入</button>
