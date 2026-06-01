@@ -1,0 +1,552 @@
+參考以下範例,將所有功能與效果全部綜合起來,寫出最單純前端網頁,需要各分頁請自行添增.
+
+主要https://tseng-clan.com/
+
+主要參考https://simular.co/
+
+次要參考https://www.tseng-ty.org.tw/
+
+主要參考https://simular.co/
+
+
+
+
+
+
+李慶軍
+437010臺中市大甲區義和里004鄰中山路1段484巷33號
+
+祭祀公業李武略(號殖春)管理者：李孫裕
+437010臺中市大甲區義和里4鄰中山路一段484巷45號
+
+臺中市大甲區公所大甲民政課#206 楊先生
+437007臺中市大甲區民權路52號
+
+本人李慶軍向大甲區公所民政課申請祭祀公業李武略（號殖春）派下員李永順死亡繼承變動，尚缺祭祀公業現員派下員名冊及全員系統表（此兩份文件皆須蓋有主管機關印信）。 請管理員收件後於10個工作天內提供此兩份文件給本人，以利辦理繼承變動，若有任何問題請來電04-26761116或0923631860，感謝。
+
+
+
+
+
+https://classroom.github.com/a/zdvH2kgG
+資料庫 帳 密
+資料表
+
+
+參考以下網站範例,將所有功能與效果全部綜合起來,寫出最單純前端網頁,需要各分頁請自行添增.
+產出所有檔案放在D:\Python\空網站-李氏宗親
+需要有完整的 Bootstrap 響應式 HTML + CSS 語法，依照曾氏宗親會 (tseng-clan.com) 網站的主要結構：導覽列、輪播橫幅、宗親會簡介、大事纪要、組織章程、最新消息、活動花絮、族譜紀錄、年會手冊、聯絡資訊與頁尾。
+此範例支援桌機、平板、手機的 RWD。
+
+先做網頁切版,包含每個地區的小區塊都要包含.將主要CSS與JS或JQ或其他效果全部都先完成. 
+不需要詳細內文,只需要簡單文字介紹.
+需要有https://simular.co/此網站的前端效果
+class="c-main-navbar navbar navbar-default navbar-fixed-top fixed-top navbar-expand-lg navbar-light"
+
+哪一個網站看起來比較符合宗親會且功能是比較新潮為主.
+
+要以一個空的內容網站去建置,做練習前端與後端平台的撰寫,主要是練習後端要使用PHP與MAYSQL做維護的後台.
+系統需求規格書,如下面說明,需要將資料庫正規劃,依照說明書提供可匯入的SQL語法及測試資料50筆.
+全部檔名盡量精簡,且全部用英數,不要有任何中文的檔名.
+需要創建檔案或資料夾,全部依需求自行建立,且要做好連結可以使用.
+若網站需要使用到圖片或影片,盡量找網路上已有的網址,沒有自動使用AI產生.
+
+主要參考https://tseng-clan.com/
+主要參考https://simular.co/
+主要參考https://xie-b-c.com/c_menu01.asp?area=88
+主要參考https://www.ithome.com.tw/
+次要參考https://www.tseng-ty.org.tw/
+次要參考https://www.taiwanchius.tw/
+
+
+
+切版-曾氏宗親會
+
+系統架構需求
+📑 系統架構說明書
+一、前端網頁架構 (使用者介面)
+
+主要以 RWD 響應式設計，支援桌機、平板、手機。
+    首頁(前台)
+        橫幅主視覺 (Carousel)
+        最新公告摘要
+        活動快訊入口
+    宗親會簡介
+        宗旨與理念
+        成立沿革
+        家族精神與文化
+	大事記要
+    組織章程
+        組織架構圖
+        理事會成員介紹
+        章程文件下載
+    最新消息
+        公告事項列表 (Cards + Modal 詳細內容)
+        家族新聞
+        媒體報導
+    活動花絮
+        年度大會照片集
+        祭祖典禮影片
+        文化交流活動紀錄
+    族譜紀錄
+        家族世系圖 (互動式樹狀圖)
+        祖先事蹟文章
+        族譜電子化查詢功能
+    年會手冊
+        歷年手冊下載 (PDF)
+        會議紀錄
+        重要決議
+    祭祀公業
+        祖塔與祠堂介紹
+        祭祀流程
+        公業資產管理資訊
+    文化傳承
+        家族故事專區
+        傳統習俗介紹
+        文獻典藏
+
+    會員專區(後台)
+        會員登入／註冊
+        會員名錄查詢
+        內部文件下載
+    聯絡我們
+        聯絡表單 (表單送出後寄信)
+        地址與電話
+        社群媒體連結
+    頁尾資訊
+        版權聲明
+        隱私政策
+        捐款支持
+
+二、後端系統架構 (伺服器與資料庫)
+主要以 MVC 架構 或 API 驅動，支援會員管理與資料存取。
+    會員管理模組
+        會員註冊／登入 (帳號、密碼、OAuth)
+        權限控管 (一般會員／管理員／理事)
+        會員名錄資料庫
+    內容管理模組 (CMS)
+        最新消息 CRUD (新增／修改／刪除)
+        活動花絮上傳 (圖片／影片)
+        族譜紀錄維護 (世系資料、祖先事蹟)
+        年會手冊檔案管理 (PDF 上傳／下載)
+    祭祀公業模組
+        祖塔／祠堂資訊維護
+        祭祀流程文件管理
+        公業資產資料庫 (土地、基金)
+    文化傳承模組
+        家族故事文章管理
+        習俗介紹內容維護
+        文獻典藏檔案庫
+    聯絡表單模組
+        表單送出 → Email 通知管理員
+        聯絡紀錄存檔
+    系統管理模組
+        使用者權限設定
+        網站設定 (Logo、顏色、Banner)
+        日誌紀錄 (登入、操作紀錄)
+    資料庫設計
+        members (會員資料表)
+        news (最新消息表)
+        events (活動花絮表)
+        genealogy (族譜紀錄表)
+        manuals (年會手冊表)
+        assets (祭祀公業資產表)
+        contacts (聯絡表單紀錄表)
+
+
+✨ 總結
+    前端：以 RWD + Bootstrap/Grid/Flexbox 呈現，包含首頁、簡介、章程、大事記要、消息、活動、族譜、手冊、祭祀公業、文化傳承、會員專區、聯絡我們。
+
+    後端：以 CMS + 資料庫支援，包含會員管理、內容管理、祭祀公業、文化傳承、聯絡表單、系統管理。
+
+📌 這份系統架構說明書能作為宗親會／祭祀公業網站的完整藍圖，前端注重展示與互動，後端注重資料維護與權限控管。
+
+
+🌐 前端網頁架構 (Frontend Modules)
+單元名稱 (中文)	英文檔名/路徑	功能描述
+首頁	index.php	顯示橫幅、最新消息摘要、活動快訊
+宗親會簡介	about.php	宗旨、沿革、文化介紹
+組織章程	organization.php	組織架構、理事成員、章程文件
+最新消息	news.php	公告列表、詳細內容 Modal
+活動花絮	events.php	活動照片、影片展示
+族譜紀錄	genealogy.php	家族世系圖、祖先事蹟、族譜查詢
+年會手冊	manuals.php	歷年手冊下載、會議紀錄
+祭祀公業	ancestral.php	祖塔、祠堂、祭祀流程、公業資產
+文化傳承	culture.php	家族故事、習俗、文獻典藏
+會員專區	members.php	登入、會員名錄、內部文件
+聯絡我們	contact.php	聯絡表單、地址、電話、社群連結
+後台管理	admin.php	管理員登入、內容維護
+
+⚙️ 後端系統架構 (Backend Modules)
+模組名稱 (中文)	英文檔名/路徑	功能描述
+會員管理	memberController.php	註冊、登入、權限控管
+消息管理	newsController.php	新增／修改／刪除最新消息
+活動管理	eventController.php	活動照片／影片上傳
+族譜管理	genealogyController.php	世系資料維護、族譜查詢
+手冊管理	manualController.php	PDF 上傳／下載
+公業管理	ancestralController.php	祖塔、祠堂、公業資產維護
+文化管理	cultureController.php	家族故事、習俗、文獻管理
+聯絡表單	contactController.php	表單送出、Email 通知
+系統管理	systemController.php	網站設定、日誌紀錄
+
+🗄️ 資料庫設計 (LEE 資料表)
+主要資料表 (LEE_xxx)
+資料表名稱 (中文)	英文名稱	欄位設計
+會員資料表	LEE_members	id (PK), name, email, password, role, join_date
+最新消息表	LEE_news	id (PK), title, summary, content, created_at, updated_at
+活動花絮表	LEE_events	id (PK), title, description, photo_url, video_url, event_date
+族譜紀錄表	LEE_genealogy	id (PK), ancestor_name, generation, biography, parent_id (FK)
+年會手冊表	LEE_manuals	id (PK), year, file_url, upload_date
+公業資產表	LEE_assets	id (PK), asset_name, type, location, value, updated_at
+文化傳承表	LEE_culture	id (PK), title, story, category, created_at
+聯絡表單表	LEE_contacts	id (PK), name, email, message, submitted_at
+系統日誌表	LEE_logs	id (PK), user_id, action, timestamp
+
+
+
+宗親會網站系統架構圖(ASCII編碼)
+┌───────────────────────────────┐
+│                   宗親會網站系統架構圖                       │
+│        Tseng Clan Website System Architecture                │
+└───────────────────────────────┘
+
+        ┌────────────────┐
+        │ 使用者瀏覽器 / User Browser    │
+        │────────────────│
+        │ 訪客 / 會員 Visitors/Members   │
+        └───────┬────────┘
+                        │
+                        ▼
+        ┌──────────────────────────┐
+        │ 前端系統 / Frontend (HTML / CSS / JS / Bootstrap)  │
+        │──────────────────────────│
+        │ index.php        → 首頁 Home                      │
+        │ about.php        → 宗親會簡介 About               │
+        │ organization.php → 組織章程 Organization          │
+        │ news.php         → 最新消息 News                  │
+        │ events.php       → 活動花絮 Events                │
+        │ genealogy.php    → 族譜紀錄 Genealogy             │
+        │ manuals.php      → 年會手冊 Manuals               │
+        │ ancestral.php    → 祭祀公業 Ancestral             │
+        │ culture.php      → 文化傳承 Culture               │
+        │ members.php      → 會員專區 Members               │
+        │ contact.php      → 聯絡我們 Contact               │
+        └───────┬──────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ 後端系統 / Backend (PHP Framework)                   │
+        │───────────────────────────│
+        │ memberController.php   → 會員管理 Member Controller │
+        │ newsController.php     → 消息管理 News Controller   │
+        │ eventController.php    → 活動管理 Event Controller  │
+        │ genealogyController.php→ 族譜管理 Genealogy Ctrl    │
+        │ manualController.php   → 手冊管理 Manual Ctrl       │
+        │ ancestralController.php→ 公業管理 Ancestral Ctrl    │
+        │ cultureController.php  → 文化管理 Culture Ctrl      │
+        │ contactController.php  → 聯絡表單 Contact Ctrl      │
+        │ systemController.php   → 系統管理 System Ctrl       │
+        └───────┬───────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────┐
+        │ 資料庫 / Database (MySQL)                    │
+        │───────────────────────│
+        │ LEE_members     → 會員資料 Members          │
+        │ LEE_news        → 最新消息 News             │
+        │ LEE_events      → 活動花絮 Events           │
+        │ LEE_genealogy   → 族譜紀錄 Genealogy        │
+        │ LEE_manuals     → 年會手冊 Manuals          │
+        │ LEE_assets      → 公業資產 Assets           │
+        │ LEE_culture     → 文化傳承 Culture          │
+        │ LEE_contacts    → 聯絡紀錄 Contacts         │
+        │ LEE_logs        → 系統日誌 System Logs      │
+        └───────────────────────┘
+
+
+宗親會網站的資料庫ER關聯圖ASCII版，以純文字方式顯示各資料表之間的主鍵PK與外鍵FK關係中英文對照。
+┌───────────────────────────────┐
+│                   資料庫 ER 關聯圖 (ASCII 版)                │
+│          Tseng Clan Website Database ER Diagram              │
+└───────────────────────────────┘
+
+                 ┌───────────────┐
+                 │ LEE_members (會員資料表)     │
+                 │───────────────│
+                 │ PK: member_id                │
+                 │ name                         │
+                 │ email                        │
+                 │ password                     │
+                 │ role                         │
+                 │ join_date                    │
+                 └───────┬───────┘
+                                 │ 
+                                 │      
+                                 ▼      
+                 ┌───────────────┐
+                 │ LEE_news (最新消息表)        │
+                 │───────────────│
+                 │ PK: news_id                  │
+                 │ FK: member_id (作者)         │
+                 │ title                        │
+                 │ summary                      │
+                 │ content                      │
+                 │ created_at                   │
+                 │ updated_at                   │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_events (活動花絮表)      │
+                 │───────────────│
+                 │ PK: event_id                 │
+                 │ FK: member_id (建立者)       │
+                 │ title                        │
+                 │ description                  │
+                 │ photo_url                    │
+                 │ video_url                    │
+                 │ event_date                   │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_genealogy (族譜紀錄表)   │
+                 │───────────────│
+                 │ PK: ancestor_id              │
+                 │ FK: parent_id (父代關聯)     │
+                 │ ancestor_name                │
+                 │ generation                   │
+                 │ biography                    │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_manuals (年會手冊表)     │
+                 │───────────────│
+                 │ PK: manual_id                │
+                 │ FK: member_id (上傳者)       │
+                 │ year                         │
+                 │ file_url                     │
+                 │ upload_date                  │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_assets (公業資產表)      │
+                 │───────────────│
+                 │ PK: asset_id                 │
+                 │ asset_name                   │
+                 │ type                         │
+                 │ location                     │
+                 │ value                        │
+                 │ updated_at                   │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_culture (文化傳承表)     │
+                 │───────────────│
+                 │ PK: culture_id               │
+                 │ title                        │
+                 │ story                        │
+                 │ category                     │
+                 │ created_at                   │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_contacts (聯絡紀錄表)    │
+                 │───────────────│
+                 │ PK: contact_id               │
+                 │ name                         │
+                 │ email                        │
+                 │ message                      │
+                 │ submitted_at                 │
+                 └───────────────┘
+
+                                │
+                                │
+                                ▼
+                 ┌───────────────┐
+                 │ LEE_logs (系統日誌表)        │
+                 │───────────────│
+                 │ PK: log_id                   │
+                 │ FK: member_id (操作者)       │
+                 │ action                       │
+                 │ timestamp                    │
+                 └───────────────┘
+
+
+✨ 關聯說明
+    LEE_members 是核心表，其他表透過 member_id 外鍵連結。
+    LEE_genealogy 使用自關聯 (parent_id) 表示家族世系。
+    LEE_logs 用於記錄會員操作行為。
+    所有表格以 LEE_ 為前綴，方便辨識宗親會系統資料。
+📌 總結：這份 ASCII ER 關聯圖清楚顯示了宗親會網站資料庫的主鍵與外鍵關係，結構簡潔、層次分明，適合用於 PHP + MySQL 系統開發規劃。
+
+
+
+各資料表設計須符合正規化設計
+資料表名稱	正規化層級	設計原則
+LEE_members (會員資料表)	3NF	每位會員唯一 member_id，email 唯一，避免重複。非主鍵欄位如 role、join_date 僅依賴主鍵。
+LEE_news (最新消息表)	3NF	news_id 為主鍵，member_id 為外鍵指向作者。title、summary、content 僅依賴 news_id。
+LEE_events (活動花絮表)	3NF	event_id 為主鍵，member_id 外鍵指向建立者。photo_url、video_url 僅依賴活動本身，不依賴其他非主鍵。
+LEE_genealogy (族譜紀錄表)	3NF	ancestor_id 為主鍵，parent_id 外鍵自關聯。ancestor_name、generation、biography 僅依賴主鍵。
+LEE_manuals (年會手冊表)	3NF	manual_id 為主鍵，member_id 外鍵指向上傳者。year、file_url 僅依賴主鍵。
+LEE_assets (公業資產表)	3NF	asset_id 為主鍵，asset_name、type、location、value 僅依賴主鍵。
+LEE_culture (文化傳承表)	3NF	culture_id 為主鍵，title、story、category 僅依賴主鍵。
+LEE_contacts (聯絡紀錄表)	3NF	contact_id 為主鍵，name、email、message 僅依賴主鍵。
+LEE_logs (系統日誌表)	3NF	log_id 為主鍵，member_id 外鍵指向操作者。action、timestamp 僅依賴主鍵。
+
+設計原則總結
+    避免冗餘：所有非主鍵欄位僅依賴主鍵，不依賴其他非主鍵。
+    保持一致性：會員資料集中在 LEE_members，其他表透過外鍵連結。
+    支援擴充性：族譜表 (LEE_genealogy) 使用自關聯設計，方便擴展世系。
+    安全性：日誌表 (LEE_logs) 記錄操作行為，方便稽核。
+
+
+資料庫 ER 關聯圖 (正規化後) ASCII 版
+┌───────────────────────────────┐
+│                 資料庫 ER 關聯圖 (正規化後)                  │
+│          Tseng Clan Website Database ER Diagram              │
+└───────────────────────────────┘
+
+                 ┌────────────────┐
+                 │ LEE_members (會員資料表)       │
+                 │────────────────│
+                 │ PK: member_id                  │
+                 │ name, email, password, role    │
+                 │ join_date                      │
+                 └───────┬────────┘
+                                 │ 
+                                 │      
+                                 ▼      
+        ┌───────────────────────┐
+        │ LEE_news (最新消息表)                        │
+        │───────────────────────│
+        │ PK: news_id                                  │
+        │ FK: member_id → LEE_members                 │
+        │ title, summary, content, created_at, updated │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_events (活動花絮表)                      │
+        │───────────────────────│
+        │ PK: event_id                                 │
+        │ FK: member_id → LEE_members                 │
+        │ title, description, photo_url, video_url     │
+        │ event_date                                   │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_genealogy (族譜紀錄表)                   │
+        │───────────────────────│
+        │ PK: ancestor_id                              │
+        │ FK: parent_id → LEE_genealogy (自關聯)      │
+        │ ancestor_name, generation, biography         │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_manuals (年會手冊表)                     │
+        │───────────────────────│
+        │ PK: manual_id                                │
+        │ FK: member_id → LEE_members                 │
+        │ year, file_url, upload_date                  │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_assets (公業資產表)                      │
+        │───────────────────────│
+        │ PK: asset_id                                 │
+        │ asset_name, type, location, value, updated   │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_culture (文化傳承表)                     │
+        │───────────────────────│
+        │ PK: culture_id                               │
+        │ title, story, category, created_at           │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_contacts (聯絡紀錄表)                    │
+        │───────────────────────│
+        │ PK: contact_id                               │
+        │ name, email, message, submitted_at           │
+        └───────────────────────┘
+
+        ┌───────────────────────┐
+        │ LEE_logs (系統日誌表)                        │
+        │───────────────────────│
+        │ PK: log_id                                   │
+        │ FK: member_id → LEE_members                 │
+        │ action, timestamp                            │
+        └───────────────────────┘
+
+
+
+
+
+
+
+4-1-1代 李德意
+23世祖 德字輩
+	
+4-1-2代 李德行
+23世祖 德字輩	
+
+4-1-3代 李德淋
+23世祖 德字輩
+	
+4-1-4代 李德獻	
+23世祖 德字輩
+
+4-1-5代 李德良
+23世祖 德字輩
+
+	
+4-1-6代 李德量	
+23世祖 德字輩
+
+4-1-7代 李德補
+23世祖 德字輩
+	
+4-1-8代 李德地
+23世祖 德字輩
+
+
+李瑞麟	李祖溪	李德順(德意)
+李瑞鸞	李祖溪	絕嗣
+李瑞盛	李祖溪	李德胡
+李瑞色	李祖溪	李德老
+李瑞賢	李祖溪	李德炎
+
+
+
+4-2-1代 李德胡
+23世祖 德字輩
+
+4-2-1代 李德老
+23世祖 德字輩
+
+3	2	李畝美(乳名 尊美)	李祖僖	李德樣					
+3	2	李畝乾(乳名 巽乾)	李祖僖	李怣番	李德彥(號忠)				
+3	2	李畝儀(乳名 鳳儀)	李祖僖	李德同					
+3	2	李敷遠(乳名 元遠)	李祖僖	李德賢		
+			
+3	3	李畝安(乳名 安邦)	李祖朗	未詳					
+3	3	李畝諒(讓)(乳名 遜讓)	李祖朗	李德耀	李德華	李德談	李德照	李德福	李德強
+3	3	李畝雲(乳名 騰雲)	李祖朗	李清風					
+
