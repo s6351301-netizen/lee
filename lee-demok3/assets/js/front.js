@@ -1,0 +1,1 @@
+$(function(){ $('.nav-toggle').on('click', function(){ $('.site-nav ul').toggleClass('open'); }); });

@@ -105,7 +105,7 @@
             const container = document.getElementById('content-container');
             
             try {
-                const response = await fetch('genealogy2.json');
+                const response = await fetch('./json/genealogy2.json');
                 if (!response.ok) throw new Error(`網頁讀取 JSON 失敗，錯誤代碼: ${response.status}`);
                 
                 const data = await response.json();
