@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    /* 基礎夜空背景 */
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: #020308;
+        background-image: radial-gradient(circle at center, #0b1126 0%, #020308 80%);
+        background-attachment: fixed; 
+        overflow: hidden; /* 防止雨滴超出網頁出現捲軸 */
+        position: relative;
+    }
+
+    /* ==================== 流星效果 ==================== */
+    .meteor-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* 讓流星不影響滑鼠點擊 */
+    }
+
+    /* 劃過天際的流星主體 */
+    .meteor {
+        position: absolute;
+        top: -50px;
+        width: 2px;
+        height: 2px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 10px 2px rgba(231, 241, 134, 0.8);
+        animation: meteorFall 4s linear infinite;
+        opacity: 0;
+    }
+
+    /* 流星的尾巴（利用偽元素製作漸層長尾） */
+    .meteor::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 500px; /* 尾巴長度 */
+        height: 1px;
+        background: linear-gradient(to right, rgb(0, 225, 255), rgba(255, 230, 0, 0));
+        transform: rotate(-45deg); /* 配合下落角度旋轉 */
+        transform-origin: 0 0;
+    }
+
+    /* 流星動畫：從右上往左下快速劃過 */
+    @keyframes meteorFall {
+        0% {
+            transform: translate(0, 0);
+            opacity: 0;
+        }
+        1% {
+            opacity: 1;
+        }
+        15% {
+            transform: translate(-400px, 400px);
+            opacity: 0;
+        }
+        100% {
+            transform: translate(-400px, 400px);
+            opacity: 0;
+        }
+    }
+
+    /* 設定不同流星的隨機初始位置、延遲時間與速度 */
+    .meteor:nth-child(1) { right: 10%; animation-delay: 0s; animation-duration: 6s; }
+    .meteor:nth-child(2) { right: 30%; animation-delay: 2s; animation-duration: 5s; }
+    .meteor:nth-child(3) { right: 50%; animation-delay: 5.5s; animation-duration: 7s; }
+    .meteor:nth-child(4) { right: 70%; animation-delay: 1s; animation-duration: 4s; }
+
+    /* ==================== 不同速下雨效果 ==================== */
+    .rain-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    /* 雨滴基礎樣式 */
+    .drop {
+        position: absolute;
+        background: linear-gradient(transparent, rgba(255, 255, 255, 0.4));
+        bottom: 100%; /* 從螢幕上方外面開始下落 */
+        animation: dropMove linear infinite;
+    }
+
+    @keyframes dropMove {
+        0% {
+            transform: translateY(0);
+        }
+        100% {
+            transform: translateY(105vh); /* 落下到螢幕底部以下 */
+        }
+    }
+
+    /* ==================== 原有 UI 樣式保留 ==================== */
+    .interface-label {
+        position: relative;
+        z-index: 10; /* 確保文字在雨和流星上方 */
+        padding: 20px;
+    }
+    .track-bg { position: absolute; pointer-events: none; }
+</style>
+<body>
+    
+    <div class="meteor-container">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+
+    <div class="rain-container" id="rainContainer"></div>
+
+    <div class="interface-label">
+        <h1 style="font-size: 1.2em; color: #86e707;">核心星域與多態互動相簿系統 (第一排透明)</h1>
+        <p style="font-size: 1.2em; color: #ccc;">
+            • 後景動畫：流星定時劃過，搭配前後立體感、不同速度的隨機下雨效果。<br>
+            • 前景互動：滑鼠移至卡片升起並切換宇宙星圖。 **第一排卡片已設為最大透明度**。
+        </p>
+    </div>
+
+    <div class="track-bg track-circle"></div>
+    <div class="track-bg track-ellipse-horizontal"></div>
+    <div class="track-bg track-ellipse-vertical"></div>
+
+    <script>
+        function createRain() {
+            const container = document.getElementById('rainContainer');
+            const dropCount = 30; // 雨滴密度，可自行調整數量
+
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.classList.add('drop');
+
+                // 1. 隨機 X 軸位置 (0% ~ 100%)
+                const left = Math.random() * 100;
+                
+                // 2. 隨機速度 (1秒 ~ 2.5秒之間，數值越小越快)
+                const duration = Math.random() * 1.5 + 1; 
+                
+                // 3. 隨機延遲時間，避免所有雨滴同時掉落
+                const delay = Math.random() * 2;
+                
+                // 4. 隨機雨滴大小 (微小區別營造前後景的立體深度)
+                const width = Math.random() * 1 + 1; // 1px ~ 2px 寬
+                const height = Math.random() * 30 + 20; // 20px ~ 50px 長
+
+                // 將隨機數值套用至 CSS
+                drop.style.left = `${left}%`;
+                drop.style.animationDuration = `${duration}s`;
+                drop.style.animationDelay = `${delay}s`;
+                drop.style.width = `${width}px`;
+                drop.style.height = `${height}px`;
+
+                // 讓比較細小的雨滴透明度調低，模擬遠景
+                if(width < 1.5) {
+                    drop.style.opacity = 0.2;
+                } else {
+                    drop.style.opacity = 0.5;
+                }
+
+                container.appendChild(drop);
+            }
+        }
+
+        // 網頁載入後執行
+        createRain();
+    </script>
+</body>
+</html>
