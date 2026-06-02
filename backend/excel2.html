@@ -269,7 +269,7 @@
             buildTable(filtered, textValue1, textValue2, regionValue);
         }
 
-        fetch('data2.json')
+        fetch('../json/data2.json')
             .then(res => res.json())
             .then(data => {
                 allData = data; // 🌟 核心：全域變數依然維持原始含有 HTML 標籤的 JSON 資料
