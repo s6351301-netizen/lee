@@ -9,7 +9,7 @@
 
 <body>
  
-<h2>美化且有測試過的聊天室 Durable ObjectJS語法</h2>
+<h2>index.php美化且有測試過的聊天室 Durable ObjectJS語法</h2>
 <script>
 export class ChatRoom {
   constructor(state, env) {

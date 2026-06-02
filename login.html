@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    body {
+    background-color: #020308;
+    
+    /* 1. 繪製不同大小、模糊度的白色星點與星雲底色 */
+    background-image: 
+        radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),  /* 第一層星點 */
+        radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px), /* 第二層星點 */
+        radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px),  /* 第三層星點 */
+        radial-gradient(circle at center, #0b1126 0%, #020308 80%);          /* 中央星雲漸層 */
+    
+    /* 2. 定義每層星點的平鋪尺寸（前三層是點點的大小範圍，第四層是滿版底色） */
+    background-size: 550px 550px, 350px 350px, 250px 250px, 100% 100%;
+    
+    /* 固定背景不隨網頁捲動 */
+    background-attachment: fixed; 
+
+    /* 3. 套用無限流動動畫：時長 60 秒、無限循環、線性勻速 */
+    animation: starStream 60s infinite linear;
+}
+
+/* 4. 控制背景點點移動軌跡的動畫主體 */
+@keyframes starStream {
+    0% { 
+        background-position: 0 0, 0 0, 0 0, center; 
+    }
+    100% { 
+        /* 讓前三層點點往不同的 X 與 Y 軸座標位移，產生錯開的立體流動感 */
+        background-position: 550px 1100px, -350px 700px, 500px -500px, center; 
+    }
+}   
+</style>
+<body>
+    
+<div class="interface-label">
+            <h1 style="font-size: 1.2em; color: #86e707;">核心星域與多態互動相簿系統 (第一排透明)</h1>
+            <p style="font-size: 1.2em; color: #ccc;">
+                • 後景動畫：5 幾何星體沿獨立幾何軌道運行，群組帶有 3D 漂移深度縮放。<br>
+                • 前景互動：滑鼠移至卡片升起並切換宇宙星圖。 **第一排卡片已設為最大透明度**。
+            </p>
+        </div>
+
+        <div class="track-bg track-circle"></div>
+        <div class="track-bg track-ellipse-horizontal"></div>
+        <div class="track-bg track-ellipse-vertical"></div>
+ 
+</body>
+</html>
