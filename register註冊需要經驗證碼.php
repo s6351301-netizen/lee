@@ -22,9 +22,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $status = isset($_POST['status']) && $_POST['status'] !== "" ? trim($_POST['status']) : "1";
     $discontinued_date = trim($_POST['discontinued_date']);
     $remarks = trim($_POST['remarks']);
+    $captcha = trim($_POST['captcha']);
 
     // 驗證必填欄位
-    if ($password !== $confirm_password) {
+    if ($captcha != $_SESSION['captcha']) {
+        $error = "驗證碼錯誤";
+    } elseif ($password !== $confirm_password) {
         $error = "兩次密碼不一致";
     } elseif ($name === "" || $gender === "" || $email === "" || $role === "") {
         $error = "必填欄位不可空白";
@@ -59,7 +62,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $new_member, $old_member, $name, $gender, $email, $hash, $role, $join_date, $status, $discontinued_date, $remarks);
 
             if ($stmt->execute()) {
-                //$success = "註冊成功，請前往登入頁面";
                 $success = '註冊成功，請前往 <a href="login.php">會員登入</a>頁面';
             } else {
                 $error = "註冊失敗: " . $stmt->error;
@@ -120,6 +122,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </select></td></tr>
             <tr><td class="label">停用日期 (選填):</td><td><input type="date" name="discontinued_date"></td></tr>
             <tr><td class="label">備註 (選填):</td><td><input type="text" name="remarks"></td></tr>
+            <tr><td class="label">驗證碼:</td>
+                <td>
+                    <img src="captcha.php?<?php echo rand(); ?>" alt="CAPTCHA" 
+                         onclick="this.src='captcha.php?'+Math.random();" style="cursor:pointer;"><br>
+                    <small>點擊圖片可刷新驗證碼</small><br>
+                    <input type="text" name="captcha" required>
+                </td></tr>
             <tr><td></td><td><input type="submit" value="註冊"></td></tr>
         </table>
     </form>

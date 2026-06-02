@@ -1,58 +1,352 @@
+<?php
+session_start();
+?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聊天室</title>
+    <title>台中市李武略派下李氏宗親會 - 後台管理系統</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body,
+        html {
+            height: 100%;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f4f6f9;
+            overflow: hidden;
+        }
+
+        .header {
+            height: 60px;
+            /* background-color: #010111;
+               天藍到海軍藍linear-gradient(125deg, #22d3ee 0%, #3b82f6 52%, #0f172a 100%); */
+            background: radial-gradient(circle, #2892a0 0%, #05285f 54%, #0f172a 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100% - 60px);
+            width: 100%;
+        }
+
+        .clanMenuData {
+            font-size: 14px;
+        }
+
+        /* 🌟 修改此處：調整為固定寬度並設定伸縮限制 */
+        .sidebar {
+            width: 200px;
+            /* 初始寬度 */
+            /*左邊選單占整體版面趴數*/
+            min-width: 150px;
+            /* 最小縮到這樣 */
+            max-width: 500px;
+            /* 最大拉到這樣 */
+            border-right: 1px solid #dcdfe6;
+            overflow-y: auto;
+            /* 藍色到綠色，帶透明度 */
+            /*background: linear-gradient(to bottom, rgba(1, 30, 75, 0.4), rgba(0, 51, 19, 0.8));
+      background-image: url();*/
+            /*右邊選單邊界的線之顏色*/
+            /* padding: 15px 0;*/
+        }
+
+        /* 🌟 新增：左右拖曳阻隔線樣式 */
+        #drag-bar {
+            width: 2px;
+            background-color: #dcdfe6;
+            cursor: col-resize;
+            /* 滑鼠移上去變左右雙箭頭 ↔ */
+            flex-shrink: 0;
+            /* 防止阻隔線被擠壓 */
+            transition: background 0.1s;
+        }
+
+        /* 滑鼠滑過去，或正在拉動時變藍色 */
+        #drag-bar:hover,
+        body.is-dragging #drag-bar {
+            background-color: #68696a;
+        }
+
+
+        /* 🌟 核心修正：當全域處於拖曳狀態時，強制讓右側 iframe 暫時失去滑鼠反應 */
+        body.is-dragging #contentFrame {
+            pointer-events: none;
+        }
+
+        /* 🌟 修改此處：移除 width: 86%，改用 flex-grow 自適應填滿 */
+        .content-area {
+            /*width: 86%;右邊選單占整體版面趴數*/
+            flex-grow: 1;
+            /* 自動填滿右邊剩餘空間 */
+            height: 100%;
+            border: none;
+            background-color: #fcfcfc;
+        }
+
+        /* 2. 修改這裡：確保最外層與內層的列表縮排正確 */
+        .tree-view,
+        .tree-view ul {
+            list-style-type: none;
+            padding-left: 0px;
+            /*樹狀選單對於外框.sidebar {距離,若不要則註解或0PX*/
+            margin: 0;
+        }
+
+        /* 讓最外層的 第一層選單 完全靠左到底 */
+        .tree-view>ul {
+            padding-left: 0 !important;
+            margin-left: 0 !important;
+        }
+
+        .tree-node {
+            position: relative;
+            margin: 8px 0;
+        }
+
+        /* 3. 修改這裡：調整每一行內容的內縮，讓最左邊貼齊邊界 */
+        .node-content {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 0 4px 4px 0;
+            color: #4a4a4a;
+            font-size: 14px;
+            transition: all 0.2s;
+            width: 100%;
+            /*padding: 6px 8px;
+            padding-left: 10px;*/
+        }
+
+        .node-content:hover {
+            background-color: #fdf2f2;
+            color: #1b1b34;
+        }
+
+        /* 4. 修改這裡：如果最外層項目是葉子節點（例如首頁），直接靠左到底 */
+        .tree-view>ul>.is-leaf>.node-content {
+            padding-left: 0px;
+        }
+
+        .arrow {
+            display: inline-block;
+            height: 16px;
+            margin-right: 4px;
+            text-align: center;
+            line-height: 16px;
+            font-size: 10px;
+            color: #0500ff;
+            transition: transform 0.3s;
+        }
+
+        .expanded>.node-content .arrow {
+            transform: rotate(90deg);
+        }
+
+        /* 隱藏箭頭但保留子層空間，最外層除外 */
+        .is-leaf>.node-content .arrow {
+            visibility: hidden;
+            width: 16px;
+            display: none;
+        }
+
+        /* 最外層的第一層葉子項目，直接不需要箭頭的佔位空間 */
+        .tree-view>ul>.is-leaf>.node-content .arrow {
+            display: none;
+        }
+
+        .icon {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+
+        /* 最外層第一層葉子全都關閉display: none;全部打開display: block; */
+        .subtree {
+            display: none;
+        }
+
+        .expanded>.subtree {
+            display: block;
+        }
+    </style>
 </head>
 
-
 <body>
- 
-<h2>index.php美化且有測試過的聊天室 Durable ObjectJS語法</h2>
-<script>
-export class ChatRoom {
-  constructor(state, env) {
-    this.state = state;
-    this.env = env;
-    this.sessions = [];
-  }
 
-  // 處理 WebSocket 連線
-  async fetch(request) {
-    if (request.headers.get("Upgrade") !== "websocket") {
-      return new Response("Expected WebSocket", { status: 400 });
-    }
+    <div class="header">
+        台中市
+        <span style="font-family: 'DFKai-sb', '標楷體', serif;font-size: 36px;">
+            李武略</span>
+        派下李氏宗親會 - 後台管理系統
+        &emsp;&emsp;&emsp;&emsp;&emsp;
+        <img src="../icon/logo.svg" alt="Li Wulue's Li Clan Association李武略派下李氏宗親會" style="height: 50px; width: auto;">
+        <a href="index.html" title="前台首頁"
+            style="color: rgb(3, 162, 13); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
+            前台首頁
+        </a>
+       &emsp;&emsp;
+        <a href="index.html" title="後台首頁"
+            style="color: rgb(4, 121, 167); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
+            後台首頁
+        </a>
+        &emsp;&emsp;       
+<div style="text-align:right;">
+    <?php if(isset($_SESSION['name'])): ?>
+        歡迎,<?php echo htmlspecialchars($_SESSION['name']); ?>
+    <?php endif; ?>
+</div>&emsp;&emsp;&emsp;
+ <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
 
-    const [client, server] = Object.values(new WebSocketPair());
-    await this.handleSession(server);
-    return new Response(null, { status: 101, webSocket: client });
-  }
+    </div>
 
-  async handleSession(ws) {
-    ws.accept();
-    this.sessions.push(ws);
+    <div class="main-container">
+        <aside class="sidebar" id="sidebar">
+            <nav class="tree-view">
+                <ul id="menu-tree"></ul>
+            </nav>
+        </aside>
 
-    ws.addEventListener("message", (event) => {
-      const message = event.data;
-      this.broadcast(message);
-    });
+        <div id="drag-bar"></div>
 
-    ws.addEventListener("close", () => {
-      this.sessions = this.sessions.filter(s => s !== ws);
-    });
-  }
+        <iframe name="contentFrame" id="contentFrame" class="content-area" src="home.html"></iframe>
+    </div>
 
-  broadcast(message) {
-    for (const session of this.sessions) {
-      try {
-        session.send(message);
-      } catch (err) {
-        console.error("Send failed:", err);
-      }
-    }
-  }
-}
-</script>
+    <script class="clanMenuData">
+        const clanMenuData = [
+            {
+                id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵首頁歡迎資訊</span>"
+                , url: "home.html", parentId: 0
+            },
+            {
+                id: 2, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>01 宗親會簡介</span>"
+                , url: "null", parentId: 0
+            },
+            { id: 3, name: "<span style='font-size: 16px;'>1-1.緣起與歷史沿革</span>", url: "history.html", parentId: 2 },
+            { id: 4, name: "<span style='font-size: 16px;'>1-2.組織章程與組織編制</span>", url: "charter.html", parentId: 2 },
+            {
+                id: 5, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>02 始祖與開台源流</span>"
+                , url: "null", parentId: 0
+            },
+            { id: 6, name: "<span style='font-size:16px;'>2-1.隴西堂號由來</span>", url: "bohai.html", parentId: 5 },
+            { id: 7, name: "<span style='font-size:16px;'>2-2.歷代昭穆字輩表</span>", url: "genealogy.html", parentId: 5 },
+            { id: 7, name: "<span style='font-size:16px;'>2-3.歷代昭穆字輩表json</span>", url: "genealogy2.html", parentId: 5 },
+            {
+                id: 8, name: "<span style='font-family:DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>03 會務與祭祀管理</span>"
+                , url: "null", parentId: 0
+            },
+            { id: 9, name: "<span style='font-size:16px;'>3-1.春季祭祖大典紀錄</span>", url: "spring.html", parentId: 8 },
+            { id: 10, name: "<span style='font-size:16px;'>3-2.派下員掃墓祭掃公告</span>", url: "grave.html", parentId: 8 },
+            {
+                id: 11, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>04 派下員名冊管理</span>"
+                , url: "null", parentId: 0
+            },
+            { id: 12, name: "<span style='font-size:16px;'>4-1.當屆會員代表名冊</span>", url: "member_list.html", parentId: 11 },
+            { id: 13, name: "<span style='font-size:16px;'>4-2.優秀獎學金申請php</span>", url: "clan_system.php", parentId: 11 },
+            { id: 14, name: "<span style='font-size:16px;'>4-3.優秀獎學金申請json</span>", url: "scholarship2.html", parentId: 11 }
+        ];
+
+        function buildTree(list, parentId = 0) {
+            const tree = [];
+            for (const item of list) {
+                if (item.parentId === parentId) {
+                    const children = buildTree(list, item.id);
+                    if (children.length > 0) item.children = children;
+                    tree.push(item);
+                }
+            }
+            return tree;
+        }
+
+        function renderTree(treeData, container) {
+            treeData.forEach(node => {
+                const li = document.createElement('li');
+                li.className = 'tree-node';
+                const hasChildren = node.children && node.children.length > 0;
+                if (!hasChildren) li.classList.add('is-leaf');
+
+                const arrowHtml = `<span class="arrow"></span>`;
+                const iconHtml = hasChildren ? `<span class="icon">▼</span>` : `<span class="icon"></span>`;
+
+                li.innerHTML = `
+          <div class="node-content" data-url="${node.url || ''}">
+            ${arrowHtml}
+            ${iconHtml}
+            <span class="label">${node.name}</span>
+          </div>
+        `;
+
+                if (hasChildren) {
+                    const subUl = document.createElement('ul');
+                    subUl.className = 'subtree';
+                    renderTree(node.children, subUl);
+                    li.appendChild(subUl);
+
+                    li.querySelector('.node-content').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        li.classList.toggle('expanded');
+                    });
+                } else {
+                    li.querySelector('.node-content').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.getElementById('contentFrame').src = node.url;
+                    });
+                }
+                container.appendChild(li);
+            });
+        }
+
+        renderTree(buildTree(clanMenuData), document.getElementById('menu-tree'));
+
+        // 🌟 新增：左右拖曳寬度控制 JavaScript 邏輯
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const dragBar = document.getElementById('drag-bar');
+            let isResizing = false;
+
+            // 1. 滑鼠按下拖曳線
+            dragBar.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.classList.add('is-dragging');
+                e.preventDefault(); // 防止選取到網頁文字
+            });
+
+            // 2. 滑鼠移動動態計算寬度
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                let newWidth = e.clientX; // 滑鼠當前的水平座標位置
+
+                // 設定拉動邊界限制：最小 150px，最大 500px
+                if (newWidth >= 150 && newWidth <= 500) {
+                    sidebar.style.width = newWidth + 'px';
+                }
+            });
+
+            // 3. 放開滑鼠結束拖曳
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('is-dragging');
+                }
+            });
+        });
+    </script>
 </body>
+
 </html>

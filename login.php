@@ -9,44 +9,44 @@ if ($mysqli->connect_error) {
 
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
-    $captcha = trim($_POST['captcha']);
+    // 忘記密碼表單
+    if (isset($_POST['forgot'])) {
+        $error = "請發 E-MAIL 聯絡管理員找回帳號";
+    }
+    // 登入表單
+    elseif (isset($_POST['login'])) {
+        $email = trim($_POST['email']);
+        $password = trim($_POST['password']);
+        $captcha = trim($_POST['captcha']);
 
-    // 驗證碼檢查
-    if ($captcha != $_SESSION['captcha']) {
-        $error = "驗證碼錯誤";
-    } else {
-        // 查詢帳號
-        $stmt = $mysqli->prepare("SELECT password, status FROM account WHERE email=?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows == 0) {
-            $error = "帳號錯誤";
+        if ($captcha != $_SESSION['captcha']) {
+            $error = "驗證碼錯誤";
         } else {
-            $row = $result->fetch_assoc();
-            if ($row['status'] != 1) {
-                $error = "帳號未啟用";
-            } elseif (!password_verify($password, $row['password'])) {
-                $error = "密碼錯誤";
+            $stmt = $mysqli->prepare("SELECT name, password, status FROM account WHERE email=?");
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows == 0) {
+                $error = "帳號錯誤";
             } else {
-                // 登入成功
-                header("Location: backend/index.html");
-                exit();
+                $row = $result->fetch_assoc();
+                if ($row['status'] != 1) {
+                    $error = "帳號未啟用";
+                } elseif (!password_verify($password, $row['password'])) {
+                    $error = "密碼錯誤";
+                } else {
+                    $_SESSION['name'] = $row['name'];
+                    $_SESSION['email'] = $email;
+                    header("Location: backend/index.php");
+                    exit();
+                }
             }
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
-
-// 忘記帳號功能
-if (isset($_POST['forgot'])) {
-    $error = "請聯絡管理員找回帳號";
-}
 ?>
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -55,6 +55,8 @@ if (isset($_POST['forgot'])) {
 </head>
 <body>
     <h2>會員登入</h2>
+
+    <!-- 登入表單 -->
     <form method="post" action="">
         <label>帳號(Email):</label><br>
         <input type="text" name="email" required><br><br>
@@ -68,11 +70,16 @@ if (isset($_POST['forgot'])) {
         <small>點擊圖片可刷新驗證碼</small><br>
         <input type="text" name="captcha" required><br><br>
 
-        <input type="submit" value="登入">
-        <input type="submit" name="forgot" value="忘記帳號"><br><br>
-
-        <a href="register.php">會員註冊</a>
+        <input type="submit" name="login" value="登入">
     </form>
+
+    <!-- 忘記密碼表單（獨立，不受 required 限制） -->
+    <form method="post" action="">
+        <input type="submit" name="forgot" value="忘記密碼">
+    </form>
+
+    <br>
+    <a href="register.php">會員註冊</a>
 
     <?php if ($error != ""): ?>
         <p style="color:red;"><?php echo $error; ?></p>

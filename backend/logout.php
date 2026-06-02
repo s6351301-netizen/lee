@@ -5,6 +5,6 @@ session_unset();
 session_destroy();
 
 // 導向到根目錄的 login.php
-header("Location: /login.php");
+header("Location: ../login.php");
 exit();
 ?>
