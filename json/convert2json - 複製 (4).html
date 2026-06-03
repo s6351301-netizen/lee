@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>終極擴充！JSON 轉換與 MySQL 全功能欄位智慧糾錯器</title>
+  <style>
+    :root {
+      --bg-color: #0e1118;
+      --card-bg: #161b22;
+      --text-color: #c9d1d9;
+      --primary: #238636;
+      --primary-hover: #2ea043;
+      --accent: #58a6ff;
+      --border-color: #30363d;
+      --warning: #d29922;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    h2, h3 {
+      color: #fff;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    @media (min-width: 768px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: var(--accent);
+    }
+
+    textarea {
+      width: 100%;
+      height: 350px;
+      background-color: #0d1117;
+      color: #edf2f7;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      box-sizing: border-box;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    pre {
+      width: 100%;
+      height: 350px;
+      background-color: #0d1117;
+      color: #39d353;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      box-sizing: border-box;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 14px;
+      overflow: auto;
+      margin: 0;
+      white-space: pre;
+    }
+
+    .btn-group {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background-color: var(--primary-hover); }
+    button.secondary { background-color: #21262d; border: 1px solid var(--border-color); color: var(--text-color); }
+    button.secondary:hover { background-color: #30363d; }
+    button.warning { background-color: #b77c1e; }
+    button.warning:hover { background-color: var(--warning); }
+
+    .hint {
+      font-size: 0.85em;
+      color: #8b949e;
+      margin-top: 5px;
+    }
+
+    /* 診斷校正區樣式 */
+    .review-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 20px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .review-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .review-table th, .review-table td {
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      text-align: left;
+    }
+
+    .review-table th {
+      background-color: #1f242c;
+      color: #fff;
+    }
+
+    .th-select-all {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .badge-alert {
+      background-color: #f8514933;
+      color: #f85149;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    /* 彈出確認視窗 (Modal) */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: var(--warning);
+      margin-bottom: 15px;
+    }
+
+    .modal-body {
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .confirm-list {
+      background: #0d1117;
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>CSV / TSV ➜ 標準智慧型 JSON 轉換器</h2>
+    <p class="hint">💡 智慧庫全面擴充：整合文章、地理、系統管理及金融財務（如發票、銀行帳號）常見欄位。支援全選批次校正模糊錯字。</p>
+    
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-title">📥 請貼上 Excel / CSV / TSV 原始資料</div>
+        <textarea id="inputText" placeholder="請在此貼上包含打錯欄位的測試資料，例如：&#10;new_ember	bnk_account	transactio_date	img_url&#10;1	700-123456	2026-06-03	http://..."></textarea>
+        <div class="btn-group">
+          <button onclick="convertToJSON()">轉換成 JSON</button>
+          <button class="secondary" onclick="clearAll()">清空內容</button>
+        </div>
+      </div>
+      
+      <div class="panel">
+        <div class="panel-title">📤 JSON 轉換結果</div>
+        <pre id="output">// 轉換後的標準 JSON 將顯示於此</pre>
+        <div class="btn-group">
+          <button class="secondary" onclick="copyToClipboard()">複製到剪貼簿</button>
+          <button class="secondary" onclick="downloadJSON()">下載 .json 檔案</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-section" id="reviewSection">
+      <h3>⚠️ MySQL 全方位標準欄位健康診斷報告</h3>
+      <p class="hint">系統自動辨識出與擴充版 MySQL 對照表高度相似的拼寫瑕疵，請選取要修正的項目：</p>
+      
+      <table class="review-table">
+        <thead>
+          <tr>
+            <th width="12%">
+              <div class="th-select-all">
+                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                <label style="cursor: pointer;" for="selectAllCheckbox">全選</label>
+              </div>
+            </th>
+            <th width="24%">目前使用的英文 (打錯或不規範)</th>
+            <th width="24%">一般常見標準英文</th>
+            <th width="40%">欄位繁中對照與使用情境</th>
+          </tr>
+        </thead>
+        <tbody id="reviewTableBody">
+          </tbody>
+      </table>
+      
+      <div class="btn-group">
+        <button class="warning" onclick="openConfirmModal()">執行勾選項目的批次修正</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <div class="modal-header">🔔 欄位精準取代確認</div>
+      <div class="modal-body">
+        <p>您即將把 JSON 內所有對應錯誤的資料屬性全部取代。請確認以下修改對照：</p>
+        <div class="confirm-list" id="confirmList">
+          </div>
+        <p style="color: #8b949e; font-size: 0.9em; margin-top:10px;">※ 點擊確定後，上方 JSON 轉換結果將即時完成更新與校正。</p>
+      </div>
+      <div class="btn-group" style="justify-content: flex-end;">
+        <button class="secondary" onclick="closeConfirmModal()">取消</button>
+        <button onclick="executeReplacement()">確定修改</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let jsonData = [];
+    let currentHeaders = [];
+
+    // 完整整合：MySQL 全方位常見標準欄位主資料庫
+    const mysqlStandardFields = [
+      // 文章與內容模組
+      { key: "title", zh: "標題", desc: "文章、公告、商品標題" },
+      { key: "content", zh: "內容", desc: "文章內容、訊息內容 (對應 body)" },
+      { key: "body", zh: "內容", desc: "文章內容、訊息內容 (對應 content)" },
+      { key: "category_id", zh: "類別編號", desc: "分類系統外鍵" },
+      { key: "tag", zh: "標籤", desc: "文章或商品標記" },
+      { key: "image_url", zh: "圖片網址", desc: "商品或使用者頭像 (別名 img_url)" },
+      { key: "file_path", zh: "檔案路徑", desc: "上傳檔案位置" },
+      { key: "url", zh: "網址", desc: "外部連結" },
+      
+      // 基本與帳戶權限模組
+      { key: "id", zh: "編號", desc: "主鍵，唯一識別碼" },
+      { key: "member_id", zh: "會員編號", desc: "會員系統主鍵" },
+      { key: "username", zh: "使用者名稱", desc: "登入帳號" },
+      { key: "password", zh: "密碼", desc: "登入密碼 (建議加密存放)" },
+      { key: "name", zh: "姓名", desc: "使用者或物件名稱" },
+      { key: "gender", zh: "性別", desc: "男 / 女 (對應 sex)" },
+      { key: "sex", zh: "性別", desc: "男 / 女 (對應 gender)" },
+      { key: "birthday", zh: "生日", desc: "出生日期" },
+      { key: "email", zh: "電子郵件", desc: "聯絡信箱" },
+      { key: "phone", zh: "電話 / 手機", desc: "聯絡電話 (對應 mobile)" },
+      { key: "mobile", zh: "電話 / 手機", desc: "聯絡電話 (對應 phone)" },
+      { key: "address", zh: "地址", desc: "居住或聯絡地址" },
+      { key: "role", zh: "角色 / 權限", desc: "admin / user / guest" },
+      { key: "status", zh: "狀態", desc: "1=啟用, 0=停用" },
+      { key: "join_date", zh: "加入日期", desc: "註冊日期" },
+      { key: "remarks", zh: "備註", desc: "補充說明 (對應 note)" },
+      { key: "note", zh: "備註", desc: "補充說明 (對應 remarks)" },
+
+      // 商品與交易模組
+      { key: "product_id", zh: "商品編號", desc: "商品主鍵" },
+      { key: "product_name", zh: "商品名稱", desc: "商品名稱" },
+      { key: "category", zh: "類別", desc: "商品分類" },
+      { key: "price", zh: "價格", desc: "商品單價" },
+      { key: "quantity", zh: "數量", desc: "商品數量" },
+      { key: "stock", zh: "庫存", desc: "商品庫存量" },
+      { key: "order_id", zh: "訂單編號", desc: "訂單主鍵" },
+      { key: "order_date", zh: "訂單日期", desc: "下單日期" },
+      { key: "amount", zh: "金額 / 總額", desc: "訂單金額 (對應 total)" },
+      { key: "total", zh: "金額 / 總額", desc: "訂單金額 (對應 amount)" },
+      { key: "payment_status", zh: "付款狀態", desc: "已付款 / 未付款" },
+      { key: "shipping_address", zh: "收貨地址", desc: "訂單配送" },
+      { key: "delivery_date", zh: "配送日期", desc: "出貨日期" },
+
+      // 互動統計與地理模組
+      { key: "description", zh: "描述", desc: "商品或資料描述" },
+      { key: "comment", zh: "評論", desc: "使用者留言" },
+      { key: "comments_count", zh: "評論數", desc: "留言數量" },
+      { key: "hits", zh: "瀏覽次數", desc: "網頁或文章瀏覽量 (對應 views)" },
+      { key: "views", zh: "瀏覽次數", desc: "網頁或文章瀏覽量 (對應 hits)" },
+      { key: "likes", zh: "喜歡數", desc: "社群互動" },
+      { key: "rating", zh: "評等", desc: "商品或服務評價" },
+      { key: "score", zh: "分數", desc: "評分或成績" },
+      { key: "country", zh: "國家", desc: "國籍或地區" },
+      { key: "city", zh: "城市", desc: "地址細分" },
+      { key: "zipcode", zh: "郵遞區號", desc: "地址細分" },
+      { key: "latitude", zh: "緯度", desc: "地理座標" },
+      { key: "longitude", zh: "經度", desc: "地理座標" },
+      { key: "language", zh: "語言", desc: "語言設定 (zh-TW, en-US)" },
+
+      // 稽核、系統追蹤與結構模組
+      { key: "created_at", zh: "建立時間", desc: "系統自動紀錄" },
+      { key: "updated_at", zh: "更新時間", desc: "最後修改時間" },
+      { key: "deleted_at", zh: "刪除時間", desc: "軟刪除紀錄" },
+      { key: "is_active", zh: "是否啟用", desc: "Boolean 欄位 (0/1)" },
+      { key: "is_deleted", zh: "是否刪除", desc: "Boolean 欄位 (0/1)" },
+      { key: "last_login", zh: "最後登入", desc: "使用者登入紀錄" },
+      { key: "ip_address", zh: "IP 位址", desc: "登入來源" },
+      { key: "session_id", zh: "會話編號", desc: "系統追蹤" },
+      { key: "created_by", zh: "建立者", desc: "建立資料的使用者" },
+      { key: "updated_by", zh: "更新者", desc: "修改資料的使用者" },
+      { key: "approved_by", zh: "審核者", desc: "審核人員" },
+      { key: "priority", zh: "優先順序", desc: "任務或工單排序" },
+      { key: "flag", zh: "標記", desc: "特殊狀態標記" },
+      { key: "old_member", zh: "舊會員編號", desc: "舊系統遷移" },
+      { key: "new_member", zh: "新會員編號", desc: "新系統分配" },
+      { key: "discontinued_date", zh: "停用日期", desc: "停用或刪除時間" },
+      { key: "reference_id", zh: "參考編號", desc: "外部系統關聯" },
+      { key: "parent_id", zh: "父編號", desc: "樹狀結構關聯" },
+      { key: "child_id", zh: "子編號", desc: "樹狀結構關聯" },
+      { key: "token", zh: "存取憑證", desc: "API 或登入驗證" },
+      { key: "code", zh: "代碼", desc: "商品代碼、驗證碼" },
+      { key: "level", zh: "等級", desc: "會員等級、權限等級" },
+      { key: "type", zh: "類型", desc: "資料類型、分類" },
+      { key: "version", zh: "版本", desc: "軟體或資料版本" },
+      { key: "expire_date", zh: "到期日期", desc: "有效期限" },
+      { key: "start_date", zh: "開始日期", desc: "活動或專案起始" },
+      { key: "end_date", zh: "結束日期", desc: "活動或專案結束" },
+
+      // 金融財務模組
+      { key: "bank_account", zh: "銀行帳號", desc: "金融系統帳戶" },
+      { key: "card_number", zh: "卡號", desc: "信用卡 / 金融卡卡號" },
+      { key: "transaction_id", zh: "交易編號", desc: "金融交易紀錄編號" },
+      { key: "transaction_date", zh: "交易日期", desc: "金融交易時間" },
+      { key: "balance", zh: "餘額", desc: "銀行帳戶可用餘額" },
+      { key: "tax_id", zh: "稅務編號", desc: "稅務系統/統一編號" },
+      { key: "invoice_id", zh: "發票編號", desc: "發票管理編號" },
+      { key: "invoice_date", zh: "發票日期", desc: "發票開立時間" }
+    ];
+
+    // 核心 Levenshtein Distance 模糊字串比對演算法
+    function getSimilarity(s1, s2) {
+      let longer = s1.toLowerCase();
+      let shorter = s2.toLowerCase();
+      if (s1.length < s2.length) {
+        longer = s2;
+        shorter = s1;
+      }
+      let longerLength = longer.length;
+      if (longerLength === 0) return 1.0;
+      return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+    }
+
+    function editDistance(s1, s2) {
+      let costs = new Array();
+      for (let i = 0; i <= s1.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= s2.length; j++) {
+          if (i == 0) costs[j] = j;
+          else {
+            if (j > 0) {
+              let newValue = costs[j - 1];
+              if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+              costs[j - 1] = lastValue;
+              lastValue = newValue;
+            }
+          }
+        }
+        if (i > 0) costs[s2.length] = lastValue;
+      }
+      return costs[s2.length];
+    }
+
+    // 解析 CSV/TSV 機制
+    function parseLine(line, delimiter) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') { inQuotes = !inQuotes; } 
+        else if (char === delimiter && !inQuotes) {
+          result.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else { current += char; }
+      }
+      result.push(current.trim().replace(/^"|"$/g, ''));
+      return result;
+    }
+
+    function smartTypeCast(value) {
+      if (value === "") return "";
+      if (value.toLowerCase() === "true") return true;
+      if (value.toLowerCase() === "false") return false;
+      if (!isNaN(value) && !value.includes('/') && !value.includes('-')) return Number(value);
+      return value;
+    }
+
+    // 啟動首波轉換
+    function convertToJSON() {
+      const text = document.getElementById("inputText").value.trim();
+      if (!text) { alert("請貼上欲轉換之原始資料！"); return; }
+
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+      if (lines.length < 1) return;
+
+      const delimiter = lines[0].includes('\t') ? '\t' : ',';
+      currentHeaders = parseLine(lines[0], delimiter).map(h => h.trim());
+
+      jsonData = lines.slice(1).map((line) => {
+        const values = parseLine(line, delimiter);
+        let obj = {};
+        currentHeaders.forEach((h, i) => {
+          if (h) obj[h] = values[i] !== undefined ? smartTypeCast(values[i]) : "";
+        });
+        return obj;
+      });
+
+      renderOutput();
+      
+      // 初始化全選控制狀態
+      document.getElementById("selectAllCheckbox").checked = false;
+      runSmartFieldDiagnostics(); 
+    }
+
+    function renderOutput() {
+      document.getElementById("output").textContent = JSON.stringify(jsonData, null, 2);
+    }
+
+    // 新擴充資料庫之模糊診斷核心
+    function runSmartFieldDiagnostics() {
+      const tbody = document.getElementById("reviewTableBody");
+      tbody.innerHTML = ""; 
+      let issueCount = 0;
+
+      currentHeaders.forEach(header => {
+        const cleanedHeader = header.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        let bestMatch = null;
+        let maxSimilarity = 0;
+
+        mysqlStandardFields.forEach(field => {
+          if (header === field.key) return; // 欄位完全正確則跳過
+
+          // 計算目前使用者輸入與資料庫範本相似度
+          const sim = getSimilarity(cleanedHeader, field.key);
+          if (sim > maxSimilarity) {
+            maxSimilarity = sim;
+            bestMatch = field;
+          }
+        });
+
+        // 相似度大於 68% 以上判斷為高度疑似錯字，加入通報表單
+        if (maxSimilarity >= 0.68 && maxSimilarity < 1.0) {
+          issueCount++;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><input type="checkbox" class="correct-checkbox" data-original="${header}" data-correct="${bestMatch.key}" onchange="checkIndividualStatus()"></td>
+            <td><span class="badge-alert">${header}</span></td>
+            <td><strong style="color:var(--accent)">${bestMatch.key}</strong></td>
+            <td>${bestMatch.zh} ➜ ${bestMatch.desc} (${Math.round(maxSimilarity*100)}% 相似)</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      });
+
+      if (issueCount > 0) {
+        document.getElementById("reviewSection").style.display = "block";
+      } else {
+        document.getElementById("reviewSection").style.display = "none";
+      }
+    }
+
+    // 全選開關控制
+    function toggleSelectAll(master) {
+      const checkboxes = document.querySelectorAll(".correct-checkbox");
+      checkboxes.forEach(cb => {
+        cb.checked = master.checked;
+      });
+    }
+
+    // 連動全選狀態檢驗
+    function checkIndividualStatus() {
+      const totalItems = document.querySelectorAll(".correct-checkbox");
+      const checkedItems = document.querySelectorAll(".correct-checkbox:checked");
+      const masterCheckbox = document.getElementById("selectAllCheckbox");
+      
+      if (totalItems.length === checkedItems.length) {
+        masterCheckbox.checked = true;
+      } else {
+        masterCheckbox.checked = false;
+      }
+    }
+
+    // 二次確認頁面彈出 (Modal)
+    let itemsToCorrect = [];
+    function openConfirmModal() {
+      const checkboxes = document.querySelectorAll(".correct-checkbox:checked");
+      if (checkboxes.length === 0) {
+        alert("請先選取欲批次替換的欄位（或點擊全選）！");
+        return;
+      }
+
+      itemsToCorrect = [];
+      const confirmList = document.getElementById("confirmList");
+      confirmList.innerHTML = "";
+
+      checkboxes.forEach(cb => {
+        const orig = cb.getAttribute("data-original");
+        const corr = cb.getAttribute("data-correct");
+        itemsToCorrect.push({ original: orig, correct: corr });
+
+        const p = document.createElement("p");
+        p.style.margin = "5px 0";
+        p.innerHTML = ` ❌ 錯誤英文：<span style="color:#f85149">${orig}</span> ➜ 替換為標準英文：<span style="color:#39d353">${corr}</span>`;
+        confirmList.appendChild(p);
+      });
+
+      document.getElementById("confirmModal").classList.add("active");
+    }
+
+    function closeConfirmModal() {
+      document.getElementById("confirmModal").classList.remove("active");
+    }
+
+    // 確認更換，全面進行屬性 Key 大代換
+    function executeReplacement() {
+      if (jsonData.length === 0) return;
+
+      jsonData = jsonData.map(obj => {
+        let newObj = {};
+        for (let key in obj) {
+          const match = itemsToCorrect.find(item => item.original === key);
+          if (match) {
+            newObj[match.correct] = obj[key]; // 代換為常用標準
+          } else {
+            newObj[key] = obj[key];
+          }
+        }
+        return newObj;
+      });
+
+      renderOutput();
+      closeConfirmModal();
+      document.getElementById("reviewSection").style.display = "none";
+      alert("🎉 所有被選取的錯誤/非標準欄位已成功批量替代完成！");
+    }
+
+    function copyToClipboard() {
+      if (jsonData.length === 0) { alert("無資料可複製！"); return; }
+      navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2)).then(() => {
+        alert("📋 最新校正後 JSON 資料已複製至剪貼簿！");
+      });
+    }
+
+    function downloadJSON() {
+      if (jsonData.length === 0) { alert("請先進行資料轉換！"); return; }
+      const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mysql_standard_data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      document.getElementById("inputText").value = "";
+      document.getElementById("output").textContent = "// 轉換後的標準 JSON 將顯示於此";
+      document.getElementById("reviewSection").style.display = "none";
+      document.getElementById("selectAllCheckbox").checked = false;
+      jsonData = [];
+      currentHeaders = [];
+    }
+  </script>
+</body>
+</html>
