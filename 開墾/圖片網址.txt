@@ -6,6 +6,9 @@
 
 田p3.png
 
+
+http://localhost/TW-lee/lee/3trees.html
+
 左邊30%祈願畫面,整體往上,不要有跟上面邊界有距離.
 1.撰寫祈願卡新增送出按鈕
 
