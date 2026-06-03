@@ -410,7 +410,7 @@
         }
         textarea {
             resize: none;
-            height: 200px;
+            height: 100px;
         }
 
         .submit-btn {
@@ -568,26 +568,19 @@
             let processedWishes = [...wishesData];
             const realCount = processedWishes.length;
 
-            // 🛠️ 動態判定：手機版 1 排 1 個，PC版 1 排 3 個
-            const isMobile = window.innerWidth <= 768;
-            const itemsPerRow = isMobile ? 1 : 3;
-
-            // 根據排版補齊剩餘名額，確保完美閉環滾動
-            const remainder = processedWishes.length % itemsPerRow;
+            const remainder = processedWishes.length % 3;
             if (remainder !== 0) {
-                const needAdds = itemsPerRow - remainder;
+                const needAdds = 3 - remainder;
                 for (let i = 0; i < needAdds; i++) {
                     processedWishes.push(wishesData[wishesData.length - 1 - i] || wishesData[0]);
                 }
             }
 
-            // 將資料依照當前裝置需要的分組塞進陣列
             const rowsData = [];
-            for (let i = 0; i < processedWishes.length; i += itemsPerRow) {
-                rowsData.push(processedWishes.slice(i, i + itemsPerRow));
+            for (let i = 0; i < processedWishes.length; i += 3) {
+                rowsData.push(processedWishes.slice(i, i + 3));
             }
 
-            // 渲染前半段
             rowsData.forEach(rowItems => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'wish-row';
@@ -595,7 +588,6 @@
                 marqueeTrack.appendChild(rowDiv);
             });
 
-            // 渲染複製後半段（達成無縫滾動）
             rowsData.forEach(rowItems => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'wish-row';
@@ -604,11 +596,7 @@
             });
 
             const totalRows = rowsData.length;
-            
-            // 🛠️ 速度微調：手機與PC各列高度不同，依列數乘上相對應的舒適秒數
-            // 手機版一列只有 1 個，所以每列垂直佔比高，改用較長秒數（每列約 12.5 秒）來平滑速度
-            const speedFactor = isMobile ? 12.5 : 15.5;
-            marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
+            marqueeTrack.style.animationDuration = `${totalRows * 15.5}s`;            
             document.getElementById('wishCount').innerText = realCount;
         }
 
@@ -624,9 +612,6 @@
             sidebar.classList.remove('active');
             document.getElementById('wishForm').reset();
         });
-
-        // 監聽視窗縮放，確保從電腦拉成手機時會即時重整速度與排版
-        window.addEventListener('resize', renderMarquee);
 
         window.addEventListener('DOMContentLoaded', () => {
             renderMarquee();
