@@ -42,7 +42,7 @@
             animation: treeOrbitLinkage 100s infinite linear;
         }
 
-        /* 將少許星空微粒浮動在樹木上方、文字下方 */
+        /* 修正點點消失的核心：將少許星空微粒浮動在樹木上方、文字下方 */
         .tree-background::after {
             content: "";
             position: absolute;
@@ -51,6 +51,7 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            /* 保留少許細小、柔和的白色與金黃色微粒點點 */
             background-image: 
                 radial-gradient(rgba(255, 255, 255, 0.18) 0.5px, transparent 20px), 
                 radial-gradient(rgba(255, 255, 255, 0.12) 0.6px, transparent 25px),   
@@ -58,7 +59,8 @@
             
             background-size: 280px 280px, 380px 380px, 580px 580px;
             background-position: 0 0, 0 0, 0 0;
-            background-repeat: repeat, repeat, repeat;            
+            background-repeat: repeat, repeat, repeat;
+            
             animation: forestStream 50s infinite linear;
         }
 
@@ -87,7 +89,7 @@
             width: 70px;
             height: 70px;
             border-radius: 50%;
-            z-index: 2; 
+            z-index: 2; /* 確保太陽在背景之上 */
             pointer-events: none; 
             animation: 
                 sunOrbitX 100s infinite linear,
@@ -125,12 +127,12 @@
         .main-content {
             width: 100%;
             height: 100vh;
-            padding: 20px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             position: relative;
-            z-index: 3; 
+            z-index: 3; /* 提高層級確保文字卡片在點點上方 */
         }
 
         header {
@@ -142,39 +144,33 @@
             position: relative;
         }
         header h1 {
-            font-size: 2.3rem;
+            font-size: 2.6rem;
             color: #a3ccab; 
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             letter-spacing: 3px;
             font-weight: 700;
             text-shadow: 0 0 12px rgba(163, 204, 171, 0.3);
         }
-        header h2 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-            color: #ece6dc;
-        }
         header p {
-            font-size: 1rem;
-            line-height: 1.6;
+            font-size: 1.1rem;
+            line-height: 1.7;
             color: #cbd5e1;
-            margin-bottom: 5px;
         }
 
-        /* 右上方填寫按鈕 - 修正手機版位置避免太突兀 */
+        /* 右上方填寫按鈕 */
         .open-sidebar-btn {
             position: fixed;
-            right: 20px;
-            top: 20px;
+            right: 25px;
+            top: 25px;
             background: rgba(163, 204, 171, 0.25);
             color: #a3ccab;
             border: 1px solid rgba(163, 204, 171, 0.6);
-            padding: 10px 18px;
+            padding: 12px 22px;
             border-radius: 25px;
             cursor: pointer;
             font-family: inherit;
             font-weight: bold;
-            font-size: 0.95rem;
+            font-size: 1rem;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             transition: all 0.3s ease;
@@ -193,7 +189,7 @@
         .scroll-container {
             width: 100%;
             max-width: 1100px;
-            height: 60vh; 
+            height: 65vh; 
             overflow: hidden;
             position: relative;
             mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
@@ -214,10 +210,9 @@
             animation-play-state: paused; 
         }
 
-        /* RWD 核心：利用 minmax 達成手機 1 排 1 組，大 PC 滿載 1 排 3 組 */
         .wish-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            grid-template-columns: repeat(3, 1fr); 
             gap: 25px;
             width: 100%;
         }
@@ -288,17 +283,16 @@
             border: 1px solid rgba(163, 204, 171, 0.3);
         }
 
-        /* ================= 右側浮動式輸入視窗 (新增捲軸支援) ================= */
+        /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
             position: fixed;
             top: 0;
-            right: -100%; /* 預設完全隱藏 */
-            width: 32%;
-            min-width: 350px;
+            right: -35%; 
+            width: 30%;
+            min-width: 360px;
             max-width: 440px;
             height: 100vh;
-            max-height: 100vh; /* 限制最大高度 */
-            background: rgba(10, 31, 20, 0.92); 
+            background: rgba(10, 31, 20, 0.88); 
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             padding: 50px 30px;
@@ -309,34 +303,15 @@
             border-left: 1px solid rgba(255, 255, 255, 0.08);
             z-index: 100;
             transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
-            
-            /* 核心：開啟垂直捲軸，滿版時可以往下拉到最底部 */
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* 優化 iOS 滑動流暢度 */
         }
         .sidebar.active {
             right: 0;
         }
 
-        /* 自訂美化側邊欄捲軸樣式 */
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(163, 204, 171, 0.3);
-            border-radius: 3px;
-        }
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(163, 204, 171, 0.6);
-        }
-
         .close-sidebar-btn {
             position: absolute;
-            top: 15px;
-            right: 20px;
+            top: 20px;
+            right: 25px;
             background: transparent;
             border: none;
             color: #94a3b8;
@@ -353,12 +328,12 @@
         .counter-box {
             font-size: 1rem;
             background: rgba(163, 204, 171, 0.1);
-            padding: 8px 15px;
+            /*padding: 10px 15px;*/
             border-radius: 8px;
             text-align: center;
             color: #a3ccab;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             border: 1px solid rgba(163, 204, 171, 0.2);
         }
         .counter-box span {
@@ -371,14 +346,14 @@
         .form-title {
             font-size: 1.4rem;
             color: #a3ccab;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             font-weight: bold;
             border-bottom: 2px solid #a3ccab;
             padding-bottom: 10px;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
         label {
             display: block;
@@ -410,7 +385,7 @@
         }
         textarea {
             resize: none;
-            height: 100px;
+            height: 120px;
         }
 
         .submit-btn {
@@ -425,8 +400,7 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(20, 54, 34, 0.4);
             transition: all 0.3s ease;
-            margin-top: 5px;
-            margin-bottom: 20px; /* 留白確保捲軸拉到底時好點擊 */
+            margin-top: 10px;
         }
         .submit-btn:hover {
             transform: translateY(-2px);
@@ -434,34 +408,17 @@
         }
 
         .sidebar-footer {
+            margin-top: auto;
             font-size: 0.85rem;
             color: #94a3b8;
             text-align: center;
-            /*margin-top: 10px;*/
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            /*padding-top: 20px;*/
         }
 
         @keyframes fadeInDown {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ================= 手機/平板 額外響應式微調 ================= */
-        @media (max-width: 768px) {
-            header h1 { font-size: 1.8rem; }
-            header h2 { font-size: 1.2rem; }
-            .sidebar {
-                width: 100%;
-                min-width: 100%;
-                padding: 40px 20px;
-            }
-            .open-sidebar-btn {
-                position: static;
-                margin-bottom: 15px;
-                display: block;
-            }
-            .scroll-container {
-                height: 50vh;
-            }
         }
     </style>
 </head>
@@ -471,15 +428,15 @@
 
     <div class="celestial-body"></div>
 
+    <button class="open-sidebar-btn" id="openSidebarBtn">🌿 填寫祈願卡</button>
+
     <div class="main-content">              
         <header>  
-            <button class="open-sidebar-btn" id="openSidebarBtn">🌿 填寫祈願卡</button>
             <h1>李武略家族</h1>
-            <h2>村莊內三棵大樹 代表三大房</h2>
-            <h3>成為守護與祈願的象徵</h3>            
+            <h2>村莊內三棵大樹 代表三大房<h3>成為守護與祈願的象徵</h3></h2>            
             <p>「一柱鋤頭落地開，千重稻浪代代傳。」因有先祖深埋泥土的根，才有今日如繁星般閃耀的子孫。</p>
             <div class="sidebar-footer">
-                歲時感恩牆 • 2026 • 李武略家族後代子孫 敬立
+            歲時感恩牆 • 2026 • 李武略家族後代子孫 敬立
             </div>
         </header>
 
@@ -528,6 +485,8 @@
 
             <button type="submit" class="submit-btn">掛上祈願樹(送出)➔</button>
         </form>
+
+        
     </div>
 
     <script>

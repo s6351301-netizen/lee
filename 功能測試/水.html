@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>前端水動態效果展示</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #e0f7fa;
+    }
+    h1 {
+      text-align: center;
+      padding: 20px;
+      color: #00796b;
+    }
+    section {
+      padding: 40px;
+      border-bottom: 1px solid #ccc;
+    }
+    /* 水波紋按鈕 */
+    .ripple-button {
+      position: relative;
+      overflow: hidden;
+      padding: 15px 30px;
+      background: #0288d1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .ripple-button::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.6s ease;
+    }
+    .ripple-button:active::after {
+      opacity: 1;
+      transform: scale(2);
+    }
+    /* 波浪背景 */
+    .wave {
+      position: relative;
+      width: 100%;
+      height: 150px;
+      background: #012221;
+      overflow: hidden;
+    }
+    .wave::before {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.3) 20%, transparent 20%);
+      background-size: 50px 50px;
+      animation: waveMove 5s linear infinite;
+    }
+    @keyframes waveMove {
+      from { transform: translateX(0); }
+      to { transform: translateX(50px); }
+    }
+    /* 水滴動畫 */
+    .droplet {
+      width: 20px;
+      height: 20px;
+      background: #0288d1;
+      border-radius: 50%;
+      margin: 0 auto;
+      animation: drop 2s infinite;
+    }
+    @keyframes drop {
+      0% { transform: translateY(0); opacity: 1; }
+      80% { transform: translateY(100px); opacity: 0.5; }
+      100% { transform: translateY(120px); opacity: 0; }
+    }
+    /* 液體流動 Canvas */
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #b2ebf2;
+      border: 2px solid #00796b;
+    }
+  </style>
+</head>
+<body>
+  <h1>前端水動態效果展示</h1>
+
+  <section>
+    <h2>水波紋按鈕 Ripple</h2>
+    <button class="ripple-button">點我試試</button>
+  </section>
+
+  <section>
+    <h2>波浪背景 Wave</h2>
+    <div class="wave"></div>
+  </section>
+
+  <section>
+    <h2>水滴動畫 Droplet</h2>
+    <div class="droplet"></div>
+  </section>
+
+  <section>
+    <h2>液體流動 Canvas</h2>
+    <canvas id="liquid" width="400" height="200"></canvas>
+  </section>
+
+  <script>
+    // 簡單液體流動效果
+    const canvas = document.getElementById('liquid');
+    const ctx = canvas.getContext('2d');
+    let offset = 0;
+    function drawWave() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.beginPath();
+      ctx.moveTo(0,100);
+      for(let x=0;x<=400;x++){
+        ctx.lineTo(x,100+20*Math.sin((x+offset)/20));
+      }
+      ctx.strokeStyle = '#0288d1';
+      ctx.stroke();
+      offset += 2;
+      requestAnimationFrame(drawWave);
+    }
+    drawWave();
+  </script>
+</body>
+</html>
