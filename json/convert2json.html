@@ -135,6 +135,8 @@
       padding: 20px;
       margin-top: 20px;
       display: none;
+      /* 增加捲動時的上方安全間距 */
+      scroll-margin-top: 20px; 
     }
 
     .review-table {
@@ -523,7 +525,13 @@
       });
 
       if (issueCount > 0) {
-        document.getElementById("reviewSection").style.display = "block";
+        const reviewSection = document.getElementById("reviewSection");
+        reviewSection.style.display = "block";
+        
+        // 🚀 【核心修改】：當診斷結果出現時，自動平滑捲動到診斷報告區域
+        setTimeout(() => {
+          reviewSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100); // 延遲 100 毫秒確保 DOM 完全渲染完畢
       } else {
         document.getElementById("reviewSection").style.display = "none";
       }
@@ -602,6 +610,9 @@
       closeConfirmModal();
       document.getElementById("reviewSection").style.display = "none";
       alert("🎉 所有被選取的錯誤/非標準欄位已成功批量替代完成！");
+      
+      // 修正完成後，自動平滑回滾到頂部檢視全新的 JSON
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function copyToClipboard() {
