@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家族大樹祈願樹 - 飲水思源 • 世代感恩</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ================= 柔和森林實景與微粒飄動背景 ================= */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: "Noto Serif TC", "PingFang TC", serif;
+            color: #e9e4db; 
+            height: 100vh;
+            display: flex;
+            overflow: hidden; 
+            position: relative;
+            background-color: #0a1f14;
+
+            /* body 僅保留細小的星空飄動微粒，避免干擾樹木移動 */
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 0.2) 0.5px, transparent 20px), 
+                radial-gradient(rgba(255, 255, 255, 0.15) 0.6px, transparent 25px),   
+                radial-gradient(#f39c12, rgba(243, 156, 18, 0.2) 2px, transparent 40px),                 
+                radial-gradient(rgba(255, 255, 255, 0.1) 0.4px, transparent 15px);   
+            
+            background-size: 250px 250px, 350px 350px, 550px 550px, 180px 180px;
+            background-position: 0 0, 0 0, 0 0, 0 0;
+            background-repeat: repeat, repeat, repeat, repeat;
+            background-attachment: fixed; 
+
+            animation: forestStream 40s infinite linear;
+        }
+
+        /* 專門負責「大樹背景」鏡頭移動與放大的獨立圖層 */
+        .tree-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background-image: 
+                linear-gradient(rgba(10, 31, 20, 0.85), rgba(10, 31, 20, 0.85)),                          
+                url('https://cdntwrunning.biji.co/800_21cb7a3776e5fdbb6ffeb4e235067e88.jpg');
+            background-size: 100% 100%, cover;
+            background-position: center, center;
+            background-repeat: no-repeat, no-repeat;
+            
+            /* 利用 GPU 進行硬體加速，確保放大移動不失真、不卡頓 */
+            will-change: transform;
+            /* 與太陽的 100 秒拋物線動畫完全同步 */
+            animation: treeOrbitLinkage 100s infinite linear;
+        }
+
+        @keyframes forestStream {
+            0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+            100% { background-position: 500px 1000px, -350px 700px, 550px 550px, 200px -400px; }
+        }   
+
+        /* ================= 樹木跟隨太陽移動放大的核心動畫 ================= */
+        @keyframes treeOrbitLinkage {
+            0% { 
+                /* 太陽在最左邊：樹木稍微偏左，正常大小(預留微放大避免邊緣白邊) */
+                transform: scale(1.05) translateX(-3%) translateY(0);
+            }
+            50% { 
+                /* 太陽在正中央最高點：樹木移動到正中，並平滑放大到最大 1.2 倍 */
+                transform: scale(1.2) translateX(0%) translateY(-2%);
+            }
+            100% { 
+                /* 太陽往右下落：樹木逐漸往左移回，並縮小回初始狀態 */
+                transform: scale(1.05) translateX(-3%) translateY(0);
+            }
+        }
+
+        /* ================= 太陽天體拋物線運動動畫 ================= */
+        .celestial-body {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            z-index: 1;
+            pointer-events: none; 
+            animation: 
+                sunOrbitX 100s infinite linear,
+                sunOrbitY 100s infinite cubic-bezier(0.3, 0.2, 0.7, 0.8),
+                sunPulse 100s infinite linear;
+        }
+
+        @keyframes sunOrbitX {
+            0% { left: -10%; }
+            100% { left: 110%; }
+        }
+
+        @keyframes sunOrbitY {
+            0% { top: 60%; }
+            50% { top: 3%; } 
+            100% { top: 60%; }
+        }
+
+        @keyframes sunPulse {
+            0%, 100% {
+                background: transparent;
+                box-shadow: -15px 15px 0 0 rgba(238, 242, 246, 0.85); 
+                filter: drop-shadow(0 0 10px rgba(255,255,255,0.4));
+                transform: rotate(0deg);
+            }
+            45%, 55% {
+                background: linear-gradient(135deg, #ffd166, #f39c12, #e63946); 
+                box-shadow: 0 0 40px #f39c12, 0 0 70px #e63946;
+                filter: drop-shadow(0 0 0 transparent);
+                transform: rotate(180deg);
+            }
+        }
+
+        /* ================= 全螢幕呈現區 (100%) ================= */
+        .main-content {
+            width: 100%;
+            height: 100vh;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        header {
+            text-align: center;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 25px;
+            animation: fadeInDown 1s ease;
+            position: relative;
+        }
+        header h1 {
+            font-size: 2.6rem;
+            color: #a3ccab; 
+            margin-bottom: 12px;
+            letter-spacing: 3px;
+            font-weight: 700;
+            text-shadow: 0 0 12px rgba(163, 204, 171, 0.3);
+        }
+        header p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #cbd5e1;
+        }
+
+        /* 將撰寫按鈕移到整個視窗的右上方角落固定 */
+        .open-sidebar-btn {
+            position: fixed;
+            right: 25px;
+            top: 25px;
+            background: rgba(163, 204, 171, 0.25);
+            color: #a3ccab;
+            border: 1px solid rgba(163, 204, 171, 0.6);
+            padding: 12px 22px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1rem;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 10; 
+        }
+        .open-sidebar-btn:hover {
+            background: #407a52;
+            color: #fff;
+            border-color: #407a52;
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 20px rgba(64, 122, 82, 0.4);
+        }
+
+        /* ================= 跑馬燈卡片流動動畫區 ================= */
+        .scroll-container {
+            width: 100%;
+            max-width: 1100px;
+            height: 65vh; 
+            overflow: hidden;
+            position: relative;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+        }
+
+        .marquee-track {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: scrollUp 35s infinite linear;
+        }
+        .marquee-track:hover {
+            animation-play-state: paused; 
+        }
+
+        .wish-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 25px;
+            width: 100%;
+        }
+
+        /* 無縫垂直滾動核心：完美往上推移自身高度的一半(50%)達到重設盲點 */
+        @keyframes scrollUp {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); } 
+        }
+
+        .wish-card {
+            background: rgba(20, 54, 34, 0.65); 
+            border-top: 4px solid #a3ccab; 
+            border-radius: 6px 6px 12px 12px;
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            transform-origin: top center;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s;
+        }
+        .wish-card:hover {
+            transform: scale(1.05) rotate(0deg) !important; 
+            background: rgba(20, 54, 34, 0.85);
+            box-shadow: 0 12px 25px rgba(163, 204, 171, 0.3);
+        }
+        .wish-card::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: #f39c12; 
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f39c12;
+        }
+
+        .wish-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #ece6dc; 
+            margin-bottom: 15px;
+            min-height: 65px;
+            white-space: pre-line;
+        }
+        .wish-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.2);
+            padding-top: 10px;
+        }
+        .wish-author {
+            font-weight: bold;
+            color: #f39c12; 
+        }
+        .wish-generation {
+            background-color: rgba(163, 204, 171, 0.2);
+            color: #a3ccab;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 1px solid rgba(163, 204, 171, 0.3);
+        }
+
+        /* ================= 右側浮動式輸入視窗 ================= */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -35%; 
+            width: 30%;
+            min-width: 360px;
+            max-width: 440px;
+            height: 100vh;
+            background: rgba(10, 31, 20, 0.88); 
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 50px 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6);
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100;
+            transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        .sidebar.active {
+            right: 0;
+        }
+
+        .close-sidebar-btn {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .close-sidebar-btn:hover {
+            color: #f39c12;
+            transform: rotate(90deg);
+        }
+
+        .counter-box {
+            font-size: 1rem;
+            background: rgba(163, 204, 171, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: #a3ccab;
+            font-weight: bold;
+            margin-bottom: 30px;
+            border: 1px solid rgba(163, 204, 171, 0.2);
+        }
+        .counter-box span {
+            font-size: 1.4rem;
+            color: #f39c12; 
+            margin: 0 4px;
+            text-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+        }
+
+        .form-title {
+            font-size: 1.4rem;
+            color: #a3ccab;
+            margin-bottom: 25px;
+            font-weight: bold;
+            border-bottom: 2px solid #a3ccab;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            background-color: rgba(5, 15, 10, 0.7);
+            color: #e9e4db;
+            transition: all 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #a3ccab;
+            box-shadow: 0 0 8px rgba(163, 204, 171, 0.3);
+            background-color: rgba(5, 15, 10, 0.9);
+        }
+        select option {
+            background-color: #0a1f14;
+            color: #e9e4db;
+        }
+        textarea {
+            resize: none;
+            height: 120px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #407a52, #143622);
+            color: #e9e4db;
+            border: none;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(20, 54, 34, 0.4);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 20px;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="tree-background"></div>
+
+    <div class="celestial-body"></div>
+
+    <button class="open-sidebar-btn" id="openSidebarBtn">🌿 填寫祈願卡</button>
+
+    <div class="main-content">
+        <header>
+            <h1>李武略家族 村莊內三棵大樹 代表三大房</h1>
+            <h2>成為守護與祈願的象徵</h2>
+            <p>「一柱鋤頭落地開，千重稻浪代代傳。」<br>因有先祖深埋泥土的根，才有今日如繁星般閃耀的子孫。請填寫"祈願卡"代表您的思念。</p>
+        </header>
+
+        <div class="scroll-container">
+            <div class="marquee-track" id="marqueeTrack"></div>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
+
+        <div class="counter-box">
+            目前已有 <span id="wishCount">0</span> 枝子孫祈願葉
+        </div>
+
+        <div class="form-title">🌿 撰寫祈願卡</div>
+        
+        <form id="wishForm">
+            <div class="form-group">
+                <label for="author">您的姓名 / 稱呼</label>
+                <input type="text" id="author" placeholder="例如：大房 國華" required>
+            </div>
+
+            <div class="form-group">
+                <label for="generation">世代輩分</label>
+                <select id="generation" required>
+                    <option value="" disabled selected>請選擇輩分</option>
+                    <option value="來台第21世祖/大甲2代">來台第21世祖/大甲2代(祖字輩)</option>
+                    <option value="來台第22世祖/大甲3代">來台第22世祖/大甲3代(武字輩)</option>
+                    <option value="來台第23世祖/大甲4代">來台第23世祖/大甲4代(德字輩)</option>
+                    <option value="來台第24世祖/大甲5代">來台第24世祖/大甲5代(業字輩)</option>
+                    <option value="來台第25世祖/大甲6代">來台第25世祖/大甲6代(貽字輩)</option>
+                    <option value="來台第26世祖/大甲7代">來台第26世祖/大甲7代(孫字輩)</option>
+                    <option value="來台第27世祖/大甲8代">來台第27世祖/大甲8代(謀字輩)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="content">寫給祖先的話 / 家族祈願</label>
+                <textarea id="content" placeholder="請寫下您對先祖默默耕耘的感念，或是對林氏後代子孫的祝福..." required></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn">掛上祈願樹 ➔</button>
+        </form>
+
+        <div class="sidebar-footer">
+            李武略家族後代子孫 敬立<br>歲時感恩牆 • 2026
+        </div>
+    </div>
+
+    <script>
+        let wishesData = [
+            { author: "1長房大堂哥 國華", generation: "來台第六代", content: "感念曾祖父當年用一雙長滿繭的手，一鋤一鋤地在這片荒地挖出水田。如今我們雖然不再務農，但那份刻苦耐勞、腳踏實地的家風，我一定會繼續傳給下一代。" },
+            { author: "2二房 佩芬", generation: "來台第六代", content: "小時候總聽阿公說『吃米擔水要思源』。長大後進了都市工作，每當遇到挫折，想到祖先們當年渡海與對抗天災的堅韌，就覺得自己充滿力量。" },
+            { author: "3三房 志明", generation: "來台第七代", content: "每到秋收時節，看著金黃色的稻浪，就彷彿看見公媽們微笑的臉龐。願林氏家族就像這棵大樹一樣，根深蒂固，開花結果。" },
+            { author: "4小妹 雅婷", generation: "來台第七代", content: "謝謝阿太、阿公、阿嬤一輩子守護這片土地，讓我們有家可回、有根可尋。每當回到三合院，心裡就無比踏實。" },
+            { author: "5三房 志明", generation: "來台第七代", content: "每到秋收時節，看著金黃色的稻浪，就彷彿看見公媽們微笑的臉龐。願林氏家族就像這棵大樹一樣，根深蒂固，開花結果。" },
+            { author: "6三房 志明", generation: "來台第七代", content: "每到秋收時節，看著金黃色的稻浪，就彷彿看見公媽們微笑的臉龐。願林氏家族就像這棵大樹一樣，根深蒂固，開花結果。" },
+            { author: "7三房 志明", generation: "來台第七代", content: "每到秋收時節，看著金黃色的稻浪，就彷彿看見公媽們微笑的臉龐。願林氏家族就像這棵大樹一樣，根深蒂固，開花結果。" }, 
+            { author: "8三房 志明", generation: "來台第七代", content: "每到秋收時節，看著金黃色的稻浪，就彷彿看見公媽們微笑的臉龐。願林氏家族就像這棵大樹一樣，根深蒂固，開花結果。" }
+        ];
+
+        const marqueeTrack = document.getElementById('marqueeTrack');
+        const sidebar = document.getElementById('sidebar');
+
+        document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
+        document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
+
+        function createCardNode(wish) {
+            const card = document.createElement('div');
+            card.className = 'wish-card';
+            const randomRotate = (Math.random() * 4 - 2).toFixed(1);
+            card.style.transform = `rotate(${randomRotate}deg)`;
+            card.innerHTML = `
+                <div class="wish-content">「${wish.content}」</div>
+                <div class="wish-meta">
+                    <span class="wish-author">${wish.author}</span>
+                    <span class="wish-generation">${wish.generation}</span>
+                </div>
+            `;
+            return card;
+        }
+
+        function renderMarquee() {
+            marqueeTrack.innerHTML = '';
+            
+            let processedWishes = [...wishesData];
+            const realCount = processedWishes.length;
+
+            const remainder = processedWishes.length % 3;
+            if (remainder !== 0) {
+                const needAdds = 3 - remainder;
+                for (let i = 0; i < needAdds; i++) {
+                    processedWishes.push(wishesData[wishesData.length - 1 - i] || wishesData[0]);
+                }
+            }
+
+            const rowsData = [];
+            for (let i = 0; i < processedWishes.length; i += 3) {
+                rowsData.push(processedWishes.slice(i, i + 3));
+            }
+
+            rowsData.forEach(rowItems => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'wish-row';
+                rowItems.forEach(item => rowDiv.appendChild(createCardNode(item)));
+                marqueeTrack.appendChild(rowDiv);
+            });
+
+            rowsData.forEach(rowItems => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'wish-row';
+                rowItems.forEach(item => rowDiv.appendChild(createCardNode(item)));
+                marqueeTrack.appendChild(rowDiv);
+            });
+
+            const totalRows = rowsData.length;
+            marqueeTrack.style.animationDuration = `${totalRows * 7.5}s`;
+            
+            document.getElementById('wishCount').innerText = realCount;
+        }
+
+        document.getElementById('wishForm').addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            const newWish = {
+                author: document.getElementById('author').value,
+                generation: document.getElementById('generation').value,
+                content: document.getElementById('content').value
+            };
+            wishesData.unshift(newWish); 
+            renderMarquee();
+            sidebar.classList.remove('active');
+            document.getElementById('wishForm').reset();
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMarquee();
+        });
+    </script>
+</body>
+</html>
