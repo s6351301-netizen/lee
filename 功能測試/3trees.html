@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Poppins:wght@300;400&display=swap" rel="stylesheet">
     
     <style>
-        /* ================= 全局與主體設定 ================= */
+        /* ================= 柔和森林實景與微粒飄動背景 ================= */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -21,6 +21,20 @@
             overflow: hidden; 
             position: relative;
             background-color: #0a1f14;
+
+            /* body 僅保留細小的星空飄動微粒，避免干擾樹木移動 */
+            background-image: 
+                radial-gradient(rgba(255, 255, 255, 0.2) 0.5px, transparent 20px), 
+                radial-gradient(rgba(255, 255, 255, 0.15) 0.6px, transparent 25px),   
+                radial-gradient(#f39c12, rgba(243, 156, 18, 0.2) 2px, transparent 40px),                 
+                radial-gradient(rgba(255, 255, 255, 0.1) 0.4px, transparent 15px);   
+            
+            background-size: 250px 250px, 350px 350px, 550px 550px, 180px 180px;
+            background-position: 0 0, 0 0, 0 0, 0 0;
+            background-repeat: repeat, repeat, repeat, repeat;
+            background-attachment: fixed; 
+
+            animation: forestStream 40s infinite linear;
         }
 
         /* 專門負責「大樹背景」鏡頭移動與放大的獨立圖層 */
@@ -38,47 +52,29 @@
             background-position: center, center;
             background-repeat: no-repeat, no-repeat;
             
+            /* 利用 GPU 進行硬體加速，確保放大移動不失真、不卡頓 */
             will-change: transform;
+            /* 與太陽的 100 秒拋物線動畫完全同步 */
             animation: treeOrbitLinkage 100s infinite linear;
         }
 
-        /* 修正點點消失的核心：將少許星空微粒浮動在樹木上方、文字下方 */
-        .tree-background::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            /* 保留少許細小、柔和的白色與金黃色微粒點點 */
-            background-image: 
-                radial-gradient(rgba(255, 255, 255, 0.18) 0.5px, transparent 20px), 
-                radial-gradient(rgba(255, 255, 255, 0.12) 0.6px, transparent 25px),   
-                radial-gradient(#f39c12, rgba(243, 156, 18, 0.15) 1.5px, transparent 40px);   
-            
-            background-size: 280px 280px, 380px 380px, 580px 580px;
-            background-position: 0 0, 0 0, 0 0;
-            background-repeat: repeat, repeat, repeat;
-            
-            animation: forestStream 50s infinite linear;
-        }
-
-        /* 微粒緩慢飄動動畫 */
         @keyframes forestStream {
-            0% { background-position: 0 0, 0 0, 0 0; }
-            100% { background-position: 500px 1000px, -350px 700px, 550px 550px; }
+            0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+            100% { background-position: 500px 1000px, -350px 700px, 550px 550px, 200px -400px; }
         }   
 
-        /* 樹木跟隨太陽移動放大的核心動畫 */
+        /* ================= 樹木跟隨太陽移動放大的核心動畫 ================= */
         @keyframes treeOrbitLinkage {
             0% { 
+                /* 太陽在最左邊：樹木稍微偏左，正常大小(預留微放大避免邊緣白邊) */
                 transform: scale(1.05) translateX(-3%) translateY(0);
             }
             50% { 
+                /* 太陽在正中央最高點：樹木移動到正中，並平滑放大到最大 1.2 倍 */
                 transform: scale(1.2) translateX(0%) translateY(-2%);
             }
             100% { 
+                /* 太陽往右下落：樹木逐漸往左移回，並縮小回初始狀態 */
                 transform: scale(1.05) translateX(-3%) translateY(0);
             }
         }
@@ -89,7 +85,7 @@
             width: 70px;
             height: 70px;
             border-radius: 50%;
-            z-index: 2; /* 確保太陽在背景之上 */
+            z-index: 1;
             pointer-events: none; 
             animation: 
                 sunOrbitX 100s infinite linear,
@@ -132,7 +128,7 @@
             flex-direction: column;
             align-items: center;
             position: relative;
-            z-index: 3; /* 提高層級確保文字卡片在點點上方 */
+            z-index: 2;
         }
 
         header {
@@ -157,7 +153,7 @@
             color: #cbd5e1;
         }
 
-        /* 右上方填寫按鈕 */
+        /* 將撰寫按鈕移到整個視窗的右上方角落固定 */
         .open-sidebar-btn {
             position: fixed;
             right: 25px;
@@ -217,6 +213,7 @@
             width: 100%;
         }
 
+        /* 無縫垂直滾動核心：完美往上推移自身高度的一半(50%)達到重設盲點 */
         @keyframes scrollUp {
             0% { transform: translateY(0); }
             100% { transform: translateY(-50%); } 
