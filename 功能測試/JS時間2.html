@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原生 JavaScript 日曆核心技術全範例</title>
+    <style>
+        :root {
+            --primary-color: #407a52;
+            --secondary-color: #a3ccab;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .desc {
+            margin-bottom: 30px;
+            color: #666;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        /* 日曆主容器 */
+        .calendar-container {
+            background: #fff;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* 日曆頂部導覽 */
+        .calendar-header {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-header h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: #fff;
+        }
+
+        /* 星期表頭與日期網格 */
+        .calendar-body {
+            padding: 15px;
+        }
+
+        .weekdays-grid, .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+        }
+
+        .weekdays-grid {
+            font-weight: bold;
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .day-cell {
+            aspect-ratio: 1; /* 保持正方形 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border-radius: 8px;
+            position: relative;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        /* 非本月日期的樣式（淡出） */
+        .day-cell.other-month {
+            color: #ccc;
+        }
+
+        /* 假日顏色區分 */
+        .day-cell:nth-child(7n), .day-cell:nth-child(7n-6) {
+            color: #e63946;
+        }
+        .day-cell.other-month:nth-child(7n), .day-cell.other-month:nth-child(7n-6) {
+            color: #fbc4c8;
+        }
+
+        /* 滑鼠懸停 */
+        .day-cell:hover:not(.empty) {
+            background-color: #f0f0f0;
+        }
+
+        /* 今天標記 */
+        .day-cell.today {
+            background-color: var(--secondary-color);
+            color: var(--primary-color) !important;
+            font-weight: bold;
+        }
+
+        /* 被選取的日期 */
+        .day-cell.selected {
+            background-color: var(--primary-color) !important;
+            color: #fff !important;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(64, 122, 82, 0.4);
+        }
+
+        /* 行程/事件小點點提示 */
+        .day-cell.has-event::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 5px;
+            height: 5px;
+            background-color: #f39c12;
+            border-radius: 50%;
+        }
+
+        /* 下方資訊與互動監測面板 */
+        .info-panel {
+            margin-top: 25px;
+            width: 100%;
+            max-width: 450px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+        }
+
+        .info-panel h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 5px;
+        }
+
+        .info-item {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .info-item span {
+            font-weight: bold;
+            color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>JS 日曆技術全範例</h1>
+    <p class="desc">本範例展示了日曆開發的核心 JS 技術：萬年曆日期數學運算、跨月補格子演算法、DOM 網格動態渲染、狀態管理與虛擬事件標記。</p>
+
+    <div class="calendar-container">
+        <div class="calendar-header">
+            <button class="nav-btn" id="prevBtn">◀ 上個月</button>
+            <h2 id="monthYearTitle">2026 年 06 月</h2>
+            <button class="nav-btn" id="nextBtn">下個月 ▶</button>
+        </div>
+        <div class="calendar-body">
+            <div class="weekdays-grid">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+            </div>
+            <div class="days-grid" id="daysGrid"></div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3>JS 內部狀態監測面板 (State Monitor)</h3>
+        <div class="info-item">1. 當前瀏覽虛擬指針 (currentDateObj)：<span id="stateBrowsing">-</span></div>
+        <div class="info-item">2. 點選選中狀態 (selectedDateStr)：<span id="stateSelected">未選取</span></div>
+        <div class="info-item">3. 該月天數與首日星期：<span id="stateDetails">-</span></div>
+        <div class="info-item">4. 當日行程備忘錄：<span id="stateEvent">無行程</span></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 核心技術一：狀態管理 (State Management)與資料串接
+        // ==========================================
+        
+        // 模擬從資料庫撈出來的歷史事件行程資料 (格式：YYYY-MM-DD)
+        const mockEvents = {
+            "2026-06-04": "祖先祭祀大典・全族齊聚",
+            "2026-06-15": "填寫祈願樹時間",
+            "2026-06-21": "夏至節氣家族聚餐",
+            "2026-07-01": "下半年度家族大會"
+        };
+
+        // 今天實際的真實時間 (常數，用來對照「今天」的樣式)
+        const REAL_TODAY = new Date(); 
+
+        // 虛擬指針：記錄使用者「目前正在畫面上瀏覽」的年月（預設為今天）
+        let viewDate = new Date(); 
+        
+        // 紀錄使用者選取的特定日期
+        let selectedDateStr = "";
+
+        // DOM 節點取得
+        const monthYearTitle = document.getElementById("monthYearTitle");
+        const daysGrid = document.getElementById("daysGrid");
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        // 監測面板節點
+        const stateBrowsing = document.getElementById("stateBrowsing");
+        const stateSelected = document.getElementById("stateSelected");
+        const stateDetails = document.getElementById("stateDetails");
+        const stateEvent = document.getElementById("stateEvent");
+
+        // ==========================================
+        // 核心技術二：日期數學運算 (Date Mathematics)與網格生成
+        // ==========================================
+        function renderCalendar() {
+            const year = viewDate.getFullYear();
+            const month = viewDate.getMonth(); // 0 = 1月, 5 = 6月...依此類推
+
+            // 更新頂部標題文字
+            monthYearTitle.textContent = `${year} 年 ${String(month + 1).padStart(2, '0')} 月`;
+
+            // 【核心運算 A】計算這個月的第一天是星期幾 (0 = 週日, 1 = 週一...)
+            const firstDayIndex = new Date(year, month, 1).getDay();
+
+            // 【核心運算 B】計算這個月總共有幾天
+            // 技巧：將下個月的日期設為 0 號，JS 會自動回推到本月的最後一天
+            const totalDaysThisMonth = new Date(year, month + 1, 0).getDate();
+
+            // 【核心運算 C】計算上個月總共有幾天 (用來補前面空白格子的數字)
+            const totalDaysPrevMonth = new Date(year, month, 0).getDate();
+
+            // 清空舊的日曆 DOM
+            daysGrid.innerHTML = "";
+
+            // --- 階段 1：填補上個月的尾巴數字 ---
+            for (let i = firstDayIndex; i > 0; i--) {
+                const prevDay = totalDaysPrevMonth - i + 1;
+                const prevMonthDate = new Date(year, month - 1, prevDay);
+                createDayCell(prevDay, 'other-month', prevMonthDate);
+            }
+
+            // --- 階段 2：填補本月的日期數字 ---
+            for (let day = 1; day <= totalDaysThisMonth; day++) {
+                const thisMonthDate = new Date(year, month, day);
+                
+                // 檢查是否為「今天」
+                let className = '';
+                if (year === REAL_TODAY.getFullYear() && 
+                    month === REAL_TODAY.getMonth() && 
+                    day === REAL_TODAY.getDate()) {
+                    className = 'today';
+                }
+                
+                createDayCell(day, className, thisMonthDate);
+            }
+
+            // --- 階段 3：填補下個月的開頭數字 (讓日曆網格永遠補滿 6 列 $7 \times 6 = 42$ 格) ---
+            const currentTotalCells = daysGrid.children.length;
+            const remainingCells = 42 - currentTotalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const nextMonthDate = new Date(year, month + 1, day);
+                createDayCell(day, 'other-month', nextMonthDate);
+            }
+
+            // 更新外部監測面板數據
+            updateMonitorPanel(year, month, totalDaysThisMonth, firstDayIndex);
+        }
+
+        // 輔助函式：動態建立日期的 DOM 節點並綁定事件
+        function createDayCell(dayNumber, extraClass, dateObj) {
+            const cell = document.createElement("div");
+            cell.className = `day-cell ${extraClass}`.trim();
+            cell.textContent = dayNumber;
+
+            // 將日期標準化為字串格式 YYYY-MM-DD，方便比對事件與選取狀態
+            const dateStr = formatDateString(dateObj);
+            cell.dataset.date = dateStr;
+
+            // 檢查該日期是否有備忘錄行程，有的話加上「.has-event」樣式小點點
+            if (mockEvents[dateStr]) {
+                cell.classList.add("has-event");
+            }
+
+            // 如果目前迴圈跑的格子剛好是使用者選中的日子，維持其選中樣式
+            if (dateStr === selectedDateStr) {
+                cell.classList.add("selected");
+            }
+
+            // ==========================================
+            // 核心技術三：事件監控與互動 (Event Handling)
+            // ==========================================
+            cell.addEventListener("click", () => {
+                // 1. 移除先前被選中格子的樣式
+                const previousSelected = daysGrid.querySelector(".day-cell.selected");
+                if (previousSelected) previousSelected.classList.remove("selected");
+
+                // 2. 設定當前格子為選中
+                cell.classList.add("selected");
+                selectedDateStr = dateStr;
+
+                // 3. 更新監測面板
+                stateSelected.textContent = selectedDateStr;
+                stateEvent.textContent = mockEvents[dateStr] ? mockEvents[dateStr] : "無行程";
+            });
+
+            daysGrid.appendChild(cell);
+        }
+
+        // 工具函式：將 Date 物件格式化為 YYYY-MM-DD
+        function formatDateString(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 更新監測面板文字
+        function updateMonitorPanel(year, month, totalDays, firstDay) {
+            stateBrowsing.textContent = `${year}年${month + 1}月 (核心代碼系統內為 month=${month})`;
+            stateDetails.textContent = `共 ${totalDays} 天，1號是星期 ${firstDay}`;
+        }
+
+        // ==========================================
+        // 核心技術四：控制虛擬指針切換 (Month Navigation)
+        // ==========================================
+        prevBtn.addEventListener("click", () => {
+            // 將月份減 1，JS Date 會自動處理跨年（如 2026年1月 減1月 會自動變 2025年12月）
+            viewDate.setMonth(viewDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        nextBtn.addEventListener("click", () => {
+            // 將月份加 1
+            viewDate.setMonth(viewDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // 頁面初始化：首次渲染日曆
+        window.addEventListener("DOMContentLoaded", () => {
+            renderCalendar();
+        });
+    </script>
+</body>
+</html>
