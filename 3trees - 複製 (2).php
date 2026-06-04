@@ -1,3 +1,103 @@
+<?php
+// ==========================================
+// 1. 資料庫連線設定 (本機 lee)
+// ==========================================
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "lee";
+
+// 建立 MySQLi 連線
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// 檢查連線
+if ($conn->connect_error) {
+    die("連線失敗: " . $conn->connect_error);
+}
+// 設定編碼為 utf8mb4 避免中文亂碼
+$conn->set_charset("utf8mb4");
+
+// ==========================================
+// 2. 提供給前端 AJAX 的 API 接口 (透過姓名撈取房數)
+// ==========================================
+if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
+    $new_member = isset($_GET['new_member']) ? $_GET['new_member'] : '';
+    $number_of_houses = 0;
+
+    if (!empty($new_member)) {
+        // 查詢 members 資料表
+        $stmt = $conn->prepare("SELECT number_of_houses FROM members WHERE new_member = ? LIMIT 1");
+        $stmt->bind_param("s", $new_member);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $number_of_houses = intval($row['number_of_houses']);
+        }
+        $stmt->close();
+    }
+    
+    // 回傳 JSON
+    header('Content-Type: application/json');
+    echo json_encode(['number_of_houses' => $number_of_houses]);
+    exit; // 結束執行，不載入下方的 HTML
+}
+
+// ==========================================
+// 3. 處理表單送出：【全新插入一筆指定新 ID 與時間的資料】
+// ==========================================
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // 接收來自前端隱藏欄位與表單的資料
+    $insert_id = isset($_POST['next_id']) ? intval($_POST['next_id']) : 1;
+    $name = isset($_POST['author']) ? $_POST['author'] : '';
+    $number_of_houses = isset($_POST['hidden_houses']) ? intval($_POST['hidden_houses']) : 0;
+    $raw_generation = isset($_POST['generation']) ? $_POST['generation'] : '';
+    
+    // 🛠️ 修正點：接收 familyMember 的值
+    $family_members = isset($_POST['familyMember']) ? $_POST['familyMember'] : '';
+    $message_of_blessing = isset($_POST['content']) ? $_POST['content'] : '';
+    $login_time = isset($_POST['login_time']) ? $_POST['login_time'] : null; // 接收前端系統時間
+
+    // 解析世代輩分下拉選單的值
+    $emperor_shizu = 0;
+    $generation_val = 0;
+
+    // 抓取 "世祖" 前面的數字
+    if (preg_match('/(\d+)世祖/', $raw_generation, $matches)) {
+        $emperor_shizu = intval($matches[1]);
+    }
+    // 抓取 "代" 前面的數字
+    if (preg_match('/(\d+)代/', $raw_generation, $matches)) {
+        $generation_val = intval($matches[1]);
+    }
+
+    // 🛠️ 修正點：SQL 語法與 bind_param 補上 family_members 欄位
+    $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
+    
+    if ($stmt->execute()) {
+        // 新增成功後重新導向回原頁面，防止使用者重新整理網頁時重複發送 INSERT 表單
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    } else {
+        echo "<script>alert('寫入失敗：" . $stmt->error . "');</script>";
+    }
+    $stmt->close();
+}
+
+// ==========================================
+// 4. 撈取目前資料表 makeawish 欄位 ID 的最大一個數值
+// ==========================================
+$max_id = 0;
+$sql_max = "SELECT MAX(ID) AS max_id FROM makeawish";
+$result_max = $conn->query($sql_max);
+if ($result_max && $row_max = $result_max->fetch_assoc()) {
+    // 如果資料表完全是空的，則預設為 0
+    $max_id = $row_max['max_id'] ? intval($row_max['max_id']) : 0; 
+}
+
+// 計算最大值再加 1 的值，作為下一次寫入 ID 欄位的值
+$next_id = $max_id + 1;
+?>
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -70,15 +170,9 @@
 
         /* 樹木跟隨太陽移動放大的核心動畫 */
         @keyframes treeOrbitLinkage {
-            0% { 
-                transform: scale(1.05) translateX(-3%) translateY(0);
-            }
-            50% { 
-                transform: scale(1.2) translateX(0%) translateY(-2%);
-            }
-            100% { 
-                transform: scale(1.05) translateX(-3%) translateY(0);
-            }
+            0% { transform: scale(1.05) translateX(-3%) translateY(0); }
+            50% { transform: scale(1.2) translateX(0%) translateY(-2%); }
+            100% { transform: scale(1.05) translateX(-3%) translateY(0); }
         }
 
         /* ================= 太陽天體拋物線運動動畫 ================= */
@@ -95,16 +189,8 @@
                 sunPulse 100s infinite linear;
         }
 
-        @keyframes sunOrbitX {
-            0% { left: -10%; }
-            100% { left: 110%; }
-        }
-
-        @keyframes sunOrbitY {
-            0% { top: 60%; }
-            50% { top: 3%; } 
-            100% { top: 60%; }
-        }
+        @keyframes sunOrbitX { 0% { left: -10%; } 100% { left: 110%; } }
+        @keyframes sunOrbitY { 0% { top: 60%; } 50% { top: 3%; } 100% { top: 60%; } }
 
         @keyframes sunPulse {
             0%, 100% {
@@ -149,19 +235,9 @@
             font-weight: 700;
             text-shadow: 0 0 12px rgba(163, 204, 171, 0.3);
         }
-        header h2 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-            color: #ece6dc;
-        }
-        header p {
-            font-size: 1rem;
-            line-height: 1.6;
-            color: #cbd5e1;
-            margin-bottom: 5px;
-        }
+        header h2 { font-size: 1.5rem; margin-bottom: 10px; color: #ece6dc; }
+        header p { font-size: 1rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 5px; }
 
-        /* 右上方填寫按鈕 - 修正手機版位置避免太突兀 */
         .open-sidebar-btn {
             position: fixed;
             right: 20px;
@@ -210,11 +286,8 @@
             left: 0;
             animation: scrollUp 35s infinite linear;
         }
-        .marquee-track:hover {
-            animation-play-state: paused; 
-        }
+        .marquee-track:hover { animation-play-state: paused; }
 
-        /* RWD 核心：利用 minmax 達成手機 1 排 1 組，大 PC 滿載 1 排 3 組 */
         .wish-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
@@ -258,46 +331,21 @@
             box-shadow: 0 0 8px #f39c12;
         }
 
-        .wish-content {
-            font-size: 0.95rem;
-            line-height: 1.6;
-            color: #ece6dc; 
-            margin-bottom: 15px;
-            min-height: 65px;
-            white-space: pre-line;
-        }
-        .wish-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            border-top: 1px dashed rgba(255, 255, 255, 0.2);
-            padding-top: 10px;
-        }
-        .wish-author {
-            font-weight: bold;
-            color: #f39c12; 
-        }
-        .wish-generation {
-            background-color: rgba(163, 204, 171, 0.2);
-            color: #a3ccab;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            border: 1px solid rgba(163, 204, 171, 0.3);
-        }
+        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; white-space: pre-line; }
+        .wish-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 10px; }
+        .wish-author { font-weight: bold; color: #f39c12; }
+        .wish-generation { background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(163, 204, 171, 0.3); }
 
-        /* ================= 右側浮動式輸入視窗 (新增捲軸支援) ================= */
+        /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
             position: fixed;
             top: 0;
-            right: -100%; /* 預設完全隱藏 */
+            right: -100%; 
             width: 32%;
             min-width: 350px;
             max-width: 440px;
             height: 100vh;
-            max-height: 100vh; /* 限制最大高度 */
+            max-height: 100vh; 
             background: rgba(10, 31, 20, 0.92); 
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -309,29 +357,15 @@
             border-left: 1px solid rgba(255, 255, 255, 0.08);
             z-index: 100;
             transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
-            
-            /* 核心：開啟垂直捲軸，滿版時可以往下拉到最底部 */
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* 優化 iOS 滑動流暢度 */
+            -webkit-overflow-scrolling: touch; 
         }
-        .sidebar.active {
-            right: 0;
-        }
+        .sidebar.active { right: 0; }
 
-        /* 自訂美化側邊欄捲軸樣式 */
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(163, 204, 171, 0.3);
-            border-radius: 3px;
-        }
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(163, 204, 171, 0.6);
-        }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(163, 204, 171, 0.3); border-radius: 3px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(163, 204, 171, 0.6); }
 
         .close-sidebar-btn {
             position: absolute;
@@ -345,10 +379,7 @@
             line-height: 1;
             transition: color 0.3s, transform 0.3s;
         }
-        .close-sidebar-btn:hover {
-            color: #f39c12;
-            transform: rotate(90deg);
-        }
+        .close-sidebar-btn:hover { color: #f39c12; transform: rotate(90deg); }
 
         .counter-box {
             font-size: 1rem;
@@ -361,32 +392,11 @@
             margin-bottom: 15px;
             border: 1px solid rgba(163, 204, 171, 0.2);
         }
-        .counter-box span {
-            font-size: 1.4rem;
-            color: #f39c12; 
-            margin: 0 4px;
-            text-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
-        }
+        .counter-box span { font-size: 1.4rem; color: #f39c12; margin: 0 4px; text-shadow: 0 0 8px rgba(243, 156, 18, 0.4); }
 
-        .form-title {
-            font-size: 1.4rem;
-            color: #a3ccab;
-            margin-bottom: 20px;
-            font-weight: bold;
-            border-bottom: 2px solid #a3ccab;
-            padding-bottom: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-        label {
-            display: block;
-            font-size: 0.95rem;
-            margin-bottom: 8px;
-            color: #cbd5e1;
-            font-weight: bold;
-        }
+        .form-title { font-size: 1.4rem; color: #a3ccab; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #a3ccab; padding-bottom: 10px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-size: 0.95rem; margin-bottom: 8px; color: #cbd5e1; font-weight: bold; }
         input, select, textarea {
             width: 100%;
             padding: 12px;
@@ -398,20 +408,9 @@
             color: #e9e4db;
             transition: all 0.3s;
         }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #a3ccab;
-            box-shadow: 0 0 8px rgba(163, 204, 171, 0.3);
-            background-color: rgba(5, 15, 10, 0.9);
-        }
-        select option {
-            background-color: #0a1f14;
-            color: #e9e4db;
-        }
-        textarea {
-            resize: none;
-            height: 200px;
-        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #a3ccab; box-shadow: 0 0 8px rgba(163, 204, 171, 0.3); background-color: rgba(5, 15, 10, 0.9); }
+        select option { background-color: #0a1f14; color: #e9e4db; }
+        textarea { resize: none; height: 200px; }
 
         .submit-btn {
             width: 100%;
@@ -426,49 +425,25 @@
             box-shadow: 0 4px 15px rgba(20, 54, 34, 0.4);
             transition: all 0.3s ease;
             margin-top: 5px;
-            margin-bottom: 20px; /* 留白確保捲軸拉到底時好點擊 */
+            margin-bottom: 20px; 
         }
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3);
-        }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3); }
+        .sidebar-footer { font-size: 0.85rem; color: #94a3b8; text-align: center; }
 
-        .sidebar-footer {
-            font-size: 0.85rem;
-            color: #94a3b8;
-            text-align: center;
-            /*margin-top: 10px;*/
-        }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ================= 手機/平板 額外響應式微調 ================= */
         @media (max-width: 768px) {
             header h1 { font-size: 1.8rem; }
             header h2 { font-size: 1.2rem; }
-            .sidebar {
-                width: 100%;
-                min-width: 100%;
-                padding: 40px 20px;
-            }
-            .open-sidebar-btn {
-                position: static;
-                margin-bottom: 15px;
-                display: block;
-            }
-            .scroll-container {
-                height: 50vh;
-            }
+            .sidebar { width: 100%; min-width: 100%; padding: 40px 20px; }
+            .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
+            .scroll-container { height: 50vh; }
         }
     </style>
 </head>
 <body>
 
     <div class="tree-background"></div>
-
     <div class="celestial-body"></div>
 
     <div class="main-content">              
@@ -492,23 +467,30 @@
         <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
 
         <div class="counter-box">
-            目前已有 <span id="wishCount">0</span> 枝子孫祈願葉
+            目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉
         </div>
 
         <div class="form-title">🌿 撰寫祈願卡</div>        
-        <form id="wishForm">
+        <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+            
+            <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
+
+            <input type="hidden" id="hidden_houses" name="hidden_houses" value="0">
+
+            <input type="hidden" id="login_time" name="login_time" value="">
+
             <div class="form-group">
-                <label for="author">您的姓名</label>
-                <input type="text" id="author" placeholder="例如：李國華" required>
+                <label for="author">您的姓名</label>本人為?世祖?代?大房
+                <input type="text" id="author" name="author" placeholder="例如：李國華" required>
             </div>
             <div class="form-group">
                 <label for="familyMember">家庭成員</label>
-                <input type="text" id="familyMember" placeholder="本人或全家或2男1女" required>
+                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或本人" required>
             </div>
 
             <div class="form-group">
                 <label for="generation">世代輩分</label>
-                <select id="generation" required>
+                <select id="generation" name="generation" required>
                     <option value="" disabled selected>請選擇輩分</option>
                     <option value="來台第21世祖/大甲2代">來台第21世祖/大甲2代(祖字輩)</option>
                     <option value="來台第22世祖/大甲3代">來台第22世祖/大甲3代(武字輩)</option>
@@ -525,32 +507,28 @@
 
             <div class="form-group">
                 <label for="content">寫給祖先/祈願的話</label>
-                <textarea id="content" placeholder="請寫下您對先祖默默耕耘的感念，或是對李氏後代子孫的祝福，或是對家族或家庭互動的心得感想..." required></textarea>
+                <textarea id="content" name="content" placeholder="請寫下您對先祖默默耕耘的感念，或是對李氏後代子孫的祝福，或是對家族或家庭互動的心得感想..." required></textarea>
             </div>
 
             <button type="submit" class="submit-btn">掛上祈願樹(送出)➔</button>
         </form>
     </div>
 
-<script>
-    function updateClock() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      const day = now.getDate();
-
-      // 使用 24 小時制顯示時分秒
-      const time = now.toLocaleTimeString("zh-TW", { hour12: false });
-
-      // 整合成一行：年月日 + 時分秒
-      document.getElementById("clock").textContent = `${year}/${month}/${day} ${time}`;
-    }
-
-    setInterval(updateClock, 1000);
-    updateClock(); // 頁面載入時先執行一次
-  </script>
+    <script>
+        function updateClock() {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = now.getMonth() + 1;
+          const day = now.getDate();
+          const time = now.toLocaleTimeString("zh-TW", { hour12: false });
+          document.getElementById("clock").textContent = `${year}/${month}/${day} ${time}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
 
     <script>
+        // 預設靜態跑馬燈展示資料
         let wishesData = [
             { author: "1長房大堂哥 國華", generation: "來台第六代", content: "感念曾祖父當年用一雙長滿繭的手，一鋤一鋤地在這片荒地挖出水田。如今我們雖然不再務農，但那份刻苦耐勞、腳踏實地的家風，我一定會繼續傳給下一代。" },
             { author: "2二房 佩芬", generation: "來台第六代", content: "小時候總聽阿公說『吃米擔水要思源』。長大後進了都市工作，每當遇到挫折，想到祖先們當年渡海與對抗天災的堅韌，就覺得自己充滿力量。" },
@@ -585,15 +563,11 @@
 
         function renderMarquee() {
             marqueeTrack.innerHTML = '';
-            
             let processedWishes = [...wishesData];
-            const realCount = processedWishes.length;
 
-            // 🛠️ 動態判定：手機版 1 排 1 個，PC版 1 排 3 個
             const isMobile = window.innerWidth <= 768;
             const itemsPerRow = isMobile ? 1 : 3;
 
-            // 根據排版補齊剩餘名額，確保完美閉環滾動
             const remainder = processedWishes.length % itemsPerRow;
             if (remainder !== 0) {
                 const needAdds = itemsPerRow - remainder;
@@ -602,13 +576,11 @@
                 }
             }
 
-            // 將資料依照當前裝置需要的分組塞進陣列
             const rowsData = [];
             for (let i = 0; i < processedWishes.length; i += itemsPerRow) {
                 rowsData.push(processedWishes.slice(i, i + itemsPerRow));
             }
 
-            // 渲染前半段
             rowsData.forEach(rowItems => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'wish-row';
@@ -616,7 +588,6 @@
                 marqueeTrack.appendChild(rowDiv);
             });
 
-            // 渲染複製後半段（達成無縫滾動）
             rowsData.forEach(rowItems => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'wish-row';
@@ -625,33 +596,68 @@
             });
 
             const totalRows = rowsData.length;
-            
-            // 🛠️ 速度微調：手機與PC各列高度不同，依列數乘上相對應的舒適秒數
-            // 手機版一列只有 1 個，所以每列垂直佔比高，改用較長秒數（每列約 12.5 秒）來平滑速度
             const speedFactor = isMobile ? 12.5 : 15.5;
             marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
-            document.getElementById('wishCount').innerText = realCount;
         }
 
-        document.getElementById('wishForm').addEventListener('submit', function(e) {
-            e.preventDefault(); 
-            const newWish = {
-                author: document.getElementById('author').value,
-                generation: document.getElementById('generation').value,
-                content: document.getElementById('content').value
-            };
-            wishesData.unshift(newWish); 
-            renderMarquee();
-            sidebar.classList.remove('active');
-            document.getElementById('wishForm').reset();
+        // ==========================================
+        // 🛠️ 封裝獨立函數：向後端請求房數資料（回傳 Promise）
+        // ==========================================
+        function fetchHouseNumber(memberName) {
+            if (!memberName) return Promise.resolve(0);
+            return fetch(`?action=get_houses&new_member=${encodeURIComponent(memberName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const houses = data.number_of_houses || 0;
+                    document.getElementById('hidden_houses').value = houses;
+                    console.log(`AJAX 房數載入成功: ${houses}`);
+                    return houses;
+                })
+                .catch(error => {
+                    console.error('AJAX 撈取房數發生錯誤:', error);
+                    return 0;
+                });
+        }
+
+        // 當輸入框失焦或改變時，先預先撈取
+        document.getElementById('author').addEventListener('change', function() {
+            fetchHouseNumber(this.value.trim());
         });
 
-        // 監聽視窗縮放，確保從電腦拉成手機時會即時重整速度與排版
-        window.addEventListener('resize', renderMarquee);
+        // ==========================================
+        // 🛠️ 修正監聽表單送出事件：使用 async/await 確保房數撈完再送出
+        // ==========================================
+        document.getElementById('wishForm').addEventListener('submit', async function(e) {
+            // 1. 先暫停表單預設的同步送出行為
+            e.preventDefault();
 
+            // 2. 捕捉系統現在時間並格式化寫入隱藏欄位
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const formattedTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            document.getElementById('login_time').value = formattedTime;
+
+            // 3. 關鍵修正：即時、強制重新去撈取一次最新的資料庫房數欄位，阻斷等待回應
+            const memberName = document.getElementById('author').value.trim();
+            await fetchHouseNumber(memberName);
+
+            // 4. 房數已確實寫入隱藏欄位，手動觸代表單送出
+            this.submit();
+        });
+
+        window.addEventListener('resize', renderMarquee);
         window.addEventListener('DOMContentLoaded', () => {
             renderMarquee();
         });
     </script>
 </body>
 </html>
+<?php
+// 關閉連接
+$conn->close();
+?>

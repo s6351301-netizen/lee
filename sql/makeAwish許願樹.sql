@@ -1,3 +1,74 @@
+以下目前已有 8 枝子孫祈願葉的"8"要改成PHP去撈資料表的id最後一個數值(他同時也是最大的數值).
+先連線本機資料庫lee,帳號root密碼空白
+資料表makeawish欄位ID
+SQL語法撈取資料表makeawish欄位ID最大那一個數值放在
+有 8 枝子孫祈願葉的"8"的位置.
+
+使用表單填寫送出後寫入資料表的欄位
+在🌿 撰寫祈願卡
+1.姓名文字方框的值,寫入makeawish資料表的name欄位.
+2.家庭成員文字方框的值,寫入makeawish資料表的number_of_houses欄位.
+3.世代輩分下拉式選單的值,用關鍵字"世祖"前面數字,寫入makeawish資料表的emperor_shizu欄位.
+,用關鍵字"代"前面數字,寫入makeawish資料表的generation欄位.
+4.寫給祖先/祈願的話文字方框的值,寫入makeawish資料表的message_of_blessing欄位.
+5.房數是屬於隱藏欄位,在前面網頁不顯示出來.
+使用ajax寫法,去撈取`members`資料表,依照new_member欄位的值
+撈取number_of_houses欄位的值寫入makeawish資料表的number_of_houses欄位.
+
+在
+<input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或本人" required>
+的值沒有寫入makeawish資料表的family_members欄位
+下面是目前使用原始碼,修正錯誤後,提供完整PHP語法.
+
+修正錯誤,在資料庫的number_of_houses房數欄位沒有被寫入,
+再確定以下功能是否正常:
+房數是屬於隱藏欄位,在前面網頁不顯示出來.
+使用ajax寫法,去撈取`members`資料表,依照new_member欄位的值
+撈取number_of_houses欄位的值寫入makeawish資料表的number_of_houses欄位.
+修正錯誤後,提供完整PHP語法.
+
+原始碼
+
+修正錯誤,在資料庫的number_of_houses房數欄位沒有被寫入,
+
+
+使用ajax寫法,在<label for="author">您的姓名</label>
+依照author輸入欄位的值,
+去撈取`members`資料表name姓名欄位,將emperor_shizu世祖(台灣算起)欄位的數值撈出來
+顯示在"本人為?世祖"文字的"?"位置,並且將此數值寫入makeawish資料表的emperor_shizu欄位.
+同時將generation世代(大甲算起)欄位,顯示在"?代"文字的"?"位置,數值寫入makeawish資料表的generation欄位.
+同時將number_of_houses房數欄位,顯示在"?大房"文字的"?"位置,數值寫入makeawish資料表的number_of_houses房數.
+資料庫欄位的寫入,全部都需要等ajax功能執行完,全部統整要插入的欄位與值,一次完成.
+
+number_of_houses欄位的值寫入
+
+
+使用ajax寫法,在
+<span for="author">您的姓名:</span>派下員編號:<span id="show_shizu" class="highlight-val">?</span>世祖<span id="show_generation" class="highlight-val">?</span>代<span id="show_houses" class="highlight-val">?</span>大房
+依照author輸入欄位的值,去撈取`members`資料表name姓名欄位,
+寫到"姓名:"後面,new_member現在會員號欄位的值寫入"派下員編號:"後面.
+使用SQL查詢語法是new_member現在會員號與name姓名欄位做OR查詢,請可以使用LIKE語法,讓使用者輸入姓名的部分字串就可以撈取到資料表的對應資料.
+
+若有符合篩選條件有多筆資料,要使用核取方塊(Checkbox)列出姓名/世/代/房數欄位資料,讓使用者勾選後,
+才帶入"姓名:","派下員編號:"."?世祖","?代?,"?大房".
+
+`members`資料表name姓名欄位值為"李明輝",
+SELECT * FROM members WHERE name = '李明輝';
+
+
+本人為?世祖?代?大房
+id流水號
+number_of_houses房數
+new_member現在會員號
+old_member前會員號
+generation世代(大甲算起)
+emperor_shizu世祖(台灣算起)
+
+
+
+
+
+
 -- 1. 如果資料表已存在則先刪除，確保能順利重建
 DROP TABLE IF EXISTS `makeAwish`;
 
