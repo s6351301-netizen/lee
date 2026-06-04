@@ -41,7 +41,11 @@ SQL語法撈取資料表makeawish欄位ID最大那一個數值放在
 資料庫欄位的寫入,全部都需要等ajax功能執行完,全部統整要插入的欄位與值,一次完成.
 
 number_of_houses欄位的值寫入
-當點取確認姓名帶出來的世代後,直接用?代的數值直接帶入到"世代輩分"欄位選取適合的項目,並且鎖死不能更改.
+當點取確認姓名帶出來的世代後,直接用?代的數值直接帶入到"世代輩分"欄位選取適合的項目,
+並且鎖死不能更改.
+
+使用ajax寫法,在撈取`members`資料表時,使用類似以下的SQL語法,再輸入姓名或會員編號,就會先帶出暫時符合的資料.
+SELECT `new_member`, `name` FROM `members` WHERE `new_member` LIKE '%1%' OR `name` LIKE '%李美%';
 
 使用ajax寫法,在
 <span for="author">您的姓名:</span>派下員編號:<span id="show_shizu" class="highlight-val">?</span>世祖<span id="show_generation" class="highlight-val">?</span>代<span id="show_houses" class="highlight-val">?</span>大房
@@ -53,7 +57,7 @@ number_of_houses欄位的值寫入
 才帶入"姓名:","派下員編號:"."?世祖","?代?,"?大房".
 
 `members`資料表name姓名欄位值為"李明輝",
-SELECT * FROM members WHERE name = '李明輝';
+SELECT * FROM members WHERE name = '李志強';
 
 
 檢查使用AJAX撈取members資料表name欄位值為"李明輝"的資料,只有1筆.

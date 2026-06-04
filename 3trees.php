@@ -18,7 +18,7 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 提供給前端 AJAX 的 API 接口 (修正為精準查詢 = )
+// 2. 提供給前端 AJAX 的 API 接口 (支援姓名與編號的 LIKE 模糊查詢)
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $search_keyword = isset($_GET['new_member']) ? trim($_GET['new_member']) : '';
@@ -26,9 +26,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $members_list = [];
 
     if (!empty($search_keyword)) {
-        // 🛠️ 修正點：將 LIKE ? 改為 = ? 達成精準比對。只有完全符合姓名或編號才會出現，避免跑出多筆
-        $stmt = $conn->prepare("SELECT name, new_member, emperor_shizu, generation, number_of_houses FROM members WHERE name = ? OR new_member = ?");
-        $stmt->bind_param("ss", $search_keyword, $search_keyword);
+        // 🛠️ 修正點：使用 LIKE 搭配前後 % 進行模糊查詢，不論輸入部分編號或部分姓名都能比對到
+        $like_keyword = "%" . $search_keyword . "%";
+        $stmt = $conn->prepare("SELECT name, new_member, emperor_shizu, generation, number_of_houses FROM members WHERE new_member LIKE ? OR name LIKE ?");
+        $stmt->bind_param("ss", $like_keyword, $like_keyword);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -88,15 +89,16 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 }
 $next_id = $max_id + 1;
 
-// 🛠️ 修正點：動態從資料庫抓取目前的祈願內容，直接顯示，不用留著死資料
+// 動態從資料庫抓取目前的祈願內容，直接顯示
 $wishes_array = [];
-$sql_wishes = "SELECT name, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 20";
+$sql_wishes = "SELECT name,emperor_shizu,generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
 $result_wishes = $conn->query($sql_wishes);
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
         $wishes_array[] = [
-            'author' => $w_row['name'] . " (" . $w_row['number_of_houses'] . "房)",
-            'generation' => "來台第" . $w_row['generation'] . "代",
+            'author' => $w_row['name'] . " (" ."第" . $w_row['number_of_houses'] . "大房)",
+            'emperor_shizu' => "來台第" . $w_row['emperor_shizu'] . "世祖",
+            'generation' => "定居大甲第" . $w_row['generation'] . "代",
             'content' => $w_row['message_of_blessing']
         ];
     }
@@ -166,16 +168,44 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .wish-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; width: 100%; }
         @keyframes scrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
 
+        /* 卡片主體樣式 */
         .wish-card {
-            background: rgba(20, 54, 34, 0.65); border-top: 4px solid #a3ccab; border-radius: 6px 6px 12px 12px; padding: 22px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); position: relative; transition: transform 0.4s, background 0.4s;
+            background: rgba(20, 54, 34, 0.65); 
+            border-top: 0px solid #a3ccab; 
+            border-radius: 6px 6px 12px 12px; 
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); 
+            backdrop-filter: blur(8px); 
+            position: relative; 
+            transition: transform 0.4s, 
+            background 0.4s;
         }
         .wish-card:hover { transform: scale(1.05) !important; background: rgba(20, 54, 34, 0.85); }
+
+        /* ✨ 成功套用：卡片頂端中央的發光小橘點 */
+        .wish-card::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: #f39c12; 
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f39c12;
+        }
 
         .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; white-space: pre-line; }
         .wish-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 10px; }
         .wish-author { font-weight: bold; color: #f39c12; }
-        .wish-generation { background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .wish-generation { 
+            background-color: rgba(163, 204, 171, 0.2); 
+            color: #a3ccab; 
+            padding: 2px 8px; 
+            border-radius: 20px; 
+            font-size: 0.75rem; 
+            font-weight: bold; }
 
         /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
@@ -199,6 +229,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; font-family: inherit; font-size: 1rem; background-color: rgba(5, 15, 10, 0.7); color: #e9e4db; transition: all 0.3s; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #a3ccab; box-shadow: 0 0 8px rgba(163, 204, 171, 0.3); }
         textarea { resize: none; height: 150px; }
+        
+        select:disabled { background-color: rgba(30, 45, 35, 0.8); color: #a3ccab; cursor: not-allowed; border-color: rgba(163, 204, 171, 0.4); }
 
         .member-select-wrapper {
             background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(163, 204, 171, 0.4); border-radius: 8px; padding: 10px; margin-top: 10px; display: none; max-height: 160px; overflow-y: auto;
@@ -219,6 +251,26 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
             .scroll-container { height: 50vh; }
         }
+
+        /* ======右邊許願卡填寫姓名欄位,跑馬燈輸入框的特殊動畫效果 =========== */
+        .marquee-input {
+            width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap;
+        }
+
+        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input::-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-ms-input-placeholder { animation: marquee 12s linear infinite; }
+
+        @keyframes marquee {
+            0% { text-indent: 100%; }
+            100% { text-indent: -130%; }
+        }
+
+        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus::-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-ms-input-placeholder { animation: none; text-indent: 0; }
     </style>
 </head>
 <body>
@@ -253,7 +305,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         <div class="form-title">🌿 撰寫祈願卡</div>        
         <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
             
-            <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
+            <input type="hidden" id="next_id" name="next_id" value="
+            <?php echo $next_id; ?>">
             
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
@@ -263,14 +316,14 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             <div class="form-group">
                 <span class="label-text-header">
                     <span for="author">您的姓名:</span><span id="show_name" class="highlight-val">?</span>
-                    ,派下員編號:<span id="show_member_id" class="highlight-val">?</span>
+                    ,編號:<span id="show_member_id" class="highlight-val">?</span>
                     ,第<span id="show_shizu" class="highlight-val">?</span>世祖
                     <span id="show_generation" class="highlight-val">?</span>代
                     <span id="show_houses" class="highlight-val">?</span>大房
                 </span>
                 
-                <input type="text" id="author" name="author" placeholder="輸入完整姓名或編號查詢..." required autocomplete="off">
-                
+                <input type="text" id="author" name="author" class="marquee-input" 
+                placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
                 <div class="member-select-wrapper" id="memberSelectWrapper"></div>
             </div>
 
@@ -319,7 +372,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     </script>
 
     <script>
-        // 🛠️ 修正點：直接將 PHP 撈出的最新 makeawish 資料集綁定到跑馬燈，免除二次前端重複查詢
         let wishesData = <?php echo json_encode($wishes_array); ?>;
 
         const marqueeTrack = document.getElementById('marqueeTrack');
@@ -337,7 +389,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 <div class="wish-content">「${wish.content}」</div>
                 <div class="wish-meta">
                     <span class="wish-author">${wish.author}</span>
-                    <span class="wish-generation">${wish.generation}</span>
+                    <span class="wish-generation">${wish.emperor_shizu}&emsp;${wish.generation}</span>
                 </div>
             `;
             return card;
@@ -370,12 +422,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 marqueeTrack.appendChild(rowDiv);
             });
             const totalRows = rowsData.length;
-            const speedFactor = isMobile ? 12.5 : 15.5;
+            const speedFactor = isMobile ? 8.5 : 8.5;
             marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染
+        // AJAX 查詢與動態資料渲染 (使用 LIKE 模糊查詢)
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -423,7 +475,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                             });
 
                             const textLabel = document.createElement('span');
-                            textLabel.textContent = `${member.name} ${member.new_member} 號, 第 ${member.emperor_shizu}世祖/${member.generation}代/${member.number_of_houses}房`;
+                            textLabel.textContent = `${member.name} ${member.new_member} 號${','} 第 ${member.emperor_shizu}世祖/ 第${member.generation}代/${member.number_of_houses}房`;
 
                             item.addEventListener('click', function(e) {
                                 if (e.target !== checkbox) {
@@ -436,7 +488,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                             item.appendChild(textLabel);
                             wrapper.appendChild(item);
 
-                            // 🛠️ 額外優化：若只有一筆精準匹配資料（例如精準查到李明輝），自動幫忙勾選填入
                             if(data.length === 1) {
                                 checkbox.checked = true;
                                 applyMemberValues(checkbox.dataset);
@@ -451,22 +502,22 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         function applyMemberValues(dataset) {
-            // 🛠️ 修正點：直接顯示撈取出來的值到畫面上
             document.getElementById('show_name').textContent = dataset.name;
             document.getElementById('show_member_id').textContent = dataset.new_member;
             document.getElementById('show_shizu').textContent = dataset.shizu;
             document.getElementById('show_generation').textContent = dataset.gen;
             document.getElementById('show_houses').textContent = dataset.houses;
-
-            // 寫入隱藏欄位
             document.getElementById('hidden_shizu').value = dataset.shizu;
             document.getElementById('hidden_generation').value = dataset.gen;
             document.getElementById('hidden_houses').value = dataset.houses;
             
-            // 下拉選單連動對應代數
             const genSelect = document.getElementById('generation');
-            if(genSelect.querySelector(`option[value="${dataset.gen}"]`)){
+            if(genSelect.querySelector(`option[value="${dataset.shizu}"]`)){
+                genSelect.value = dataset.shizu;
+                genSelect.disabled = true; 
+            } else if(genSelect.querySelector(`option[value="${dataset.gen}"]`)){
                 genSelect.value = dataset.gen;
+                genSelect.disabled = true; 
             }
             
             authorInput.value = dataset.name;
@@ -482,11 +533,15 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('hidden_shizu').value = 0;
             document.getElementById('hidden_generation').value = 0;
             document.getElementById('hidden_houses').value = 0;
+
+            const genSelect = document.getElementById('generation');
+            genSelect.disabled = false;
+            genSelect.value = "";
         }
 
         document.getElementById('wishForm').addEventListener('submit', function(e) {
             if (document.getElementById('hidden_shizu').value === "0" && document.getElementById('show_shizu').textContent === "?") {
-                alert("請從下方查詢到的清單中確認您的派下員資料後再送出！");
+                alert("姓名與世代為必填！！不開放「祈願卡」給訪客無會員編號填寫！");
                 e.preventDefault();
                 return;
             }

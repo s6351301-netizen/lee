@@ -18,7 +18,7 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 提供給前端 AJAX 的 API 接口 (支援姓名與編號的 LIKE 模糊查詢)
+// 2. 提供給前端 AJAX 的 API 接口 (修正為精準查詢 = )
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $search_keyword = isset($_GET['new_member']) ? trim($_GET['new_member']) : '';
@@ -26,10 +26,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $members_list = [];
 
     if (!empty($search_keyword)) {
-        // 🛠️ 修正點：使用 LIKE 搭配前後 % 進行模糊查詢，不論輸入部分編號或部分姓名都能比對到
-        $like_keyword = "%" . $search_keyword . "%";
-        $stmt = $conn->prepare("SELECT name, new_member, emperor_shizu, generation, number_of_houses FROM members WHERE new_member LIKE ? OR name LIKE ?");
-        $stmt->bind_param("ss", $like_keyword, $like_keyword);
+        // 🛠️ 修正點：將 LIKE ? 改為 = ? 達成精準比對。只有完全符合姓名或編號才會出現，避免跑出多筆
+        $stmt = $conn->prepare("SELECT name, new_member, emperor_shizu, generation, number_of_houses FROM members WHERE name = ? OR new_member = ?");
+        $stmt->bind_param("ss", $search_keyword, $search_keyword);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -89,7 +88,7 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 }
 $next_id = $max_id + 1;
 
-// 動態從資料庫抓取目前的祈願內容，直接顯示
+// 🛠️ 修正點：動態從資料庫抓取目前的祈願內容，直接顯示，不用留著死資料
 $wishes_array = [];
 $sql_wishes = "SELECT name, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 20";
 $result_wishes = $conn->query($sql_wishes);
@@ -200,7 +199,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; font-family: inherit; font-size: 1rem; background-color: rgba(5, 15, 10, 0.7); color: #e9e4db; transition: all 0.3s; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #a3ccab; box-shadow: 0 0 8px rgba(163, 204, 171, 0.3); }
         textarea { resize: none; height: 150px; }
-        
+        /* 唯讀/鎖定狀態的 select 樣式美化 */
         select:disabled { background-color: rgba(30, 45, 35, 0.8); color: #a3ccab; cursor: not-allowed; border-color: rgba(163, 204, 171, 0.4); }
 
         .member-select-wrapper {
@@ -222,47 +221,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
             .scroll-container { height: 50vh; }
         }
-
-        /* ======右邊許願卡填寫姓名欄位,跑馬燈輸入框的特殊動畫效果 =========== */
-        /* 1.輸入姓名欄位,設定輸入框的基礎樣式，確保文字不會換行 */
-        .marquee-input {
-            width: 300px; /* 您可以依據版面調整寬度 */
-            padding: 10px;
-            font-size: 16px;
-            overflow: hidden;
-            white-space: nowrap;
-            
-        }
-
-        /* 2.輸入姓名欄位,針對各家瀏覽器設定 placeholder 的跑馬燈動畫 */
-        .marquee-input::-webkit-input-placeholder {
-            animation: marquee 12s linear infinite;
-        }
-        .marquee-input:-moz-placeholder {
-            animation: marquee 12s linear infinite;
-        }
-        .marquee-input::-moz-placeholder {
-            animation: marquee 12s linear infinite;
-        }
-        .marquee-input:-ms-input-placeholder {
-            animation: marquee 12s linear infinite;
-        }
-
-        /* 3.輸入姓名欄位,定義跑馬燈動畫效果：從最右側移動到最左側 */
-        @keyframes marquee {
-            0% {
-                text-indent: 100%; /* 從輸入框最右邊開始出現 */
-            }
-            100% {
-                text-indent: -130%; /* 往左移出輸入框，數字越大跑得越遠 */
-            }
-        }
-
-        /* 4.輸入姓名欄位,當使用者點擊輸入框（Focus）時，停止跑馬燈或隱藏，方便使用者輸入 */
-        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
-        .marquee-input:focus:-moz-placeholder { animation: none; text-indent: 0; }
-        .marquee-input:focus::-moz-placeholder { animation: none; text-indent: 0; }
-        .marquee-input:focus:-ms-input-placeholder { animation: none; text-indent: 0; }
     </style>
 </head>
 <body>
@@ -307,14 +265,14 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             <div class="form-group">
                 <span class="label-text-header">
                     <span for="author">您的姓名:</span><span id="show_name" class="highlight-val">?</span>
-                    ,編號:<span id="show_member_id" class="highlight-val">?</span>
+                    ,派下員編號:<span id="show_member_id" class="highlight-val">?</span>
                     ,第<span id="show_shizu" class="highlight-val">?</span>世祖
                     <span id="show_generation" class="highlight-val">?</span>代
                     <span id="show_houses" class="highlight-val">?</span>大房
                 </span>
                 
-                <input type="text" id="author" name="author" class="marquee-input" 
-                placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
+                <input type="text" id="author" name="author" placeholder="輸入完整姓名或編號查詢..." required autocomplete="off">
+                
                 <div class="member-select-wrapper" id="memberSelectWrapper"></div>
             </div>
 
@@ -363,6 +321,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     </script>
 
     <script>
+        // 🛠️ 修正點：直接將 PHP 撈出的最新 makeawish 資料集綁定到跑馬燈，免除二次前端重複查詢
         let wishesData = <?php echo json_encode($wishes_array); ?>;
 
         const marqueeTrack = document.getElementById('marqueeTrack');
@@ -418,7 +377,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染 (使用 LIKE 模糊查詢)
+        // AJAX 查詢與動態資料渲染
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -466,7 +425,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                             });
 
                             const textLabel = document.createElement('span');
-                            textLabel.textContent = `${member.name} ${member.new_member} 號${','} 第 ${member.emperor_shizu}世祖/${member.generation}代/${member.number_of_houses}房`;
+                            textLabel.textContent = `${member.name} ${member.new_member} 號, 第 ${member.emperor_shizu}世祖/${member.generation}代/${member.number_of_houses}房`;
 
                             item.addEventListener('click', function(e) {
                                 if (e.target !== checkbox) {
@@ -479,7 +438,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                             item.appendChild(textLabel);
                             wrapper.appendChild(item);
 
-                            // 如果模糊比對出來的結果正好只有唯一的一筆，主動幫使用者勾選
+                            // 🛠️ 額外優化：若只有一筆精準匹配資料（例如精準查到李明輝），自動幫忙勾選填入
                             if(data.length === 1) {
                                 checkbox.checked = true;
                                 applyMemberValues(checkbox.dataset);
@@ -494,22 +453,28 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         function applyMemberValues(dataset) {
+            // 直接顯示撈取出來的值到畫面上
             document.getElementById('show_name').textContent = dataset.name;
             document.getElementById('show_member_id').textContent = dataset.new_member;
             document.getElementById('show_shizu').textContent = dataset.shizu;
             document.getElementById('show_generation').textContent = dataset.gen;
             document.getElementById('show_houses').textContent = dataset.houses;
+
+            // 寫入隱藏欄位
             document.getElementById('hidden_shizu').value = dataset.shizu;
             document.getElementById('hidden_generation').value = dataset.gen;
             document.getElementById('hidden_houses').value = dataset.houses;
             
+            // 🛠️ 新增功能：連動「世代輩分」下拉選單，並鎖死禁止更改
             const genSelect = document.getElementById('generation');
             if(genSelect.querySelector(`option[value="${dataset.shizu}"]`)){
+                // 根據您的 option value 21~30，這裡對應資料庫的 emperor_shizu (世祖) 數值
                 genSelect.value = dataset.shizu;
-                genSelect.disabled = true; 
+                genSelect.disabled = true; // 鎖死不能更改
             } else if(genSelect.querySelector(`option[value="${dataset.gen}"]`)){
+                // 備用方案：若您的數值放的是 generation 欄位
                 genSelect.value = dataset.gen;
-                genSelect.disabled = true; 
+                genSelect.disabled = true; // 鎖死不能更改
             }
             
             authorInput.value = dataset.name;
@@ -526,6 +491,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('hidden_generation').value = 0;
             document.getElementById('hidden_houses').value = 0;
 
+            // 🛠️ 新增功能：當清除查詢或未勾選時，將下拉選單解除鎖定並恢復預設狀態
             const genSelect = document.getElementById('generation');
             genSelect.disabled = false;
             genSelect.value = "";
@@ -533,7 +499,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         document.getElementById('wishForm').addEventListener('submit', function(e) {
             if (document.getElementById('hidden_shizu').value === "0" && document.getElementById('show_shizu').textContent === "?") {
-                alert("姓名與世代為必填！！不開放「祈願卡」給訪客無會員編號填寫！");
+                alert("請從下方查詢到的清單中確認您的派下員資料後再送出！");
                 e.preventDefault();
                 return;
             }
