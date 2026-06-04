@@ -207,7 +207,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             font-size: 0.75rem; 
             font-weight: bold; }
 
-        /* ================= 右側浮動式輸入視窗 ================= */
+        /* ==== 右側浮動式輸入視窗(填寫祈願卡) ================= */
         .sidebar {
             position: fixed; top: 0; right: -100%; width: 32%; min-width: 350px; max-width: 440px; height: 100vh;
             background: rgba(10, 31, 20, 0.95); backdrop-filter: blur(20px); padding: 50px 30px; display: flex; flex-direction: column;
@@ -238,11 +238,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; cursor: pointer; }
         .member-item:last-child { border-bottom: none; }
         .member-item input[type="checkbox"] { width: auto; cursor: pointer; margin-right: 5px; }
-
         .submit-btn { width: 100%; background: linear-gradient(135deg, #407a52, #143622); color: #e9e4db; border: none; padding: 14px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s; margin-top: 5px; margin-bottom: 20px; }
         .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3); }
         .sidebar-footer { font-size: 0.85rem; color: #94a3b8; text-align: center; }
-
         .highlight-val { color: #f39c12; font-weight: bold; margin: 0 3px; }
 
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -329,7 +327,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
             <div class="form-group">
                 <label for="familyMember">家庭成員</label>
-                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或本人" required>
+                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或大姊小舅" required>
             </div>
 
             <div class="form-group">
