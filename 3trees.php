@@ -118,6 +118,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     <title>家族大樹祈願樹 - 飲水思源 • 世代感恩</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Poppins:wght@300;400&display=swap" rel="stylesheet">
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.js"></script>
+    
     <style>
         /* ================= 全局與主體設定 ================= */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -207,7 +210,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             font-size: 0.75rem; 
             font-weight: bold; }
 
-        /* ==== 右側浮動式輸入視窗(填寫祈願卡) ================= */
+        /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
             position: fixed; top: 0; right: -100%; width: 32%; min-width: 350px; max-width: 440px; height: 100vh;
             background: rgba(10, 31, 20, 0.95); backdrop-filter: blur(20px); padding: 50px 30px; display: flex; flex-direction: column;
@@ -238,9 +241,11 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; cursor: pointer; }
         .member-item:last-child { border-bottom: none; }
         .member-item input[type="checkbox"] { width: auto; cursor: pointer; margin-right: 5px; }
+
         .submit-btn { width: 100%; background: linear-gradient(135deg, #407a52, #143622); color: #e9e4db; border: none; padding: 14px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s; margin-top: 5px; margin-bottom: 20px; }
         .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3); }
         .sidebar-footer { font-size: 0.85rem; color: #94a3b8; text-align: center; }
+
         .highlight-val { color: #f39c12; font-weight: bold; margin: 0 3px; }
 
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -269,6 +274,50 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .marquee-input:focus:-moz-placeholder { animation: none; text-indent: 0; }
         .marquee-input:focus::-moz-placeholder { animation: none; text-indent: 0; }
         .marquee-input:focus:-ms-input-placeholder { animation: none; text-indent: 0; }
+
+        /* ================= 🛠️ 新增：編輯器彈出視窗 (Modal) 樣式 ================= */
+        .editor-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+            z-index: 200; display: none; align-items: center; justify-content: center;
+        }
+        .editor-modal-overlay.active { display: flex; }
+        .editor-modal-content {
+            background: #112d1b; border: 1px solid rgba(163, 204, 171, 0.4);
+            border-radius: 12px; padding: 25px; display: flex; flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* 預設 PC 板寬度與高度 80% */
+            width: 80%; height: 80%; max-width: 1200px; max-height: 800px;
+        }
+        .editor-modal-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
+        }
+        .editor-modal-title { font-size: 1.2rem; color: #a3ccab; font-weight: bold; }
+        .editor-modal-close { background: transparent; border: none; color: #94a3b8; font-size: 1.8rem; cursor: pointer; }
+        .editor-modal-close:hover { color: #f39c12; }
+        .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; }
+        .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
+        .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
+        .modal-btn-cancel { background: #475569; color: #cbd5e1; }
+        .modal-btn-cancel:hover { background: #64748b; }
+        .modal-btn-submit { background: #f39c12; color: #0a1f14; }
+        .modal-btn-submit:hover { background: #f59e0b; transform: translateY(-1px); }
+
+        /* 調整 Jodit 編輯器在黑底風格下的文字顏色 */
+        .jodit-container { background: #ffffff !important; color: #333333 !important; height: 100% !important; }
+
+        /* 手機板寬度與高度調整 */
+        @media (max-width: 768px) {
+            .editor-modal-content {
+                width: 80%; height: 80%; padding: 15px;
+            }
+        }
+        
+        /* 擴展文字按鈕樣式 */
+        .expand-link {
+            font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal;
+        }
+        .expand-link:hover { color: #ffd166; }
     </style>
 </head>
 <body>
@@ -303,8 +352,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         <div class="form-title">🌿 撰寫祈願卡</div>        
         <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
             
-            <input type="hidden" id="next_id" name="next_id" value="
-            <?php echo $next_id; ?>">
+            <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
             
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
@@ -327,7 +375,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
             <div class="form-group">
                 <label for="familyMember">家庭成員</label>
-                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或大姊小舅" required>
+                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或本人" required>
             </div>
 
             <div class="form-group">
@@ -348,12 +396,28 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             </div>
 
             <div class="form-group">
-                <label for="content">寫給祖先/祈願的話</label>
+                <label for="content">寫給祖先/祈願的話 <span class="expand-link" id="openEditorBtn">[展開進階編輯]</span></label>
                 <textarea id="content" name="content" placeholder="請寫下您對先祖默默耕耘的感念..." required></textarea>
             </div>
 
             <button type="submit" class="submit-btn">掛上祈願樹(送出)➔</button>
         </form>
+    </div>
+
+    <div class="editor-modal-overlay" id="editorModal">
+        <div class="editor-modal-content">
+            <div class="editor-modal-header">
+                <div class="editor-modal-title">🌿 祈願話語進階編輯</div>
+                <button class="editor-modal-close" id="closeEditorBtn">&times;</button>
+            </div>
+            <div class="editor-container-box">
+                <textarea id="joditEditorTarget"></textarea>
+            </div>
+            <div class="editor-modal-footer">
+                <button class="modal-btn modal-btn-cancel" id="cancelModalBtn">取消</button>
+                <button class="modal-btn modal-btn-submit" id="submitModalBtn">確認送出</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -547,6 +611,40 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const now = new Date();
             const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             document.getElementById('login_time').value = formattedTime;
+        });
+
+        // ==========================================
+        // 🛠️ 新增：Jodit 編輯器初始化與彈出控制邏輯
+        // ==========================================
+        // 初始化 Jodit 編輯器
+        const joditEditor = new Jodit('#joditEditorTarget', {
+            buttons: ['source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|', 'superscript', 'subscript', '|', 'ul', 'ol', '|', 'outdent', 'indent', '|', 'font', 'fontsize', 'brush', 'paragraph', '|', 'image', 'table', 'link', '|', 'align', 'undo', 'redo', '|', 'hr', 'eraser', 'fullsize'],
+            height: '100%',
+            language: 'zh_tw'
+        });
+
+        const editorModal = document.getElementById('editorModal');
+        const mainContentTextarea = document.getElementById('content');
+
+        // 打開彈出視窗
+        document.getElementById('openEditorBtn').addEventListener('click', function() {
+            // 將原本 textarea 的內容導入編輯器中 (支援原文字或基本 HTML)
+            joditEditor.value = mainContentTextarea.value;
+            editorModal.classList.add('active');
+        });
+
+        // 關閉與取消邏輯
+        function closeModal() {
+            editorModal.classList.remove('active');
+        }
+        document.getElementById('closeEditorBtn').addEventListener('click', closeModal);
+        document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+
+        // 按下編輯視窗的「確認送出」按鈕
+        document.getElementById('submitModalBtn').addEventListener('click', function() {
+            // 將編輯器的內容傳回原來的 "寫給祖先/祈願的話" 位置 (保持原本 HTML 或純文字)
+            mainContentTextarea.value = joditEditor.value;
+            closeModal();
         });
 
         window.addEventListener('resize', renderMarquee);
