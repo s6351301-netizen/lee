@@ -236,7 +236,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             position: relative; 
             transition: transform 0.4s, background 0.4s, z-index 0.4s;
             height: auto;
-            max-height: 420px; 
+            max-height: 420px; /* 限制卡片最高高度避免無限撐高 */
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -255,10 +255,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             min-height: 65px; flex-grow: 1; display: block; overflow: hidden;
         }
         
-        /* 大圖才限制在卡片尺寸的一半 (50%)，小圖不縮小也不拉大 */
+        /* 🛠️ 修正需求：限制卡片內所有圖片，不論多大，長與寬最高一律限制在卡片寬高的一半 (50%) */
         .wish-content img {
             max-width: 50% !important;
-            max-height: 140px !important; 
+            max-height: 140px !important; /* 硬性鎖定為卡片概估高度的一半以內 */
+            width: auto !important;
+            height: auto !important;
             display: inline-block !important;
             margin-top: 8px;
             border-radius: 4px;
@@ -271,7 +273,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             border-color: #f39c12;
         }
 
-        /* 點擊圖片彈出獨立層 */
+        /* 🛠️ 修正需求：點擊圖片時彈出「圖片完整尺寸新視窗」(Overlay 遮罩獨立層) */
         .img-click-popup-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
@@ -292,26 +294,15 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             object-fit: contain; border-radius: 4px; background: #000;
         }
         
-        /* 🛠️ 新增：彈出層右上角控制按鈕群組容器 */
-        .img-popup-action-group {
-            position: absolute; top: -18px; right: -18px;
-            display: flex; gap: 8px; z-index: 100001;
-        }
-
-        /* 彈出層右上打叉與下載按鈕共同基礎樣式 */
-        .img-popup-btn {
-            width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff;
-            border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; text-decoration: none;
+        /* 🛠️ 修正需求：右上方有醒目打叉關閉按鈕 */
+        .img-popup-close-btn {
+            position: absolute; top: -18px; right: -18px; width: 36px; height: 36px;
+            background: #e63946; color: #ffffff; border: 2px solid #ffffff;
+            border-radius: 50%; font-size: 20px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
+            z-index: 100001;
         }
-        
-        /* 🛠️ 新增：下載按鈕特別顏色 (綠色底) */
-        .img-popup-download-btn { background: #407a52; font-size: 18px; }
-        .img-popup-download-btn:hover { background: #2d5a3a; transform: scale(1.1); }
-
-        /* 打叉關閉按鈕特別顏色 (紅色底) */
-        .img-popup-close-btn { background: #e63946; font-size: 20px; }
         .img-popup-close-btn:hover { background: #d62828; transform: scale(1.1) rotate(90deg); }
 
         @keyframes zoomInQuick {
@@ -375,7 +366,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         @keyframes marquee { 0% { text-indent: 100%; } 100% { text-indent: -130%; } }
         .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
 
-        /* ================= Jodit 編輯器彈出視窗 ================= */
+        /* ================= Jodit 編輯器彈出視窗 (Modal) ================= */
         .editor-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px);
@@ -399,6 +390,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .modal-btn-cancel { background: #94a3b8; color: #ffffff; }
         .modal-btn-submit { background: #0284c7; color: #ffffff; }
 
+        /* Jodit 編輯器細部配置 */
         .jodit-container { background: #f0fdf4 !important; color: #0f172a !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
         .jodit-wysiwyg { background: #f0fdf4 !important; color: #0f172a !important; }
         .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
@@ -433,10 +425,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
     <div class="img-click-popup-overlay" id="imgPopupOverlay">
         <div class="img-popup-container">
-            <div class="img-popup-action-group">
-                <a href="" id="imgPopupDownloadBtn" class="img-popup-btn img-popup-download-btn" title="下載此圖片" download="家族祈願圖片">⬇</a>
-                <button class="img-popup-btn img-popup-close-btn" id="imgPopupCloseBtn" title="關閉視窗">&times;</button>
-            </div>
+            <button class="img-popup-close-btn" id="imgPopupCloseBtn">&times;</button>
             <img src="" id="imgPopupTarget" alt="完整大圖顯示">
         </div>
     </div>
@@ -521,12 +510,14 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
         document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
 
+        // 🛠️ 修正點：動態生成的卡片節點
         function createCardNode(wish) {
             const card = document.createElement('div');
             card.className = 'wish-card';
             const randomRotate = (Math.random() * 4 - 2).toFixed(1);
             card.style.transform = `rotate(${randomRotate}deg)`;
             
+            // 核心調整：卡片內容在放入前，強制透過容器樣式控制其內部的所有圖片標籤
             card.innerHTML = `
                 <div class="wish-content">${wish.content}</div>
                 <div class="wish-meta">
@@ -569,7 +560,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染 
+        // AJAX 查詢與動態資料渲染 (使用 LIKE 模糊查詢)
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -738,25 +729,26 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // 用滑鼠點擊卡片內圖片後打開新視窗控制
+        // 🛠️ 修正且落實：用滑鼠點擊卡片內圖片後打開新視窗控制
         // ==========================================
         const imgPopupOverlay = document.getElementById('imgPopupOverlay');
         const imgPopupTarget = document.getElementById('imgPopupTarget');
         const imgPopupCloseBtn = document.getElementById('imgPopupCloseBtn');
-        const imgPopupDownloadBtn = document.getElementById('imgPopupDownloadBtn'); // 🛠️ 新增
 
+        // 使用事件代理監聽跑馬燈中任何圖片的點擊動作
         marqueeTrack.addEventListener('click', function(e) {
             if (e.target.tagName === 'IMG') {
                 e.preventDefault();
-                e.stopPropagation(); 
-                imgPopupTarget.src = e.target.src; 
-                imgPopupDownloadBtn.href = e.target.src; // 🛠️ 設定下載按鈕的圖片來源網址
-                imgPopupOverlay.classList.add('active'); 
+                e.stopPropagation(); // 阻止事件冒泡防止跑馬燈被干擾
+                imgPopupTarget.src = e.target.src; // 1. 載入完整大圖
+                imgPopupOverlay.classList.add('active'); // 2. 開啟獨立遮罩新視窗
             }
         });
 
+        // 點擊打叉按鈕關閉視窗
         imgPopupCloseBtn.addEventListener('click', closeImagePopup);
 
+        // 點擊視窗外透明黑底部分也能關閉
         imgPopupOverlay.addEventListener('click', function(e) {
             if (e.target === imgPopupOverlay) {
                 closeImagePopup();
@@ -765,30 +757,15 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         function closeImagePopup() {
             imgPopupOverlay.classList.remove('active');
-            setTimeout(() => { 
-                imgPopupTarget.src = ''; 
-                imgPopupDownloadBtn.href = ''; // 🛠️ 清空下載連結
-            }, 200); 
+            setTimeout(() => { imgPopupTarget.src = ''; }, 200); // 關閉後清除圖源釋放記憶體
         }
 
-        // ==========================================
-        // 即時動態時鐘功能 (強制 24 小時制補零，年月日不補零)
-        // ==========================================
+        // 簡單的時鐘功能
         function updateClock() {
             const now = new Date();
-            
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1; 
-            const date = now.getDate();        
-            
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            
-            const fullDateTimeString = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
-            
+            const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
             const clockEl = document.getElementById('clock');
-            if(clockEl) clockEl.textContent = fullDateTimeString;
+            if(clockEl) clockEl.textContent = timeString;
         }
         setInterval(updateClock, 1000);
 

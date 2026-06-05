@@ -18,65 +18,7 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 處理圖片上傳 API (限制一張，傳至根目錄 icon 資料夾)
-// ==========================================
-if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
-    header('Content-Type: application/json');
-    
-    // 檢查是否有檔案上傳
-    if (!isset($_FILES['files']) || empty($_FILES['files']['name'][0])) {
-        echo json_encode(['error' => '請選擇要上傳的圖片檔案']);
-        exit;
-    }
-
-    // 限制只能上傳一張圖片（若多選只處理第一張）
-    $file_name = $_FILES['files']['name'][0];
-    $file_tmp  = $_FILES['files']['tmp_name'][0];
-    $file_size = $_FILES['files']['size'][0];
-    $file_error= $_FILES['files']['error'][0];
-
-    if ($file_error !== UPLOAD_ERR_OK) {
-        echo json_encode(['error' => '圖片上傳發生錯誤，代碼：' . $file_error]);
-        exit;
-    }
-
-    // 檢查檔案類型
-    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-
-    if (!in_array($file_ext, $allowed_extensions)) {
-        echo json_encode(['error' => '只允許上傳 JPG, JPEG, PNG, GIF, WEBP 格式的圖片']);
-        exit;
-    }
-
-    // 定義根目錄下的 icon 資料夾路徑
-    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/icon/';
-    
-    // 若資料夾不存在則自動建立
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-
-    // 為避免檔名重複或中文亂碼，重新命名檔案
-    $new_file_name = date('Ymd_His') . '_' . uniqid() . '.' . $file_ext;
-    $target_file_path = $upload_dir . $new_file_name;
-
-    // 移動檔案至目標目錄
-    if (move_uploaded_file($file_tmp, $target_file_path)) {
-        // 回傳符合 Jodit 編輯器要求的標準成功 JSON 格式
-        echo json_encode([
-            'success' => true,
-            'files'   => [ '/icon/' . $new_file_name ], 
-            'isImages'=> [ true ]
-        ]);
-    } else {
-        echo json_encode(['error' => '檔案移動失敗，請檢查資料夾權限']);
-    }
-    exit;
-}
-
-// ==========================================
-// 3. 提供給前端 AJAX 的 API 接口 (支援姓名與編號的 LIKE 模糊查詢)
+// 2. 提供給前端 AJAX 的 API 接口 (支援姓名與編號的 LIKE 模糊查詢)
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $search_keyword = isset($_GET['new_member']) ? trim($_GET['new_member']) : '';
@@ -84,6 +26,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $members_list = [];
 
     if (!empty($search_keyword)) {
+        // 🛠️ 修正點：使用 LIKE 搭配前後 % 進行模糊查詢，不論輸入部分編號或部分姓名都能比對到
         $like_keyword = "%" . $search_keyword . "%";
         $stmt = $conn->prepare("SELECT name, new_member, emperor_shizu, generation, number_of_houses FROM members WHERE new_member LIKE ? OR name LIKE ?");
         $stmt->bind_param("ss", $like_keyword, $like_keyword);
@@ -102,13 +45,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
         $stmt->close();
     }
     
+    // 回傳完整的 JSON 陣列
     header('Content-Type: application/json');
     echo json_encode($members_list);
-    exit; 
+    exit; // 結束執行，不載入下方的 HTML
 }
 
 // ==========================================
-// 4. 處理表單送出：寫入 makeawish 資料表
+// 3. 處理表單送出：寫入 makeawish 資料表
 // ==========================================
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $insert_id = isset($_POST['next_id']) ? intval($_POST['next_id']) : 1;
@@ -135,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // ==========================================
-// 5. 撈取目前資料表 makeawish 的最大 ID 與 跑馬燈清單
+// 4. 撈取目前資料表 makeawish 的最大 ID 與 跑馬燈清單
 // ==========================================
 $max_id = 0;
 $sql_max = "SELECT MAX(ID) AS max_id FROM makeawish";
@@ -145,8 +89,9 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 }
 $next_id = $max_id + 1;
 
+// 動態從資料庫抓取目前的祈願內容，直接顯示
 $wishes_array = [];
-$sql_wishes = "SELECT name, emperor_shizu, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
+$sql_wishes = "SELECT name,emperor_shizu,generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
 $result_wishes = $conn->query($sql_wishes);
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
@@ -158,9 +103,10 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         ];
     }
 } else {
+    // 預設預備資料
     $wishes_array = [
-        [ "author" => "1長房大堂哥 國華", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
-        [ "author" => "2二房 佩芬", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
+        [ "author" => "1長房大堂哥 國華", "generation" => "來台第六代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
+        [ "author" => "2二房 佩芬", "generation" => "來台第六代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
     ];
 }
 ?>
@@ -235,96 +181,54 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             backdrop-filter: blur(8px); 
             position: relative; 
             transition: transform 0.4s, background 0.4s, z-index 0.4s;
-            height: auto;
-            max-height: 420px; 
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
-        .wish-card:hover { transform: scale(1.03) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
+        /* 當卡片被滑過時，確保 Z 軸最高，放大後的圖片才不會被上下排卡片遮擋 */
+        .wish-card:hover { transform: scale(1.05) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
 
+        /* ✨ 成功套用：卡片頂端中央的發光小橘點 */
         .wish-card::before {
-            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-            width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: #f39c12; 
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f39c12;
         }
 
-        /* 內容容器排版 */
-        .wish-content { 
-            font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; 
-            min-height: 65px; flex-grow: 1; display: block; overflow: hidden;
-        }
+        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; white-space: pre-line; }
         
-        /* 大圖才限制在卡片尺寸的一半 (50%)，小圖不縮小也不拉大 */
+        /* ================= 🛠️ 新增：卡片內圖片縮放與懸浮控制 ================= */
         .wish-content img {
-            max-width: 50% !important;
-            max-height: 140px !important; 
-            display: inline-block !important;
+            max-width: 100%;          /* 預設寬度不超出卡片範圍 */
+            height: auto;             /* 依比例縮放 */
+            display: block;
             margin-top: 8px;
             border-radius: 4px;
-            cursor: pointer !important;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.2s, border-color 0.2s;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+            transform-origin: center center; /* 從中心放大 */
+            position: relative;
         }
-        .wish-content img:hover {
-            transform: scale(1.03);
-            border-color: #f39c12;
-        }
-
-        /* 點擊圖片彈出獨立層 */
-        .img-click-popup-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
-            z-index: 99999; display: none; align-items: center; justify-content: center;
-            opacity: 0; transition: opacity 0.25s ease;
-        }
-        .img-click-popup-overlay.active { display: flex; opacity: 1; }
-        
-        .img-popup-container {
-            position: relative; max-width: 90%; max-height: 85%;
-            background: rgba(10, 31, 20, 0.95); padding: 12px;
-            border: 2px solid #a3ccab; border-radius: 8px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-            animation: zoomInQuick 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .img-popup-container img {
-            max-width: 100%; max-height: 75vh; display: block; 
-            object-fit: contain; border-radius: 4px; background: #000;
-        }
-        
-        /* 🛠️ 新增：彈出層右上角控制按鈕群組容器 */
-        .img-popup-action-group {
-            position: absolute; top: -18px; right: -18px;
-            display: flex; gap: 8px; z-index: 100001;
-        }
-
-        /* 彈出層右上打叉與下載按鈕共同基礎樣式 */
-        .img-popup-btn {
-            width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff;
-            border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; text-decoration: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
-        }
-        
-        /* 🛠️ 新增：下載按鈕特別顏色 (綠色底) */
-        .img-popup-download-btn { background: #407a52; font-size: 18px; }
-        .img-popup-download-btn:hover { background: #2d5a3a; transform: scale(1.1); }
-
-        /* 打叉關閉按鈕特別顏色 (紅色底) */
-        .img-popup-close-btn { background: #e63946; font-size: 20px; }
-        .img-popup-close-btn:hover { background: #d62828; transform: scale(1.1) rotate(90deg); }
-
-        @keyframes zoomInQuick {
-            from { opacity: 0; transform: scale(0.92); }
-            to { opacity: 1; transform: scale(1); }
+        /* 當滑鼠移過卡片時，圖片放到原始大小 (不限制最大寬度、並解除限制) */
+        .wish-card:hover .wish-content img {
+            max-width: none;          /* 解除最大寬度限制，還原原始大小 */
+            transform: scale(1);      /* 確保為 100% 原始大小 */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 99;              /* 確保高於卡片內其他文字 */
         }
 
         .wish-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 10px; }
         .wish-author { font-weight: bold; color: #f39c12; }
         .wish-generation { 
-            background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; 
-            padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; 
-        }
+            background-color: rgba(163, 204, 171, 0.2); 
+            color: #a3ccab; 
+            padding: 2px 8px; 
+            border-radius: 20px; 
+            font-size: 0.75rem; 
+            font-weight: bold; }
 
         /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
@@ -342,6 +246,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .form-title { font-size: 1.4rem; color: #a3ccab; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #a3ccab; padding-bottom: 10px; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-size: 0.95rem; margin-bottom: 8px; color: #cbd5e1; font-weight: bold; }
+        
         .label-text-header { font-size: 0.9rem; color: #a3ccab; margin-bottom: 6px; display: block; line-height: 1.5; }
         
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; font-family: inherit; font-size: 1rem; background-color: rgba(5, 15, 10, 0.7); color: #e9e4db; transition: all 0.3s; }
@@ -370,42 +275,68 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .scroll-container { height: 50vh; }
         }
 
-        .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
-        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
-        @keyframes marquee { 0% { text-indent: 100%; } 100% { text-indent: -130%; } }
-        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
+        /* ======右邊許願卡填寫姓名欄位,跑馬燈輸入框的特殊動畫效果 =========== */
+        .marquee-input {
+            width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap;
+        }
 
-        /* ================= Jodit 編輯器彈出視窗 ================= */
+        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input::-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-ms-input-placeholder { animation: marquee 12s linear infinite; }
+
+        @keyframes marquee {
+            0% { text-indent: 100%; }
+            100% { text-indent: -130%; }
+        }
+
+        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus::-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-ms-input-placeholder { animation: none; text-indent: 0; }
+
+        /* ================= 🛠️ 新增：編輯器彈出視窗 (Modal) 樣式 ================= */
         .editor-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
             z-index: 200; display: none; align-items: center; justify-content: center;
         }
         .editor-modal-overlay.active { display: flex; }
         .editor-modal-content {
-            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 25px; 
-            display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            background: #112d1b; border: 1px solid rgba(163, 204, 171, 0.4);
+            border-radius: 12px; padding: 25px; display: flex; flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* 預設 PC 板寬度與高度 80% */
             width: 80%; height: 80%; max-width: 1200px; max-height: 800px;
         }
         .editor-modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
-            border-bottom: 2px solid #bae6fd; padding-bottom: 10px;
         }
-        .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; }
-        .editor-modal-close { background: transparent; border: none; color: #64748b; font-size: 1.8rem; cursor: pointer; }
+        .editor-modal-title { font-size: 1.2rem; color: #a3ccab; font-weight: bold; }
+        .editor-modal-close { background: transparent; border: none; color: #94a3b8; font-size: 1.8rem; cursor: pointer; }
+        .editor-modal-close:hover { color: #f39c12; }
         .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; }
         .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
         .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
-        .modal-btn-cancel { background: #94a3b8; color: #ffffff; }
-        .modal-btn-submit { background: #0284c7; color: #ffffff; }
+        .modal-btn-cancel { background: #475569; color: #cbd5e1; }
+        .modal-btn-cancel:hover { background: #64748b; }
+        .modal-btn-submit { background: #f39c12; color: #0a1f14; }
+        .modal-btn-submit:hover { background: #f59e0b; transform: translateY(-1px); }
 
-        .jodit-container { background: #f0fdf4 !important; color: #0f172a !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
-        .jodit-wysiwyg { background: #f0fdf4 !important; color: #0f172a !important; }
-        .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
-        .jodit-toolbar-button__icon { fill: #1e293b !important; }
-        .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
+        /* 調整 Jodit 編輯器在黑底風格下的文字顏色 */
+        .jodit-container { background: #ffffff !important; color: #333333 !important; height: 100% !important; }
+
+        /* 手機板寬度與高度調整 */
+        @media (max-width: 768px) {
+            .editor-modal-content {
+                width: 80%; height: 80%; padding: 15px;
+            }
+        }
         
-        .expand-link { font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal; }
+        /* 擴展文字按鈕樣式 */
+        .expand-link {
+            font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal;
+        }
         .expand-link:hover { color: #ffd166; }
     </style>
 </head>
@@ -431,23 +362,18 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         </div>
     </div>
 
-    <div class="img-click-popup-overlay" id="imgPopupOverlay">
-        <div class="img-popup-container">
-            <div class="img-popup-action-group">
-                <a href="" id="imgPopupDownloadBtn" class="img-popup-btn img-popup-download-btn" title="下載此圖片" download="家族祈願圖片">⬇</a>
-                <button class="img-popup-btn img-popup-close-btn" id="imgPopupCloseBtn" title="關閉視窗">&times;</button>
-            </div>
-            <img src="" id="imgPopupTarget" alt="完整大圖顯示">
-        </div>
-    </div>
-
     <div class="sidebar" id="sidebar">
         <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
-        <div class="counter-box">目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉</div>
+
+        <div class="counter-box">
+            目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉
+        </div>
+
         <div class="form-title">🌿 撰寫祈願卡</div>        
-        <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" enctype="multipart/form-data">
+        <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
             
             <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
+            
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
             <input type="hidden" id="hidden_houses" name="hidden_houses" value="0">
@@ -461,7 +387,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                     <span id="show_generation" class="highlight-val">?</span>代
                     <span id="show_houses" class="highlight-val">?</span>大房
                 </span>
-                <input type="text" id="author" name="author" class="marquee-input" placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
+                
+                <input type="text" id="author" name="author" class="marquee-input" 
+                placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
                 <div class="member-select-wrapper" id="memberSelectWrapper"></div>
             </div>
 
@@ -499,7 +427,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     <div class="editor-modal-overlay" id="editorModal">
         <div class="editor-modal-content">
             <div class="editor-modal-header">
-                <div class="editor-modal-title">🌿 祈願話語進階編輯 (可於編輯器內上傳圖片、點圖調整長寬尺寸)</div>
+                <div class="editor-modal-title">🌿 祈願話語進階編輯</div>
                 <button class="editor-modal-close" id="closeEditorBtn">&times;</button>
             </div>
             <div class="editor-container-box">
@@ -511,6 +439,19 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             </div>
         </div>
     </div>
+
+    <script>
+        function updateClock() {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = now.getMonth() + 1;
+          const day = now.getDate();
+          const time = now.toLocaleTimeString("zh-TW", { hour12: false });
+          document.getElementById("clock").textContent = `${year}/${month}/${day} ${time}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
 
     <script>
         let wishesData = <?php echo json_encode($wishes_array); ?>;
@@ -526,9 +467,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             card.className = 'wish-card';
             const randomRotate = (Math.random() * 4 - 2).toFixed(1);
             card.style.transform = `rotate(${randomRotate}deg)`;
-            
             card.innerHTML = `
-                <div class="wish-content">${wish.content}</div>
+                <div class="wish-content">「${wish.content}」</div>
                 <div class="wish-meta">
                     <span class="wish-author">${wish.author}</span>
                     <span class="wish-generation">${wish.emperor_shizu}&emsp;${wish.generation}</span>
@@ -564,12 +504,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 marqueeTrack.appendChild(rowDiv);
             });
             const totalRows = rowsData.length;
-            const speedFactor = 8.5;
+            const speedFactor = isMobile ? 8.5 : 8.5;
             marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染 
+        // AJAX 查詢與動態資料渲染 (使用 LIKE 模糊查詢)
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -661,6 +601,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 genSelect.value = dataset.gen;
                 genSelect.disabled = true; 
             }
+            
             authorInput.value = dataset.name;
         }
 
@@ -670,6 +611,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('show_shizu').textContent = '?';
             document.getElementById('show_generation').textContent = '?';
             document.getElementById('show_houses').textContent = '?';
+
             document.getElementById('hidden_shizu').value = 0;
             document.getElementById('hidden_generation').value = 0;
             document.getElementById('hidden_houses').value = 0;
@@ -685,118 +627,48 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 e.preventDefault();
                 return;
             }
+
             const now = new Date();
             const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             document.getElementById('login_time').value = formattedTime;
         });
 
         // ==========================================
-        // Jodit 編輯器配置 
+        // 🛠️ 新增：Jodit 編輯器初始化與彈出控制邏輯
         // ==========================================
-        const defaultButtons = ['source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|', 'superscript', 'subscript', '|', 'ul', 'ol', '|', 'font', 'fontsize', 'brush', 'paragraph', '|', 'image', 'table', 'link', '|', 'align', 'undo', 'redo', '|', 'hr', 'eraser', 'fullsize'];
-
+        // 初始化 Jodit 編輯器
         const joditEditor = new Jodit('#joditEditorTarget', {
-            buttons: defaultButtons,
-            buttonsMD: defaultButtons, 
-            disablePlugins: ['mobile'], 
+            buttons: ['source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|', 'superscript', 'subscript', '|', 'ul', 'ol', '|', 'outdent', 'indent', '|', 'font', 'fontsize', 'brush', 'paragraph', '|', 'image', 'table', 'link', '|', 'align', 'undo', 'redo', '|', 'hr', 'eraser', 'fullsize'],
             height: '100%',
-            language: 'zh_tw',
-            uploader: {
-                url: '?action=upload_icon', 
-                format: 'json',
-                path: 'files',
-                isSuccess: function (resp) { return resp.success === true; },
-                getMessage: function (resp) { return resp.error; },
-                process: function (resp) {
-                    return { files: resp.files || [], error: resp.error, msg: resp.msg };
-                },
-                defaultHandlerSuccess: function (data, resp) {
-                    if (data.files && data.files.length) {
-                        this.s.insertImage(data.files[0], null, 200); 
-                    }
-                },
-                defaultHandlerError: function (err) { this.alerts.error(err.getMessage()); }
-            }
+            language: 'zh_tw'
         });
 
         const editorModal = document.getElementById('editorModal');
         const mainContentTextarea = document.getElementById('content');
 
+        // 打開彈出視窗
         document.getElementById('openEditorBtn').addEventListener('click', function() {
+            // 將原本 textarea 的內容導入編輯器中 (支援原文字或基本 HTML)
             joditEditor.value = mainContentTextarea.value;
             editorModal.classList.add('active');
-            setTimeout(() => { joditEditor.events.fire('resize'); }, 50);
         });
 
-        function closeModal() { editorModal.classList.remove('active'); }
+        // 關閉與取消邏輯
+        function closeModal() {
+            editorModal.classList.remove('active');
+        }
         document.getElementById('closeEditorBtn').addEventListener('click', closeModal);
         document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
 
+        // 按下編輯視窗的「確認送出」按鈕
         document.getElementById('submitModalBtn').addEventListener('click', function() {
+            // 將編輯器的內容傳回原來的 "寫給祖先/祈願的話" 位置 (保持原本 HTML 或純文字)
             mainContentTextarea.value = joditEditor.value;
             closeModal();
         });
 
-        // ==========================================
-        // 用滑鼠點擊卡片內圖片後打開新視窗控制
-        // ==========================================
-        const imgPopupOverlay = document.getElementById('imgPopupOverlay');
-        const imgPopupTarget = document.getElementById('imgPopupTarget');
-        const imgPopupCloseBtn = document.getElementById('imgPopupCloseBtn');
-        const imgPopupDownloadBtn = document.getElementById('imgPopupDownloadBtn'); // 🛠️ 新增
-
-        marqueeTrack.addEventListener('click', function(e) {
-            if (e.target.tagName === 'IMG') {
-                e.preventDefault();
-                e.stopPropagation(); 
-                imgPopupTarget.src = e.target.src; 
-                imgPopupDownloadBtn.href = e.target.src; // 🛠️ 設定下載按鈕的圖片來源網址
-                imgPopupOverlay.classList.add('active'); 
-            }
-        });
-
-        imgPopupCloseBtn.addEventListener('click', closeImagePopup);
-
-        imgPopupOverlay.addEventListener('click', function(e) {
-            if (e.target === imgPopupOverlay) {
-                closeImagePopup();
-            }
-        });
-
-        function closeImagePopup() {
-            imgPopupOverlay.classList.remove('active');
-            setTimeout(() => { 
-                imgPopupTarget.src = ''; 
-                imgPopupDownloadBtn.href = ''; // 🛠️ 清空下載連結
-            }, 200); 
-        }
-
-        // ==========================================
-        // 即時動態時鐘功能 (強制 24 小時制補零，年月日不補零)
-        // ==========================================
-        function updateClock() {
-            const now = new Date();
-            
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1; 
-            const date = now.getDate();        
-            
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            
-            const fullDateTimeString = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
-            
-            const clockEl = document.getElementById('clock');
-            if(clockEl) clockEl.textContent = fullDateTimeString;
-        }
-        setInterval(updateClock, 1000);
-
         window.addEventListener('resize', renderMarquee);
-        window.addEventListener('DOMContentLoaded', () => {
-            renderMarquee();
-            updateClock();
-        });
+        window.addEventListener('DOMContentLoaded', renderMarquee);
     </script>
 </body>
 </html>

@@ -146,7 +146,7 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 $next_id = $max_id + 1;
 
 $wishes_array = [];
-$sql_wishes = "SELECT name, emperor_shizu, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
+$sql_wishes = "SELECT name,emperor_shizu,generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
 $result_wishes = $conn->query($sql_wishes);
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
@@ -159,8 +159,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     }
 } else {
     $wishes_array = [
-        [ "author" => "1長房大堂哥 國華", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
-        [ "author" => "2二房 佩芬", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
+        [ "author" => "1長房大堂哥 國華", "generation" => "來台第六代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
+        [ "author" => "2二房 佩芬", "generation" => "來台第六代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
     ];
 }
 ?>
@@ -235,96 +235,51 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             backdrop-filter: blur(8px); 
             position: relative; 
             transition: transform 0.4s, background 0.4s, z-index 0.4s;
-            height: auto;
-            max-height: 420px; 
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
-        .wish-card:hover { transform: scale(1.03) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
+        .wish-card:hover { transform: scale(1.05) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
 
         .wish-card::before {
-            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-            width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: #f39c12; 
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f39c12;
         }
 
-        /* 內容容器排版 */
-        .wish-content { 
-            font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; 
-            min-height: 65px; flex-grow: 1; display: block; overflow: hidden;
-        }
+        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; white-space: pre-line; }
         
-        /* 大圖才限制在卡片尺寸的一半 (50%)，小圖不縮小也不拉大 */
+        /* 卡片內圖片縮放與懸浮控制 */
         .wish-content img {
-            max-width: 50% !important;
-            max-height: 140px !important; 
-            display: inline-block !important;
+            max-width: 100%;
+            height: auto;
+            display: block;
             margin-top: 8px;
             border-radius: 4px;
-            cursor: pointer !important;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.2s, border-color 0.2s;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+            transform-origin: center center;
+            position: relative;
         }
-        .wish-content img:hover {
-            transform: scale(1.03);
-            border-color: #f39c12;
-        }
-
-        /* 點擊圖片彈出獨立層 */
-        .img-click-popup-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
-            z-index: 99999; display: none; align-items: center; justify-content: center;
-            opacity: 0; transition: opacity 0.25s ease;
-        }
-        .img-click-popup-overlay.active { display: flex; opacity: 1; }
-        
-        .img-popup-container {
-            position: relative; max-width: 90%; max-height: 85%;
-            background: rgba(10, 31, 20, 0.95); padding: 12px;
-            border: 2px solid #a3ccab; border-radius: 8px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-            animation: zoomInQuick 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .img-popup-container img {
-            max-width: 100%; max-height: 75vh; display: block; 
-            object-fit: contain; border-radius: 4px; background: #000;
-        }
-        
-        /* 🛠️ 新增：彈出層右上角控制按鈕群組容器 */
-        .img-popup-action-group {
-            position: absolute; top: -18px; right: -18px;
-            display: flex; gap: 8px; z-index: 100001;
-        }
-
-        /* 彈出層右上打叉與下載按鈕共同基礎樣式 */
-        .img-popup-btn {
-            width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff;
-            border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; text-decoration: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
-        }
-        
-        /* 🛠️ 新增：下載按鈕特別顏色 (綠色底) */
-        .img-popup-download-btn { background: #407a52; font-size: 18px; }
-        .img-popup-download-btn:hover { background: #2d5a3a; transform: scale(1.1); }
-
-        /* 打叉關閉按鈕特別顏色 (紅色底) */
-        .img-popup-close-btn { background: #e63946; font-size: 20px; }
-        .img-popup-close-btn:hover { background: #d62828; transform: scale(1.1) rotate(90deg); }
-
-        @keyframes zoomInQuick {
-            from { opacity: 0; transform: scale(0.92); }
-            to { opacity: 1; transform: scale(1); }
+        .wish-card:hover .wish-content img {
+            max-width: none;
+            transform: scale(1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 99;
         }
 
         .wish-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 10px; }
         .wish-author { font-weight: bold; color: #f39c12; }
         .wish-generation { 
-            background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; 
-            padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; 
-        }
+            background-color: rgba(163, 204, 171, 0.2); 
+            color: #a3ccab; 
+            padding: 2px 8px; 
+            border-radius: 20px; 
+            font-size: 0.75rem; 
+            font-weight: bold; }
 
         /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
@@ -342,6 +297,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .form-title { font-size: 1.4rem; color: #a3ccab; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #a3ccab; padding-bottom: 10px; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-size: 0.95rem; margin-bottom: 8px; color: #cbd5e1; font-weight: bold; }
+        
         .label-text-header { font-size: 0.9rem; color: #a3ccab; margin-bottom: 6px; display: block; line-height: 1.5; }
         
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; font-family: inherit; font-size: 1rem; background-color: rgba(5, 15, 10, 0.7); color: #e9e4db; transition: all 0.3s; }
@@ -370,12 +326,26 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .scroll-container { height: 50vh; }
         }
 
-        .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
-        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
-        @keyframes marquee { 0% { text-indent: 100%; } 100% { text-indent: -130%; } }
-        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
+        .marquee-input {
+            width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap;
+        }
 
-        /* ================= Jodit 編輯器彈出視窗 ================= */
+        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input::-moz-placeholder { animation: marquee 12s linear infinite; }
+        .marquee-input:-ms-input-placeholder { animation: marquee 12s linear infinite; }
+
+        @keyframes marquee {
+            0% { text-indent: 100%; }
+            100% { text-indent: -130%; }
+        }
+
+        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus::-moz-placeholder { animation: none; text-indent: 0; }
+        .marquee-input:focus:-ms-input-placeholder { animation: none; text-indent: 0; }
+
+        /* ================= 🛠️ 編輯器彈出視窗 (Modal) 淺藍與淺綠配色樣式 ================= */
         .editor-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px);
@@ -383,29 +353,59 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .editor-modal-overlay.active { display: flex; }
         .editor-modal-content {
-            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 25px; 
-            display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            background: #eef7f4; /* 優雅的淺綠偏白底色 */
+            border: 2px solid #a3d8f4; /* 淺藍色邊框 */
+            border-radius: 12px; padding: 25px; display: flex; flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
             width: 80%; height: 80%; max-width: 1200px; max-height: 800px;
         }
         .editor-modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
-            border-bottom: 2px solid #bae6fd; padding-bottom: 10px;
+            border-bottom: 2px solid #bae6fd; /* 淺藍色下襯線 */
+            padding-bottom: 10px;
         }
-        .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; }
+        .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; } /* 深藍色文字確保清晰 */
         .editor-modal-close { background: transparent; border: none; color: #64748b; font-size: 1.8rem; cursor: pointer; }
+        .editor-modal-close:hover { color: #3b82f6; }
         .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; }
         .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
         .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
         .modal-btn-cancel { background: #94a3b8; color: #ffffff; }
-        .modal-btn-submit { background: #0284c7; color: #ffffff; }
+        .modal-btn-cancel:hover { background: #64748b; }
+        .modal-btn-submit { background: #0284c7; color: #ffffff; } /* 亮淺藍色確認按鈕 */
+        .modal-btn-submit:hover { background: #0369a1; transform: translateY(-1px); }
 
-        .jodit-container { background: #f0fdf4 !important; color: #0f172a !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
-        .jodit-wysiwyg { background: #f0fdf4 !important; color: #0f172a !important; }
-        .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
-        .jodit-toolbar-button__icon { fill: #1e293b !important; }
-        .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
+        /* 調整 Jodit 編輯器在「淺藍與淺綠」風格下的顏色配置 */
+        .jodit-container { 
+            background: #f0fdf4 !important; /* 編輯器主體改為舒適的淺綠色底 */
+            color: #0f172a !important; /* 深色字體 */
+            height: 100% !important; 
+            border: 1px solid #cbd5e1 !important; 
+        }
+        .jodit-wysiwyg { 
+            background: #f0fdf4 !important; /* 內容書寫與圖文搭配預覽區維持淺綠色 */
+            color: #0f172a !important; 
+        }
+        .jodit-toolbar__box { 
+            background: #e0f2fe !important; /* 工具列改為清爽的淺藍色底 */
+            border-bottom: 1px solid #bae6fd !important; 
+        }
+        .jodit-toolbar-button__icon { 
+            fill: #1e293b !important; /* 工具列圖示改為深藍黑方便看清 */
+        }
+        .jodit-toolbar-button:hover {
+            background-color: #f0fdf4 !important;
+        }
+        .jodit-status-bar { 
+            background: #e0f2fe !important; /* 狀態列同樣使用淺藍色 */
+            color: #334155 !important; 
+            border-top: 1px solid #bae6fd !important; 
+        }
         
-        .expand-link { font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal; }
+        /* 擴展文字按鈕樣式 */
+        .expand-link {
+            font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal;
+        }
         .expand-link:hover { color: #ffd166; }
     </style>
 </head>
@@ -431,23 +431,18 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         </div>
     </div>
 
-    <div class="img-click-popup-overlay" id="imgPopupOverlay">
-        <div class="img-popup-container">
-            <div class="img-popup-action-group">
-                <a href="" id="imgPopupDownloadBtn" class="img-popup-btn img-popup-download-btn" title="下載此圖片" download="家族祈願圖片">⬇</a>
-                <button class="img-popup-btn img-popup-close-btn" id="imgPopupCloseBtn" title="關閉視窗">&times;</button>
-            </div>
-            <img src="" id="imgPopupTarget" alt="完整大圖顯示">
-        </div>
-    </div>
-
     <div class="sidebar" id="sidebar">
         <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
-        <div class="counter-box">目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉</div>
+
+        <div class="counter-box">
+            目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉
+        </div>
+
         <div class="form-title">🌿 撰寫祈願卡</div>        
         <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" enctype="multipart/form-data">
             
             <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
+            
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
             <input type="hidden" id="hidden_houses" name="hidden_houses" value="0">
@@ -461,7 +456,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                     <span id="show_generation" class="highlight-val">?</span>代
                     <span id="show_houses" class="highlight-val">?</span>大房
                 </span>
-                <input type="text" id="author" name="author" class="marquee-input" placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
+                
+                <input type="text" id="author" name="author" class="marquee-input" 
+                placeholder="打關鍵字(姓名/編號),點符合項目,顯示世代.(不開放訪客使用.)" required autocomplete="off">
                 <div class="member-select-wrapper" id="memberSelectWrapper"></div>
             </div>
 
@@ -526,7 +523,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             card.className = 'wish-card';
             const randomRotate = (Math.random() * 4 - 2).toFixed(1);
             card.style.transform = `rotate(${randomRotate}deg)`;
-            
             card.innerHTML = `
                 <div class="wish-content">${wish.content}</div>
                 <div class="wish-meta">
@@ -564,12 +560,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 marqueeTrack.appendChild(rowDiv);
             });
             const totalRows = rowsData.length;
-            const speedFactor = 8.5;
+            const speedFactor = isMobile ? 8.5 : 8.5;
             marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染 
+        // AJAX 查詢與動態資料渲染 (使用 LIKE 模糊查詢)
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -661,6 +657,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 genSelect.value = dataset.gen;
                 genSelect.disabled = true; 
             }
+            
             authorInput.value = dataset.name;
         }
 
@@ -670,6 +667,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('show_shizu').textContent = '?';
             document.getElementById('show_generation').textContent = '?';
             document.getElementById('show_houses').textContent = '?';
+
             document.getElementById('hidden_shizu').value = 0;
             document.getElementById('hidden_generation').value = 0;
             document.getElementById('hidden_houses').value = 0;
@@ -685,37 +683,57 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 e.preventDefault();
                 return;
             }
+
             const now = new Date();
             const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             document.getElementById('login_time').value = formattedTime;
         });
 
         // ==========================================
-        // Jodit 編輯器配置 
+        // Jodit 編輯器配置圖片上傳與跨裝置收納控制
         // ==========================================
         const defaultButtons = ['source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|', 'superscript', 'subscript', '|', 'ul', 'ol', '|', 'font', 'fontsize', 'brush', 'paragraph', '|', 'image', 'table', 'link', '|', 'align', 'undo', 'redo', '|', 'hr', 'eraser', 'fullsize'];
 
         const joditEditor = new Jodit('#joditEditorTarget', {
             buttons: defaultButtons,
+            
+            // 💡 PC版 (中大型螢幕)：不收納工具，寬度不夠時自動換行排列
             buttonsMD: defaultButtons, 
+            
+            // 💡 手機與平板：不填寫任何值，讓 Jodit 載入內建的收納邏輯 (...)
+            buttonsSM: undefined, 
+            buttonsXS: undefined, 
+            
+            // 💡 強烈關鍵：移除在某些舊版本中會干擾 RWD 縮放的強制手機外掛
             disablePlugins: ['mobile'], 
+            
             height: '100%',
             language: 'zh_tw',
             uploader: {
                 url: '?action=upload_icon', 
                 format: 'json',
                 path: 'files',
-                isSuccess: function (resp) { return resp.success === true; },
-                getMessage: function (resp) { return resp.error; },
+                isSuccess: function (resp) {
+                    return resp.success === true;
+                },
+                getMessage: function (resp) {
+                    return resp.error;
+                },
                 process: function (resp) {
-                    return { files: resp.files || [], error: resp.error, msg: resp.msg };
+                    return {
+                        files: resp.files || [],
+                        error: resp.error,
+                        msg: resp.msg
+                    };
                 },
                 defaultHandlerSuccess: function (data, resp) {
                     if (data.files && data.files.length) {
                         this.s.insertImage(data.files[0], null, 200); 
                     }
                 },
-                defaultHandlerError: function (err) { this.alerts.error(err.getMessage()); }
+                defaultHandlerError: function (err) {
+                    this.alerts.error(err.getMessage());
+                }
             }
         });
 
@@ -725,10 +743,13 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         document.getElementById('openEditorBtn').addEventListener('click', function() {
             joditEditor.value = mainContentTextarea.value;
             editorModal.classList.add('active');
+            // 彈出視窗打開後立即觸發一次寬度偵測，確保 PC 工具列完全排開、手機版完全收起
             setTimeout(() => { joditEditor.events.fire('resize'); }, 50);
         });
 
-        function closeModal() { editorModal.classList.remove('active'); }
+        function closeModal() {
+            editorModal.classList.remove('active');
+        }
         document.getElementById('closeEditorBtn').addEventListener('click', closeModal);
         document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
 
@@ -737,66 +758,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             closeModal();
         });
 
-        // ==========================================
-        // 用滑鼠點擊卡片內圖片後打開新視窗控制
-        // ==========================================
-        const imgPopupOverlay = document.getElementById('imgPopupOverlay');
-        const imgPopupTarget = document.getElementById('imgPopupTarget');
-        const imgPopupCloseBtn = document.getElementById('imgPopupCloseBtn');
-        const imgPopupDownloadBtn = document.getElementById('imgPopupDownloadBtn'); // 🛠️ 新增
-
-        marqueeTrack.addEventListener('click', function(e) {
-            if (e.target.tagName === 'IMG') {
-                e.preventDefault();
-                e.stopPropagation(); 
-                imgPopupTarget.src = e.target.src; 
-                imgPopupDownloadBtn.href = e.target.src; // 🛠️ 設定下載按鈕的圖片來源網址
-                imgPopupOverlay.classList.add('active'); 
-            }
-        });
-
-        imgPopupCloseBtn.addEventListener('click', closeImagePopup);
-
-        imgPopupOverlay.addEventListener('click', function(e) {
-            if (e.target === imgPopupOverlay) {
-                closeImagePopup();
-            }
-        });
-
-        function closeImagePopup() {
-            imgPopupOverlay.classList.remove('active');
-            setTimeout(() => { 
-                imgPopupTarget.src = ''; 
-                imgPopupDownloadBtn.href = ''; // 🛠️ 清空下載連結
-            }, 200); 
-        }
-
-        // ==========================================
-        // 即時動態時鐘功能 (強制 24 小時制補零，年月日不補零)
-        // ==========================================
-        function updateClock() {
-            const now = new Date();
-            
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1; 
-            const date = now.getDate();        
-            
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            
-            const fullDateTimeString = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
-            
-            const clockEl = document.getElementById('clock');
-            if(clockEl) clockEl.textContent = fullDateTimeString;
-        }
-        setInterval(updateClock, 1000);
-
         window.addEventListener('resize', renderMarquee);
-        window.addEventListener('DOMContentLoaded', () => {
-            renderMarquee();
-            updateClock();
-        });
+        window.addEventListener('DOMContentLoaded', renderMarquee);
     </script>
 </body>
 </html>
