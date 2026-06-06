@@ -276,7 +276,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .open-sidebar-btn:hover { background: #407a52; color: #fff; transform: translateY(-2px); }
 
-        /* 🚀 修正點：調整滾動容器的遮罩比例，強化頂部消失點 */
         .scroll-container { 
             width: 100%; 
             max-width: 1100px; 
@@ -284,12 +283,10 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             overflow: hidden; 
             position: relative; 
             margin-top: 20px;
-            /* 調整線性遮罩：最頂部 12% 處淡出（固定點消失），下方則保留空間顯現卡片 */
             mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 85%, transparent 100%); 
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 85%, transparent 100%);
         }
         
-        /* 🚀 修正點：跑馬燈軌道設定與動畫調校 */
         .marquee-track { 
             display: flex; 
             flex-direction: column; 
@@ -303,7 +300,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .marquee-track:hover { animation-play-state: paused; }
         .wish-row { display: flex; justify-content: center; align-items: flex-start; gap: 25px; width: 100%; }
         
-        /* 🚀 修正點：將跑馬燈動畫起始起點往下移動 150px (卡片組起點)，並平滑上移至固定點消失 */
         @keyframes scrollUp { 
             0% { transform: translateY(150px); } 
             100% { transform: translateY(calc(-100% + 150px)); } 
@@ -428,7 +424,40 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 100% { transform: translateY(-100%); } 
             }
         }
-        .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
+
+        /* ＝★＝ 修正與擴充點：姓名輸入框與跑馬燈效果 ＝★＝ */
+        .marquee-input { 
+            width: 100%; 
+            padding: 12px; 
+            font-size: 1rem; 
+            overflow: hidden; 
+            white-space: nowrap; 
+        }
+
+        /* 讓 placeholder 產生跑馬燈動畫 */
+        .marquee-input::placeholder {
+            white-space: nowrap;
+            display: inline-block;
+            overflow: hidden;
+            width: 100%;
+            animation: placeholderMarquee 12s linear infinite; /* 12秒循環一次，可依需求調整速度 */
+        }
+
+        /* 當滑鼠點擊進入輸入框 (Focus) 時，暫停動畫並讓文字隱藏，提供更乾淨的打字體驗 */
+        .marquee-input:focus::placeholder {
+            animation-play-state: paused;
+            color: transparent;
+        }
+
+        /* 跑馬燈的核心動畫：利用 text-indent 控制文字從右到左移出 */
+        @keyframes placeholderMarquee {
+            0% {
+                text-indent: 100%;
+            }
+            100% {
+                text-indent: -150%; /* 超出左側範圍，確保長文字能全部移出 */
+            }
+        }
 
         /* Jodit 編輯器樣式彈出視窗 */
         .editor-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px); z-index: 200; display: none; align-items: center; justify-content: center; }
@@ -696,7 +725,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             return card;
         }
 
-        // 🚀 修正點：動態精確調整動畫時間與一組卡片滾動的循環點
         function renderMarquee() {
             marqueeTrack.innerHTML = '';
             if(wishesData.length === 0) return;
@@ -725,7 +753,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             });
             const totalRows = rowsData.length;
             const speedFactor = 8.5;
-            // 配合向下位移的起始點，動態計算動畫時間，確保滑動節奏平滑
             marqueeTrack.style.animationDuration = `${(totalRows * speedFactor) + 2}s`;            
         }
 
