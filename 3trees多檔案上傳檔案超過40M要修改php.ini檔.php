@@ -54,19 +54,15 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
         }
 
         // 🚀 修正點：保留原檔名，僅在前端加上時間隨機碼防止同檔名覆蓋
-        // 例如：原名 "家族合照.jpg" -> 變成 "20260606_153022_64a7b_家族合照.jpg"
         $safe_original_name = basename($original_name); 
         $new_file_name = date('Ymd_His') . '_' . uniqid() . '_' . $safe_original_name;
         
         // 網頁顯示與網址用途的 URL（保持 UTF-8 編碼）
         $web_url = '/icon/' . $new_file_name;
         
-        // 🚀 修正點：針對作業系統可能存在的中文檔名亂碼問題進行防範
         // 如果伺服器是 Windows，作業系統路徑需要將 UTF-8 轉成 BIG5 才能正常寫入實體檔案
-        // 如果是 Linux (現代普遍預設 UTF-8) 則通常不需轉換，這裡加上判斷確保相容性
         $disk_file_name = $new_file_name;
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // 將 UTF-8 轉為 Windows 繁體中文常用的 BIG5/CP950，避免實體檔案在資料夾變亂碼
             $disk_file_name = iconv("UTF-8", "BIG5//IGNORE", $new_file_name);
         }
         $target_file_path = $upload_dir . $disk_file_name;
@@ -74,10 +70,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
         // 移動檔案至目標目錄
         if (move_uploaded_file($file_tmp, $target_file_path)) {
             
-            // 🚀 修正點：寫入 files 表，file_name 欄位寫入「最原始乾淨的中文檔名」
+            // 寫入 files 表
             $stmt_file = $conn->prepare("INSERT INTO files (file_name, file_path, file_url, file_type, file_size, status, reference_id) VALUES (?, ?, ?, ?, ?, 'active', 0)");
             
-            // 這裡儲存的 $target_file_path 依然用原本的命名規則，確保資料庫皆為 UTF-8
             $saved_path = $upload_dir . $new_file_name; 
             $stmt_file->bind_param("ssssi", $safe_original_name, $saved_path, $web_url, $file_type, $file_size);
             $stmt_file->execute();
@@ -164,10 +159,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->execute();
         $stmt->close();
 
-        // B. 更新 files 表中的 reference_id 與上傳者資訊 (支援內含有中文名稱的網址比對)
+        // B. 更新 files 表中的 reference_id 與上傳者資訊
         if (preg_match_all('/\/icon\/([^\s"\'\>]+)/', $message_of_blessing, $matches)) {
             foreach ($matches[1] as $filename_on_url) {
-                // 將可能被網址編碼的中文還原 (例如 %E5%AE%B6 -> 家族)
                 $decoded_filename = urldecode($filename_on_url);
                 $like_url = "%" . $decoded_filename;
                 
@@ -285,20 +279,34 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .scroll-container { width: 100%; max-width: 1100px; height: 60vh; overflow: hidden; position: relative; mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%); }
         .marquee-track { display: flex; flex-direction: column; gap: 25px; width: 100%; position: absolute; top: 0; left: 0; animation: scrollUp 35s infinite linear; }
         .marquee-track:hover { animation-play-state: paused; }
-        .wish-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; width: 100%; }
+        .wish-row { display: flex; justify-content: center; align-items: flex-start; gap: 25px; width: 100%; }
         @keyframes scrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
 
         /* 卡片主體與表格樣式 */
         .wish-card {
             background: rgba(20, 54, 34, 0.65); border-radius: 6px 6px 12px 12px; padding: 22px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); position: relative; 
-            transition: transform 0.4s, background 0.4s, z-index 0.4s; height: auto; max-height: 460px; 
+            transition: transform 0.4s, background 0.4s, z-index 0.4s; width: 340px; min-width: 320px;
             overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
         }
         .wish-card:hover { transform: scale(1.03) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
         .wish-card::before {
             content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
             width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
+            z-index: 4;
+        }
+
+        /* 🚀 新增：卡片頂部首圖區塊樣式 */
+        .wish-card-hero-image-wrapper {
+            width: calc(100% + 44px); margin-left: -22px; margin-top: -22px; margin-bottom: 15px;
+            height: 160px; overflow: hidden; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative; cursor: pointer; background: #000;
+        }
+        .wish-card-hero-image {
+            width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s;
+        }
+        .wish-card-hero-image-wrapper:hover .wish-card-hero-image {
+            transform: scale(1.06);
         }
 
         .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; flex-grow: 1; display: block; overflow: hidden; }
@@ -387,6 +395,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .sidebar { width: 100%; min-width: 100%; padding: 40px 20px; }
             .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
             .scroll-container { height: 50vh; }
+            .wish-row { flex-direction: column; align-items: center; }
         }
         .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
 
@@ -541,6 +550,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
 
         // 解析文字中的連結與圖片，格式化為一行一行的 Table 輸出
+        // 🚀 修正點：加入過濾機制，並獨立回傳找到的第一張圖片 URL 作為 Hero Cover 顯示
         function parseContentFilesToTable(contentHtml) {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = contentHtml;
@@ -550,29 +560,48 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const fileImgs = tempDiv.querySelectorAll('img[src*="/icon/"]');
             
             let filesArray = [];
+            let heroImageUrl = null; // 用於存放第一張圖片
 
-            // 1. 處理一般文件連結
-            fileLinks.forEach(link => {
-                const url = link.getAttribute('href');
-                let name = link.textContent.replace('📎 下載附件:', '').trim();
-                if(!name) {
-                    name = url.substring(url.lastIndexOf('/') + 1);
-                    // 嘗試還原網址可能被編碼的中文原名
-                    try { name = decodeURIComponent(name); } catch(e) {}
-                }
-                
-                filesArray.push({ type: 'file', url: url, name: name });
-                link.remove(); 
-            });
-
-            // 2. 處理圖片標籤
-            fileImgs.forEach(img => {
+            // 1. 處理圖片標籤（優先判斷出第一張圖片）
+            fileImgs.forEach((img, idx) => {
                 const url = img.getAttribute('src');
                 let name = url.substring(url.lastIndexOf('/') + 1);
                 try { name = decodeURIComponent(name); } catch(e) {}
                 
-                filesArray.push({ type: 'image', url: url, name: name });
+                if (idx === 0) {
+                    // 第一張圖片拿來當卡片主視覺封面，此處暫存網址，並不塞入下方列表表格內
+                    heroImageUrl = url;
+                } else {
+                    filesArray.push({ type: 'image', url: url, name: name });
+                }
                 img.remove(); 
+            });
+
+            // 2. 處理一般文件連結 (同時避免重複加入已成為 Hero 封面的圖片點擊連結)
+            fileLinks.forEach(link => {
+                const url = link.getAttribute('href');
+                if (url === heroImageUrl) {
+                    link.remove(); // 如果是首圖對應的 a 連結，直接移除以免在文字區重複顯示
+                    return;
+                }
+
+                let name = link.textContent.replace('📎 下載附件:', '').trim();
+                if(!name) {
+                    name = url.substring(url.lastIndexOf('/') + 1);
+                    try { name = decodeURIComponent(name); } catch(e) {}
+                }
+                
+                // 判斷是否為其他未被首圖選中的圖片類型連結
+                const isImageFile = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                if (isImageFile) {
+                    // 檢查是否已經存在於 filesArray 中以防重複
+                    if (!filesArray.some(f => f.url === url)) {
+                        filesArray.push({ type: 'image', url: url, name: name });
+                    }
+                } else {
+                    filesArray.push({ type: 'file', url: url, name: name });
+                }
+                link.remove(); 
             });
 
             // 3. 組裝成表格
@@ -580,11 +609,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             if (filesArray.length > 0) {
                 tableHtml = '<table class="wish-file-table">';
                 filesArray.forEach(file => {
-                    // 去除可能留在檔名前面的隨機混淆碼
                     let displayName = file.name;
                     if (displayName.includes('_')) {
                         const parts = displayName.split('_');
-                        // 如果前幾段符合隨機生成格式，拿掉前三段 (日期_時間_唯一碼_原檔名)
                         if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
                             displayName = parts.slice(3).join('_');
                         }
@@ -610,10 +637,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
             return {
                 cleanHtml: tempDiv.innerHTML,
-                tableHtml: tableHtml
+                tableHtml: tableHtml,
+                heroImageUrl: heroImageUrl // 回傳首圖網址
             };
         }
 
+        // 🚀 修正點：建構卡片節點時，若發現含有第一張圖片，則渲染在卡片最頂部呈現
         function createCardNode(wish) {
             const card = document.createElement('div');
             card.className = 'wish-card';
@@ -622,7 +651,18 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             
             const parsed = parseContentFilesToTable(wish.content);
 
+            // 若有上傳第一張圖片，則產生主視覺 HTML
+            let heroImageHtml = '';
+            if (parsed.heroImageUrl) {
+                heroImageHtml = `
+                    <div class="wish-card-hero-image-wrapper">
+                        <img src="${parsed.heroImageUrl}" class="wish-card-hero-image card-img-trigger" alt="主視覺圖片">
+                    </div>
+                `;
+            }
+
             card.innerHTML = `
+                ${heroImageHtml}
                 <div class="wish-content">
                     <div>${parsed.cleanHtml}</div>
                     ${parsed.tableHtml}
@@ -835,11 +875,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                         data.files.forEach(fileUrl => {
                             const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
                             
-                            // 從網址抽取原檔名來顯示
                             let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
                             try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
                             
-                            // 如果含有前綴隨機混淆碼，在畫面上秀出乾淨的原檔名
                             if (displayFileName.includes('_')) {
                                 const parts = displayFileName.split('_');
                                 if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
@@ -878,7 +916,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // 點擊卡片縮圖彈出控制
+        // 點擊卡片縮圖或首圖大圖彈出控制
         // ==========================================
         const imgPopupOverlay = document.getElementById('imgPopupOverlay');
         const imgPopupTarget = document.getElementById('imgPopupTarget');
@@ -887,13 +925,15 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         marqueeTrack.addEventListener('click', function(e) {
             const isThumb = e.target.classList.contains('wish-table-thumb');
+            const isHeroImg = e.target.classList.contains('wish-card-hero-image');
             const isImgLink = e.target.classList.contains('card-img-trigger');
             
-            if (isThumb || isImgLink) {
+            if (isThumb || isImgLink || isHeroImg) {
                 e.preventDefault();
                 e.stopPropagation(); 
                 
-                const imgSrc = isThumb ? e.target.src : e.target.getAttribute('href');
+                // 首圖直接取 src，超連結取 href
+                const imgSrc = (isThumb || isHeroImg) ? e.target.src : e.target.getAttribute('href');
                 
                 imgPopupTarget.src = imgSrc; 
                 imgPopupDownloadBtn.href = imgSrc; 

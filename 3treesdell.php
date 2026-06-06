@@ -18,7 +18,7 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 處理檔案上傳 API -> 【保留原始中文檔名、支援 UTF-8、防重複】
+// 2. 處理檔案上傳 API -> 【保留原始中文檔名、支援 UTF-8、防重複實體檔案、勾選後真刪除】
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
     header('Content-Type: application/json; charset=utf-8');
@@ -40,6 +40,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
     $uploaded_urls = [];
     $uploaded_ids = [];
     $errors = [];
+    $overwrite = isset($_POST['overwrite']) && $_POST['overwrite'] === 'true';
 
     // 使用迴圈處理多個檔案上傳
     foreach ($_FILES['files']['name'] as $index => $original_name) {
@@ -53,9 +54,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
             continue;
         }
 
-        // 🚀 修正點：保留原檔名，僅在前端加上時間隨機碼防止同檔名覆蓋
         $safe_original_name = basename($original_name); 
-        $new_file_name = date('Ymd_His') . '_' . uniqid() . '_' . $safe_original_name;
+        
+        // 為了達到使用者「同檔名就覆蓋/刪除舊檔」的需求，直接使用原檔名做處理
+        $new_file_name = $safe_original_name;
         
         // 網頁顯示與網址用途的 URL（保持 UTF-8 編碼）
         $web_url = '/icon/' . $new_file_name;
@@ -67,7 +69,25 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
         }
         $target_file_path = $upload_dir . $disk_file_name;
 
-        // 移動檔案至目標目錄
+        // 【核心修改】：檢查同名檔案是否存在
+        if (file_exists($target_file_path)) {
+            if ($overwrite) {
+                // 真正刪除舊的實體檔案，不保留歷史檔案
+                @unlink($target_file_path);
+                
+                // 連動將舊檔案的資料庫紀錄直接 DELETE，不保留歷史髒資料
+                $stmt_del_old = $conn->prepare("DELETE FROM files WHERE file_name = ?");
+                $stmt_del_old->bind_param("s", $safe_original_name);
+                $stmt_del_old->execute();
+                $stmt_del_old->close();
+            } else {
+                // 如果前端尚未確認覆蓋，回傳 need_confirm 訊號給前端跳出勾選確認視窗
+                echo json_encode(['need_confirm' => true, 'filename' => $safe_original_name]);
+                exit;
+            }
+        }
+
+        // 移動新檔案至目標目錄
         if (move_uploaded_file($file_tmp, $target_file_path)) {
             
             // 寫入 files 表
@@ -97,6 +117,70 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
         ]);
     } else {
         echo json_encode(['error' => implode(', ', $errors)]);
+    }
+    exit;
+}
+
+// ==========================================
+// 新增/修改功能：API - 刪除祈願卡並真正連動清除雙資料表、實體檔案
+// ==========================================
+if (isset($_GET['action']) && $_GET['action'] == 'delete_wish') {
+    header('Content-Type: application/json; charset=utf-8');
+    $wish_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($wish_id > 0) {
+        $conn->begin_transaction();
+        try {
+            // 1. 撈出該祈願卡的內文，解析出內部附帶的所有 /icon/ 檔案實體並真正刪除
+            $stmt_select = $conn->prepare("SELECT message_of_blessing FROM makeawish WHERE ID = ?");
+            $stmt_select->bind_param("i", $wish_id);
+            $stmt_select->execute();
+            $res_select = $stmt_select->get_result();
+            
+            if ($row = $res_select->fetch_assoc()) {
+                $content = $row['message_of_blessing'];
+                
+                // 解析內容中所有的實體檔案路徑
+                if (preg_match_all('/\/icon\/([^\s"\'\>]+)/', $content, $matches)) {
+                    $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/icon/';
+                    foreach ($matches[1] as $filename_on_url) {
+                        $decoded_filename = urldecode($filename_on_url);
+                        
+                        // 區分系統作業平台進行轉碼以利實體刪除
+                        $disk_file_name = $decoded_filename;
+                        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                            $disk_file_name = iconv("UTF-8", "BIG5//IGNORE", $decoded_filename);
+                        }
+                        
+                        $target_file_path = $upload_dir . $disk_file_name;
+                        // 真正清除指定檔案路徑下的舊實體檔案
+                        if (file_exists($target_file_path)) {
+                            @unlink($target_file_path);
+                        }
+                    }
+                }
+            }
+            $stmt_select->close();
+
+            // 2. 連動刪除資料庫紀錄：files 與 makeawish 兩個資料表綁定一併刪除
+            $stmt_file_del = $conn->prepare("DELETE FROM files WHERE reference_id = ?");
+            $stmt_file_del->bind_param("i", $wish_id);
+            $stmt_file_del->execute();
+            $stmt_file_del->close();
+
+            $stmt_wish_del = $conn->prepare("DELETE FROM makeawish WHERE ID = ?");
+            $stmt_wish_del->bind_param("i", $wish_id);
+            $stmt_wish_del->execute();
+            $stmt_wish_del->close();
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'msg' => '該祈願卡與其關聯之實體檔案、連動資料庫紀錄已完全成功清除！']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['error' => '刪除失敗，錯誤訊息：' . $e->getMessage()]);
+        }
+    } else {
+        echo json_encode(['error' => '無效的祈願卡識別碼']);
     }
     exit;
 }
@@ -134,10 +218,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
 }
 
 // ==========================================
-// 4. 處理表單送出：同時寫入 makeawish 與 更新 files 資料表
+// 4. 處理表單送出：同時寫入/更新 makeawish 與 更新 files 資料表
 // ==========================================
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $insert_id = isset($_POST['next_id']) ? intval($_POST['next_id']) : 1;
+    $is_edit = isset($_POST['is_edit_mode']) && $_POST['is_edit_mode'] === 'true';
     $name = isset($_POST['author']) ? $_POST['author'] : '';
     
     $emperor_shizu = isset($_POST['hidden_shizu']) ? intval($_POST['hidden_shizu']) : 0;
@@ -153,11 +238,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn->begin_transaction();
 
     try {
-        // A. 寫入祈願表
-        $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
-        $stmt->execute();
-        $stmt->close();
+        if ($is_edit) {
+            // 【編輯模式】：更新現有祈願內容
+            $stmt = $conn->prepare("UPDATE makeawish SET name=?, number_of_houses=?, emperor_shizu=?, generation=?, family_members=?, message_of_blessing=? WHERE ID=?");
+            $stmt->bind_param("siiissi", $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $insert_id);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            // 【新增模式】：寫入祈願表
+            $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
+            $stmt->execute();
+            $stmt->close();
+        }
 
         // B. 更新 files 表中的 reference_id 與上傳者資訊
         if (preg_match_all('/\/icon\/([^\s"\'\>]+)/', $message_of_blessing, $matches)) {
@@ -178,7 +271,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     } catch (Exception $e) {
         $conn->rollback();
-        echo "<script>alert('寫入失敗：" . addslashes($e->getMessage()) . "');</script>";
+        echo "<script>alert('處理失敗：" . addslashes($e->getMessage()) . "');</script>";
     }
 }
 
@@ -196,10 +289,12 @@ $next_id = $max_id + 1;
 $wishes_array = [];
 
 $sql_wishes = "SELECT 
+                    w.ID,
                     w.name, 
                     w.emperor_shizu, 
                     w.generation, 
                     w.number_of_houses, 
+                    w.family_members,
                     w.message_of_blessing
                FROM makeawish w
                ORDER BY w.ID DESC LIMIT 50";
@@ -208,16 +303,22 @@ $result_wishes = $conn->query($sql_wishes);
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
         $wishes_array[] = [
+            'id' => intval($w_row['ID']),
+            'raw_name' => $w_row['name'],
             'author' => $w_row['name'] . " (" ."第" . $w_row['number_of_houses'] . "大房)",
+            'shizu_num' => intval($w_row['emperor_shizu']),
+            'gen_num' => intval($w_row['generation']),
+            'house_num' => intval($w_row['number_of_houses']),
             'emperor_shizu' => "來台第" . $w_row['emperor_shizu'] . "世祖",
             'generation' => "定居大甲第" . $w_row['generation'] . "代",
+            'family_members' => $w_row['family_members'],
             'content' => $w_row['message_of_blessing']
         ];
     }
 } else {
     $wishes_array = [
-        [ "author" => "1長房大堂哥 國華 (第1大房)", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
-        [ "author" => "2二房 佩芬 (第2大房)", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
+        [ "id" => 1, "raw_name" => "國華", "author" => "1長房大堂哥 國華 (第1大房)", "shizu_num"=>24,"gen_num"=>5,"house_num"=>1,"emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "family_members"=>"全家", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
+        [ "id" => 2, "raw_name" => "佩芬", "author" => "2二房 佩芬 (第2大房)", "shizu_num"=>24,"gen_num"=>5,"house_num"=>2,"emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "family_members"=>"全家", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
     ];
 }
 ?>
@@ -265,10 +366,27 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
 
         .main-content { width: 100%; height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 3; }
-        header { text-align: center; width: 100%; max-width: 900px; margin-bottom: 25px; animation: fadeInDown 1s ease; }
+        header { text-align: center; width: 100%; max-width: 900px; margin-bottom: 15px; animation: fadeInDown 1s ease; }
         header h1 { font-size: 2.3rem; color: #a3ccab; margin-bottom: 8px; letter-spacing: 3px; font-weight: 700; text-shadow: 0 0 12px rgba(163, 204, 171, 0.3); }
-        header h2 { font-size: 1.5rem; margin-bottom: 10px; color: #ece6dc; }
-        header p { font-size: 1rem; line-height: 1.6; color: #cbd5e1; }
+        header h2 { font-size: 1.4rem; margin-bottom: 6px; color: #ece6dc; }
+        header h3 { font-size: 1.1rem; margin-bottom: 8px; color: #f39c12; font-weight: 500; }
+        header p { font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; }
+
+        /* 🚀 新增：頂端模糊查詢工具列區塊樣式 */
+        .search-bar-container {
+            width: 100%; max-width: 600px; margin: 10px auto 20px auto; display: flex; flex-direction: column; position: relative; z-index: 20;
+        }
+        .search-input-box {
+            width: 100%; padding: 12px 18px; border: 2px solid rgba(163, 204, 171, 0.6); border-radius: 30px;
+            background: rgba(10, 31, 20, 0.85); color: #fff; font-size: 1rem; text-align: center; backdrop-filter: blur(5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-family: inherit; transition: all 0.3s;
+        }
+        .search-input-box:focus { outline: none; border-color: #f39c12; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); }
+        .top-search-results-wrapper {
+            position: absolute; top: 110%; left: 0; width: 100%; background: rgba(10, 31, 20, 0.98);
+            border: 1px solid #a3ccab; border-radius: 12px; max-height: 250px; overflow-y: auto; display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6); padding: 5px; z-index: 999;
+        }
 
         .open-sidebar-btn {
             position: fixed; right: 20px; top: 20px; background: rgba(163, 204, 171, 0.25); color: #a3ccab; border: 1px solid rgba(163, 204, 171, 0.6);
@@ -276,38 +394,11 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .open-sidebar-btn:hover { background: #407a52; color: #fff; transform: translateY(-2px); }
 
-        /* 🚀 修正點：調整滾動容器的遮罩比例，強化頂部消失點 */
-        .scroll-container { 
-            width: 100%; 
-            max-width: 1100px; 
-            height: 65vh; 
-            overflow: hidden; 
-            position: relative; 
-            margin-top: 20px;
-            /* 調整線性遮罩：最頂部 12% 處淡出（固定點消失），下方則保留空間顯現卡片 */
-            mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 85%, transparent 100%); 
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 85%, transparent 100%);
-        }
-        
-        /* 🚀 修正點：跑馬燈軌道設定與動畫調校 */
-        .marquee-track { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 25px; 
-            width: 100%; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            animation: scrollUp 35s infinite linear; 
-        }
+        .scroll-container { width: 100%; max-width: 1100px; height: 52vh; overflow: hidden; position: relative; mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%); }
+        .marquee-track { display: flex; flex-direction: column; gap: 25px; width: 100%; position: absolute; top: 0; left: 0; animation: scrollUp 35s infinite linear; }
         .marquee-track:hover { animation-play-state: paused; }
         .wish-row { display: flex; justify-content: center; align-items: flex-start; gap: 25px; width: 100%; }
-        
-        /* 🚀 修正點：將跑馬燈動畫起始起點往下移動 150px (卡片組起點)，並平滑上移至固定點消失 */
-        @keyframes scrollUp { 
-            0% { transform: translateY(150px); } 
-            100% { transform: translateY(calc(-100% + 150px)); } 
-        }
+        @keyframes scrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
 
         /* 卡片主體與表格樣式 */
         .wish-card {
@@ -322,6 +413,45 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
             z-index: 4;
         }
+
+        /* 🚀 圓圈右手邊的浮動操作視窗(Tooltip) */
+        .wish-card-actions {
+            position: absolute;
+            top: 2px;
+            left: calc(50% + 12px);
+            display: flex;
+            gap: 6px;
+            background: rgba(10, 31, 20, 0.9);
+            border: 1px solid #f39c12;
+            padding: 3px 8px;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateX(-5px);
+        }
+        .wish-card:hover .wish-card-actions {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+        .wish-action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #fff;
+            transition: background 0.2s;
+        }
+        .wish-action-edit { color: #5cc2f2; }
+        .wish-action-edit:hover { background: rgba(92, 194, 242, 0.2); }
+        .wish-action-delete { color: #f25c5c; }
+        .wish-action-delete:hover { background: rgba(242, 92, 92, 0.2); }
 
         /* 卡片頂部首圖區塊樣式 */
         .wish-card-hero-image-wrapper {
@@ -421,12 +551,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         @media (max-width: 768px) {
             .sidebar { width: 100%; min-width: 100%; padding: 40px 20px; }
             .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
-            .scroll-container { height: 50vh; mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%); }
+            .scroll-container { height: 42vh; }
             .wish-row { flex-direction: column; align-items: center; }
-            @keyframes scrollUp { 
-                0% { transform: translateY(150px); } 
-                100% { transform: translateY(-100%); } 
-            }
         }
         .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
 
@@ -479,6 +605,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             <h2>村莊內三棵大樹 代表三大房</h2>
             <h3>守護家族的象徵、祈願的對象：<br>「一柱鋤頭落地開，千重稻浪代代傳。」</h3>
             <p>有祖先深埋泥土的根，才有今日繁星閃耀的子孫。</p>
+            
+            <div class="search-bar-container">
+                <input type="text" id="topSearchInput" class="search-input-box" placeholder="🔍 輸入會員ID (新會員號) 或 姓名 做模糊查詢..." autocomplete="off">
+                <div class="top-search-results-wrapper" id="topSearchResults"></div>
+            </div>
+
             <div class="sidebar-footer" >
                歲時感恩牆 • <span id="clock"></span> • 李武略家族後代子孫 敬立
             </div>
@@ -502,10 +634,11 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     <div class="sidebar" id="sidebar">
         <button class="close-sidebar-btn" id="closeSidebarBtn">&times;</button>
         <div class="counter-box">目前已有 <span id="wishCount"><?php echo $max_id; ?></span> 枝子孫祈願葉</div>
-        <div class="form-title">🌿 撰寫祈願卡</div>        
+        <div class="form-title" id="sidebarFormTitle">🌿 撰寫祈願卡</div>        
         <form id="wishForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" enctype="multipart/form-data">
             
             <input type="hidden" id="next_id" name="next_id" value="<?php echo $next_id; ?>">
+            <input type="hidden" id="is_edit_mode" name="is_edit_mode" value="false">
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
             <input type="hidden" id="hidden_houses" name="hidden_houses" value="0">
@@ -551,7 +684,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 <textarea id="content" name="content" placeholder="請寫下您對先祖默默耕耘的感念..." required></textarea>
             </div>
 
-            <button type="submit" class="submit-btn">掛上祈願樹(送出)➔</button>
+            <button type="submit" class="submit-btn" id="submitFormBtn">掛上祈願樹(送出)➔</button>
         </form>
     </div>
 
@@ -577,8 +710,20 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         const marqueeTrack = document.getElementById('marqueeTrack');
         const sidebar = document.getElementById('sidebar');
 
-        document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
+        document.getElementById('openSidebarBtn').addEventListener('click', () => {
+            resetFormToCreate();
+            sidebar.classList.add('active');
+        });
         document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
+
+        function resetFormToCreate() {
+            document.getElementById('sidebarFormTitle').textContent = "🌿 撰寫祈願卡";
+            document.getElementById('submitFormBtn').textContent = "掛上祈願樹(送出)➔";
+            document.getElementById('is_edit_mode').value = "false";
+            document.getElementById('next_id').value = "<?php echo $next_id; ?>";
+            document.getElementById('wishForm').reset();
+            clearLabelsAndHiddens();
+        }
 
         // 解析文字中的連結與圖片，格式化為一行一行的 Table 輸出
         function parseContentFilesToTable(contentHtml) {
@@ -589,7 +734,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const fileImgs = tempDiv.querySelectorAll('img[src*="/icon/"]');
             
             let filesArray = [];
-            let heroImageUrl = null; 
+            let heroImageUrl = null;
 
             fileImgs.forEach((img, idx) => {
                 const url = img.getAttribute('src');
@@ -607,7 +752,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             fileLinks.forEach(link => {
                 const url = link.getAttribute('href');
                 if (url === heroImageUrl) {
-                    link.remove(); 
+                    link.remove();
                     return;
                 }
 
@@ -661,10 +806,11 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             return {
                 cleanHtml: tempDiv.innerHTML,
                 tableHtml: tableHtml,
-                heroImageUrl: heroImageUrl 
+                heroImageUrl: heroImageUrl
             };
         }
 
+        // 🚀 建構含有編輯與刪除功能的卡片
         function createCardNode(wish) {
             const card = document.createElement('div');
             card.className = 'wish-card';
@@ -682,7 +828,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 `;
             }
 
+            // 注入浮動操作欄與編輯、連動刪除按鈕
             card.innerHTML = `
+                <div class="wish-card-actions">
+                    <button class="wish-action-btn wish-action-edit" onclick="triggerEditWish(${wish.id})">編輯 ✏️</button>
+                    <button class="wish-action-btn wish-action-delete" onclick="triggerDeleteWish(${wish.id})">刪除 ❌</button>
+                </div>
                 ${heroImageHtml}
                 <div class="wish-content">
                     <div>${parsed.cleanHtml}</div>
@@ -696,7 +847,47 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             return card;
         }
 
-        // 🚀 修正點：動態精確調整動畫時間與一組卡片滾動的循環點
+        // 前端發動編輯
+        function triggerEditWish(id) {
+            const target = wishesData.find(item => item.id === id);
+            if (!target) return;
+            
+            document.getElementById('sidebarFormTitle').textContent = "✏️ 編輯祈願卡";
+            document.getElementById('submitFormBtn').textContent = "更新祈願卡➔";
+            document.getElementById('is_edit_mode').value = "true";
+            document.getElementById('next_id').value = id;
+            
+            document.getElementById('author').value = target.raw_name;
+            document.getElementById('familyMember').value = target.family_members;
+            document.getElementById('content').value = target.content;
+            
+            applyMemberValues({
+                name: target.raw_name,
+                new_member: "",
+                shizu: target.shizu_num,
+                gen: target.gen_num,
+                houses: target.house_num
+            });
+
+            sidebar.classList.add('active');
+        }
+
+        // 前端發動刪除 (雙表與實體附加檔案連動真刪除)
+        function triggerDeleteWish(id) {
+            if (confirm("您確定要刪除此張祈願卡嗎？\n確認後將會連同指定路徑上的附加上傳檔案一併實體刪除，且雙資料表連動資料均不予保留，無法還原！")) {
+                fetch(`?action=delete_wish&id=${id}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.msg);
+                            location.reload();
+                        } else {
+                            alert("刪除失敗：" + data.error);
+                        }
+                    });
+            }
+        }
+
         function renderMarquee() {
             marqueeTrack.innerHTML = '';
             if(wishesData.length === 0) return;
@@ -725,12 +916,70 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             });
             const totalRows = rowsData.length;
             const speedFactor = 8.5;
-            // 配合向下位移的起始點，動態計算動畫時間，確保滑動節奏平滑
-            marqueeTrack.style.animationDuration = `${(totalRows * speedFactor) + 2}s`;            
+            marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
         }
 
         // ==========================================
-        // AJAX 查詢與動態資料渲染 
+        // 🚀 新增功能：網頁上端用會員ID與姓名做模糊查詢功能控制
+        // ==========================================
+        const topSearchInput = document.getElementById('topSearchInput');
+        const topSearchResults = document.getElementById('topSearchResults');
+
+        topSearchInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val.length < 1) {
+                topSearchResults.style.display = 'none';
+                topSearchResults.innerHTML = '';
+                return;
+            }
+
+            // 直接呼叫 get_houses API 接口進行模糊比對
+            fetch(`?action=get_houses&new_member=${encodeURIComponent(val)}`)
+                .then(res => res.json())
+                .then(data => {
+                    topSearchResults.innerHTML = '';
+                    if (data && data.length > 0) {
+                        topSearchResults.style.display = 'block';
+                        
+                        data.forEach(member => {
+                            const item = document.createElement('div');
+                            item.className = 'member-item';
+                            item.style.padding = '10px';
+                            item.style.color = '#fff';
+                            item.innerHTML = `🔍 <strong>${member.name}</strong> (編號: ${member.new_member}) &emsp; 來台第${member.emperor_shizu}世祖 / 定居大甲第${member.generation}代 / 第${member.number_of_houses}房`;
+                            
+                            // 點選模糊查詢結果後，直接幫使用者自動開啟撰寫視窗並帶入世代資料
+                            item.addEventListener('click', () => {
+                                resetFormToCreate();
+                                applyMemberValues({
+                                    name: member.name,
+                                    new_member: member.new_member,
+                                    shizu: member.emperor_shizu,
+                                    gen: member.generation,
+                                    houses: member.number_of_houses
+                                });
+                                topSearchResults.style.display = 'none';
+                                topSearchInput.value = `${member.name} (${member.new_member})`;
+                                sidebar.classList.add('active');
+                            });
+                            topSearchResults.appendChild(item);
+                        });
+                    } else {
+                        topSearchResults.innerHTML = '<div style="padding:10px; color:#aaa; text-align:center;">未找到符合此條件之家族會員</div>';
+                        topSearchResults.style.display = 'block';
+                    }
+                });
+        });
+
+        // 點擊網頁外部時自動隱藏上端搜尋結果區
+        document.addEventListener('click', function(e) {
+            if (e.target !== topSearchInput && e.target !== topSearchResults) {
+                topSearchResults.style.display = 'none';
+            }
+        });
+
+        // ==========================================
+        // 原側邊欄 AJAX 查詢與動態欄位填充
         // ==========================================
         const authorInput = document.getElementById('author');
         const wrapper = document.getElementById('memberSelectWrapper');
@@ -806,14 +1055,14 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         function applyMemberValues(dataset) {
             document.getElementById('show_name').textContent = dataset.name;
-            document.getElementById('show_member_id').textContent = dataset.new_member;
+            document.getElementById('show_member_id').textContent = dataset.new_member || "?";
             document.getElementById('show_shizu').textContent = dataset.shizu;
             document.getElementById('show_generation').textContent = dataset.gen;
             document.getElementById('show_houses').textContent = dataset.houses;
             document.getElementById('hidden_shizu').value = dataset.shizu;
             document.getElementById('hidden_generation').value = dataset.gen;
             document.getElementById('hidden_houses').value = dataset.houses;
-            document.getElementById('hidden_new_member').value = dataset.new_member;
+            document.getElementById('hidden_new_member').value = dataset.new_member || "0";
             
             const genSelect = document.getElementById('generation');
             if(genSelect.querySelector(`option[value="${dataset.shizu}"]`)){
@@ -849,8 +1098,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 return;
             }
             const now = new Date();
-            const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')} :${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
             document.getElementById('login_time').value = formattedTime;
+            document.getElementById('generation').disabled = false; 
         });
 
         // ==========================================
@@ -877,48 +1127,61 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                         'Arial, Helvetica, sans-serif': 'Arial (無襯線體)',
                         'Times New Roman, Times, serif': 'Times New Roman (襯線體)'
                     }
-                },
-                file: {
-                    text: '文件上傳 (檔案請保持在 500M 以內)',
-                    tooltip: '上傳任意格式文件'
                 }
             },
             uploader: {
                 url: '?action=upload_icon', 
                 format: 'json',
                 path: 'files',
-                multiple: true,
-                isSuccess: function (resp) { return resp.success === true; },
-                getMessage: function (resp) { return resp.error; },
-                process: function (resp) {
-                    return { files: resp.files || [], error: resp.error, msg: resp.msg };
-                },
-                defaultHandlerSuccess: function (data, resp) {
-                    if (data.files && data.files.length) {
-                        data.files.forEach(fileUrl => {
-                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
-                            
-                            let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
-                            try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
-                            
-                            if (displayFileName.includes('_')) {
-                                const parts = displayFileName.split('_');
-                                if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
-                                    displayFileName = parts.slice(3).join('_');
-                                }
-                            }
+                multiple: false, 
+                isSuccess: function (resp) { return resp.success === true || resp.need_confirm === true; },
+                process: function (resp) { return resp; },
+                defaultHandlerSuccess: function (resp) {
+                    // 🚀【核心修改】：若伺服器已存在同檔名檔案，跳出勾選視窗供使用者確認是否實體覆蓋
+                    if (resp.need_confirm) {
+                        if (confirm(`伺服器上已存在同名檔案 [${resp.filename}]。\n是否確認刪除原來的舊檔並進行覆蓋？（警告：歷史舊檔將被完全移除）`)) {
+                            // 使用者勾選同意覆蓋：重新附帶 overwrite=true 參數進行強制實體刪除與覆蓋
+                            const fileInput = this.files[0]; 
+                            const formData = new FormData();
+                            formData.append('files[]', fileInput);
+                            formData.append('overwrite', 'true');
 
-                            if (isImage) {
-                                this.s.insertImage(fileUrl, null, 200); 
-                            } else {
-                                this.s.insertHTML(`<a href="${fileUrl}" target="_blank" style="color: #0284c7; text-decoration: underline;">📎 下載附件: ${displayFileName}</a>&nbsp;`);
-                            }
-                        });
+                            fetch('?action=upload_icon', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(res => res.json())
+                            .then(retryResp => {
+                                if (retryResp.success) {
+                                    insertUploadedFiles(this.jodit, retryResp.files);
+                                } else {
+                                    alert('檔案覆蓋失敗：' + retryResp.error);
+                                }
+                            });
+                        }
+                        return;
                     }
-                },
-                defaultHandlerError: function (err) { this.alerts.error(err.getMessage()); }
+
+                    if (resp.success && resp.files && resp.files.length) {
+                        insertUploadedFiles(this.jodit, resp.files);
+                    }
+                }
             }
         });
+
+        function insertUploadedFiles(editorInstance, files) {
+            files.forEach(fileUrl => {
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+                let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+                try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
+                
+                if (isImage) {
+                    editorInstance.s.insertImage(fileUrl, null, 200); 
+                } else {
+                    editorInstance.s.insertHTML(`<a href="${fileUrl}" target="_blank" style="color: #0284c7; text-decoration: underline;">📎 下載附件: ${displayFileName}</a>&nbsp;`);
+                }
+            });
+        }
 
         const editorModal = document.getElementById('editorModal');
         const mainContentTextarea = document.getElementById('content');
