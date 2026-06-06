@@ -14,25 +14,21 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 if ($conn->connect_error) {
     die("連線失敗: " . $conn->connect_error);
 }
-// 🚀 關鍵設定：確保與資料庫來回的資料全部使用 utf8mb4，完美支援繁體中文與 Emoji
+// 確保與資料庫來回的資料全部使用 utf8mb4，完美支援繁體中文
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 處理檔案上傳 API -> 【保留原始中文檔名、支援 UTF-8、防重複】
+// 2. 處理檔案上傳 API -> 【保留原始中文檔名、支援 UTF-8】
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
     header('Content-Type: application/json; charset=utf-8');
     
-    // 檢查是否有檔案上傳
     if (!isset($_FILES['files']) || empty($_FILES['files']['name'][0])) {
         echo json_encode(['error' => '請選擇要上傳的檔案']);
         exit;
     }
 
-    // 定義根目錄下的 icon 資料夾路徑
     $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/icon/';
-    
-    // 若資料夾不存在則自動建立
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0755, true);
     }
@@ -41,7 +37,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
     $uploaded_ids = [];
     $errors = [];
 
-    // 使用迴圈處理多個檔案上傳
     foreach ($_FILES['files']['name'] as $index => $original_name) {
         $file_tmp   = $_FILES['files']['tmp_name'][$index];
         $file_size  = $_FILES['files']['size'][$index];
@@ -53,31 +48,21 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
             continue;
         }
 
-        // 🚀 修正點：保留原檔名，僅在前端加上時間隨機碼防止同檔名覆蓋
-        // 例如：原名 "家族合照.jpg" -> 變成 "20260606_153022_64a7b_家族合照.jpg"
+        // 保留原檔名，僅在前端加上時間隨機碼防止同檔名覆蓋
         $safe_original_name = basename($original_name); 
         $new_file_name = date('Ymd_His') . '_' . uniqid() . '_' . $safe_original_name;
-        
-        // 網頁顯示與網址用途的 URL（保持 UTF-8 編碼）
         $web_url = '/icon/' . $new_file_name;
         
-        // 🚀 修正點：針對作業系統可能存在的中文檔名亂碼問題進行防範
-        // 如果伺服器是 Windows，作業系統路徑需要將 UTF-8 轉成 BIG5 才能正常寫入實體檔案
-        // 如果是 Linux (現代普遍預設 UTF-8) 則通常不需轉換，這裡加上判斷確保相容性
+        // 針對 Windows 伺服器進行編碼相容處理，避免實體硬碟出現亂碼
         $disk_file_name = $new_file_name;
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // 將 UTF-8 轉為 Windows 繁體中文常用的 BIG5/CP950，避免實體檔案在資料夾變亂碼
             $disk_file_name = iconv("UTF-8", "BIG5//IGNORE", $new_file_name);
         }
         $target_file_path = $upload_dir . $disk_file_name;
 
-        // 移動檔案至目標目錄
         if (move_uploaded_file($file_tmp, $target_file_path)) {
-            
-            // 🚀 修正點：寫入 files 表，file_name 欄位寫入「最原始乾淨的中文檔名」
+            // 寫入 files 表，file_name 欄位寫入最原始的中文檔名
             $stmt_file = $conn->prepare("INSERT INTO files (file_name, file_path, file_url, file_type, file_size, status, reference_id) VALUES (?, ?, ?, ?, ?, 'active', 0)");
-            
-            // 這裡儲存的 $target_file_path 依然用原本的命名規則，確保資料庫皆為 UTF-8
             $saved_path = $upload_dir . $new_file_name; 
             $stmt_file->bind_param("ssssi", $safe_original_name, $saved_path, $web_url, $file_type, $file_size);
             $stmt_file->execute();
@@ -88,11 +73,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
             $uploaded_urls[] = $web_url;
             $uploaded_ids[] = $new_file_id;
         } else {
-            $errors[] = "檔案 [{$safe_original_name}] 移動失敗，請檢查資料夾寫入權限";
+            $errors[] = "檔案 [{$safe_original_name}] 移動失敗";
         }
     }
 
-    // 回傳 JSON
     if (count($uploaded_urls) > 0) {
         echo json_encode([
             'success' => true,
@@ -107,11 +91,10 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
 }
 
 // ==========================================
-// 3. 提供給前端 AJAX 的 API 接口 (支援姓名與編號的 LIKE 模糊查詢)
+// 3. 提供給前端 AJAX 的 API 接口
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
     $search_keyword = isset($_GET['new_member']) ? trim($_GET['new_member']) : '';
-    
     $members_list = [];
 
     if (!empty($search_keyword)) {
@@ -148,7 +131,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $emperor_shizu = isset($_POST['hidden_shizu']) ? intval($_POST['hidden_shizu']) : 0;
     $generation_val = isset($_POST['hidden_generation']) ? intval($_POST['hidden_generation']) : 0;
     $number_of_houses = isset($_POST['hidden_houses']) ? intval($_POST['hidden_houses']) : 0;
-    
     $new_member_val = isset($_POST['hidden_new_member']) ? trim($_POST['hidden_new_member']) : '0';
     
     $family_members = isset($_POST['familyMember']) ? $_POST['familyMember'] : '';
@@ -158,16 +140,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $conn->begin_transaction();
 
     try {
-        // A. 寫入祈願表
         $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
         $stmt->execute();
         $stmt->close();
 
-        // B. 更新 files 表中的 reference_id 與上傳者資訊 (支援內含有中文名稱的網址比對)
         if (preg_match_all('/\/icon\/([^\s"\'\>]+)/', $message_of_blessing, $matches)) {
             foreach ($matches[1] as $filename_on_url) {
-                // 將可能被網址編碼的中文還原 (例如 %E5%AE%B6 -> 家族)
                 $decoded_filename = urldecode($filename_on_url);
                 $like_url = "%" . $decoded_filename;
                 
@@ -200,17 +179,9 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 $next_id = $max_id + 1;
 
 $wishes_array = [];
-
-$sql_wishes = "SELECT 
-                    w.name, 
-                    w.emperor_shizu, 
-                    w.generation, 
-                    w.number_of_houses, 
-                    w.message_of_blessing
-               FROM makeawish w
-               ORDER BY w.ID DESC LIMIT 50";
-
+$sql_wishes = "SELECT name, emperor_shizu, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
 $result_wishes = $conn->query($sql_wishes);
+
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
         $wishes_array[] = [
@@ -292,7 +263,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .wish-card {
             background: rgba(20, 54, 34, 0.65); border-radius: 6px 6px 12px 12px; padding: 22px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); position: relative; 
-            transition: transform 0.4s, background 0.4s, z-index 0.4s; height: auto; max-height: 460px; 
+            transition: transform 0.4s, background 0.4s, z-index 0.4s; height: auto; max-height: 520px; 
             overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
         }
         .wish-card:hover { transform: scale(1.03) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
@@ -301,11 +272,23 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
         }
 
-        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; flex-grow: 1; display: block; overflow: hidden; }
-        .wish-content > img { display: none !important; }
+        /* 🚀 修正點：卡片內容區樣式調整，允許圖片在原生編輯位置自然顯示，並限制最大寬高 */
+        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; flex-grow: 1; overflow-y: auto; }
+        .wish-content img { 
+            max-width: 100%; 
+            max-height: 180px; 
+            object-fit: contain; 
+            display: inline-block; 
+            margin: 8px 0; 
+            border-radius: 4px; 
+            border: 1px solid rgba(163, 204, 171, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .wish-content img:hover { transform: scale(1.02); }
 
         .wish-file-table {
-            width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 8px;
+            width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 4px;
             background: rgba(0, 0, 0, 0.2); border-radius: 6px; overflow: hidden; font-size: 0.85rem;
         }
         .wish-file-table tr { border-bottom: 1px solid rgba(255, 255, 255, 0.08); transition: background 0.2s; }
@@ -540,51 +523,71 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
         document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
 
-        // 解析文字中的連結與圖片，格式化為一行一行的 Table 輸出
+        // ==========================================
+        // 🚀 核心修正點：解析內容、移除強制置中，改為原位顯示並過濾重複附件
+        // ==========================================
         function parseContentFilesToTable(contentHtml) {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = contentHtml;
 
-            // 抓取內容裡的所有 <a> 標籤與 <img> 標籤
+            // 1. 抓取內容裡所有的 <a> 標籤（通常代表檔案上傳產生的物件）
             const fileLinks = tempDiv.querySelectorAll('a[href*="/icon/"]');
-            const fileImgs = tempDiv.querySelectorAll('img[src*="/icon/"]');
-            
             let filesArray = [];
 
-            // 1. 處理一般文件連結
             fileLinks.forEach(link => {
                 const url = link.getAttribute('href');
                 let name = link.textContent.replace('📎 下載附件:', '').trim();
                 if(!name) {
                     name = url.substring(url.lastIndexOf('/') + 1);
-                    // 嘗試還原網址可能被編碼的中文原名
                     try { name = decodeURIComponent(name); } catch(e) {}
                 }
                 
-                filesArray.push({ type: 'file', url: url, name: name });
-                link.remove(); 
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+                
+                if (isImage) {
+                    // 🚀 修正點：如果是利用「檔案上傳」按鈕上傳的第一張圖片，直接在原位將 <a> 轉為實體 <img> 標籤
+                    const imgTag = document.createElement('img');
+                    imgTag.src = url;
+                    imgTag.alt = name;
+                    imgTag.className = 'card-img-trigger'; // 綁定點擊看大圖
+                    link.parentNode.replaceChild(imgTag, link);
+                    
+                    filesArray.push({ type: 'image', url: url, name: name });
+                } else {
+                    // 一般檔案保持原狀
+                    filesArray.push({ type: 'file', url: url, name: name });
+                }
             });
 
-            // 2. 處理圖片標籤
+            // 2. 抓取現在留在內文中的所有 <img> 標籤 (包含原先富文本自帶的、以及上面剛轉換出來的)
+            const fileImgs = tempDiv.querySelectorAll('img[src*="/icon/"]');
             fileImgs.forEach(img => {
+                img.classList.add('card-img-trigger'); // 確保點擊可以看大圖
                 const url = img.getAttribute('src');
                 let name = url.substring(url.lastIndexOf('/') + 1);
                 try { name = decodeURIComponent(name); } catch(e) {}
-                
-                filesArray.push({ type: 'image', url: url, name: name });
-                img.remove(); 
+
+                // 避免重複計入 filesArray 統計
+                if (!filesArray.some(f => f.url === url)) {
+                    filesArray.push({ type: 'image', url: url, name: name });
+                }
             });
 
-            // 3. 組裝成表格
+            // 🚀 關鍵邏輯：在「下方附件清單」中排除「第一張被偵測到的圖片」
+            const firstImgIndex = filesArray.findIndex(f => f.type === 'image');
+            if (firstImgIndex !== -1) {
+                filesArray.splice(firstImgIndex, 1); // 僅從下方陣列中剔除，內文的圖片仍完整保留在原位！
+            }
+
+            // 3. 組裝剩餘的附加檔案表格（繁體中文防亂碼）
             let tableHtml = '';
             if (filesArray.length > 0) {
                 tableHtml = '<table class="wish-file-table">';
                 filesArray.forEach(file => {
-                    // 去除可能留在檔名前面的隨機混淆碼
                     let displayName = file.name;
+                    // 還原並過濾隨機碼字串，露出真正的乾淨中文檔名
                     if (displayName.includes('_')) {
                         const parts = displayName.split('_');
-                        // 如果前幾段符合隨機生成格式，拿掉前三段 (日期_時間_唯一碼_原檔名)
                         if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
                             displayName = parts.slice(3).join('_');
                         }
@@ -662,7 +665,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 marqueeTrack.appendChild(rowDiv);
             });
             const totalRows = rowsData.length;
-            const speedFactor = 8.5;
+            const speedFactor = 9.5;
             marqueeTrack.style.animationDuration = `${totalRows * speedFactor}s`;            
         }
 
@@ -834,12 +837,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                     if (data.files && data.files.length) {
                         data.files.forEach(fileUrl => {
                             const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
-                            
-                            // 從網址抽取原檔名來顯示
                             let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
                             try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
                             
-                            // 如果含有前綴隨機混淆碼，在畫面上秀出乾淨的原檔名
                             if (displayFileName.includes('_')) {
                                 const parts = displayFileName.split('_');
                                 if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
@@ -878,7 +878,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // 點擊卡片縮圖彈出控制
+        // 點擊卡片縮圖/內文圖片彈出控制
         // ==========================================
         const imgPopupOverlay = document.getElementById('imgPopupOverlay');
         const imgPopupTarget = document.getElementById('imgPopupTarget');
@@ -889,11 +889,14 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const isThumb = e.target.classList.contains('wish-table-thumb');
             const isImgLink = e.target.classList.contains('card-img-trigger');
             
-            if (isThumb || isImgLink) {
+            if (isThumb || isImgLink || e.target.tagName === 'IMG') {
+                // 如果點擊的是附加檔案區的下載連結（非圖片），不觸發彈窗
+                if (e.target.tagName === 'A' && !e.target.classList.contains('card-img-trigger')) return;
+
                 e.preventDefault();
                 e.stopPropagation(); 
                 
-                const imgSrc = isThumb ? e.target.src : e.target.getAttribute('href');
+                const imgSrc = (e.target.tagName === 'IMG') ? e.target.src : e.target.getAttribute('href');
                 
                 imgPopupTarget.src = imgSrc; 
                 imgPopupDownloadBtn.href = imgSrc; 
@@ -909,9 +912,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             setTimeout(() => { imgPopupTarget.src = ''; imgPopupDownloadBtn.href = ''; }, 200); 
         }
 
-        // ==========================================
-        // 即時動態時鐘功能
-        // ==========================================
         function updateClock() {
             const now = new Date();
             const clockEl = document.getElementById('clock');

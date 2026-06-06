@@ -14,18 +14,38 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 if ($conn->connect_error) {
     die("連線失敗: " . $conn->connect_error);
 }
-// 🚀 關鍵設定：確保與資料庫來回的資料全部使用 utf8mb4，完美支援繁體中文與 Emoji
+// 設定編碼為 utf8mb4 避免中文亂碼
 $conn->set_charset("utf8mb4");
 
 // ==========================================
-// 2. 處理檔案上傳 API -> 【保留原始中文檔名、支援 UTF-8、防重複】
+// 2. 處理圖片上傳 API (限制一張，傳至根目錄 icon 資料夾)
 // ==========================================
 if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
-    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Type: application/json');
     
     // 檢查是否有檔案上傳
     if (!isset($_FILES['files']) || empty($_FILES['files']['name'][0])) {
-        echo json_encode(['error' => '請選擇要上傳的檔案']);
+        echo json_encode(['error' => '請選擇要上傳的圖片檔案']);
+        exit;
+    }
+
+    // 限制只能上傳一張圖片（若多選只處理第一張）
+    $file_name = $_FILES['files']['name'][0];
+    $file_tmp  = $_FILES['files']['tmp_name'][0];
+    $file_size = $_FILES['files']['size'][0];
+    $file_error= $_FILES['files']['error'][0];
+
+    if ($file_error !== UPLOAD_ERR_OK) {
+        echo json_encode(['error' => '圖片上傳發生錯誤，代碼：' . $file_error]);
+        exit;
+    }
+
+    // 檢查檔案類型
+    $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+
+    if (!in_array($file_ext, $allowed_extensions)) {
+        echo json_encode(['error' => '只允許上傳 JPG, JPEG, PNG, GIF, WEBP 格式的圖片']);
         exit;
     }
 
@@ -37,71 +57,20 @@ if (isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
         mkdir($upload_dir, 0755, true);
     }
 
-    $uploaded_urls = [];
-    $uploaded_ids = [];
-    $errors = [];
+    // 為避免檔名重複或中文亂碼，重新命名檔案
+    $new_file_name = date('Ymd_His') . '_' . uniqid() . '.' . $file_ext;
+    $target_file_path = $upload_dir . $new_file_name;
 
-    // 使用迴圈處理多個檔案上傳
-    foreach ($_FILES['files']['name'] as $index => $original_name) {
-        $file_tmp   = $_FILES['files']['tmp_name'][$index];
-        $file_size  = $_FILES['files']['size'][$index];
-        $file_error = $_FILES['files']['error'][$index];
-        $file_type  = $_FILES['files']['type'][$index];
-
-        if ($file_error !== UPLOAD_ERR_OK) {
-            $errors[] = "檔案 [{$original_name}] 上傳發生錯誤，代碼：{$file_error}";
-            continue;
-        }
-
-        // 🚀 修正點：保留原檔名，僅在前端加上時間隨機碼防止同檔名覆蓋
-        // 例如：原名 "家族合照.jpg" -> 變成 "20260606_153022_64a7b_家族合照.jpg"
-        $safe_original_name = basename($original_name); 
-        $new_file_name = date('Ymd_His') . '_' . uniqid() . '_' . $safe_original_name;
-        
-        // 網頁顯示與網址用途的 URL（保持 UTF-8 編碼）
-        $web_url = '/icon/' . $new_file_name;
-        
-        // 🚀 修正點：針對作業系統可能存在的中文檔名亂碼問題進行防範
-        // 如果伺服器是 Windows，作業系統路徑需要將 UTF-8 轉成 BIG5 才能正常寫入實體檔案
-        // 如果是 Linux (現代普遍預設 UTF-8) 則通常不需轉換，這裡加上判斷確保相容性
-        $disk_file_name = $new_file_name;
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // 將 UTF-8 轉為 Windows 繁體中文常用的 BIG5/CP950，避免實體檔案在資料夾變亂碼
-            $disk_file_name = iconv("UTF-8", "BIG5//IGNORE", $new_file_name);
-        }
-        $target_file_path = $upload_dir . $disk_file_name;
-
-        // 移動檔案至目標目錄
-        if (move_uploaded_file($file_tmp, $target_file_path)) {
-            
-            // 🚀 修正點：寫入 files 表，file_name 欄位寫入「最原始乾淨的中文檔名」
-            $stmt_file = $conn->prepare("INSERT INTO files (file_name, file_path, file_url, file_type, file_size, status, reference_id) VALUES (?, ?, ?, ?, ?, 'active', 0)");
-            
-            // 這裡儲存的 $target_file_path 依然用原本的命名規則，確保資料庫皆為 UTF-8
-            $saved_path = $upload_dir . $new_file_name; 
-            $stmt_file->bind_param("ssssi", $safe_original_name, $saved_path, $web_url, $file_type, $file_size);
-            $stmt_file->execute();
-            
-            $new_file_id = $stmt_file->insert_id;
-            $stmt_file->close();
-
-            $uploaded_urls[] = $web_url;
-            $uploaded_ids[] = $new_file_id;
-        } else {
-            $errors[] = "檔案 [{$safe_original_name}] 移動失敗，請檢查資料夾寫入權限";
-        }
-    }
-
-    // 回傳 JSON
-    if (count($uploaded_urls) > 0) {
+    // 移動檔案至目標目錄
+    if (move_uploaded_file($file_tmp, $target_file_path)) {
+        // 回傳符合 Jodit 編輯器要求的標準成功 JSON 格式
         echo json_encode([
             'success' => true,
-            'files'   => $uploaded_urls, 
-            'file_ids'=> $uploaded_ids,
-            'msg'     => count($errors) > 0 ? implode(', ', $errors) : '上傳成功'
+            'files'   => [ '/icon/' . $new_file_name ], 
+            'isImages'=> [ true ]
         ]);
     } else {
-        echo json_encode(['error' => implode(', ', $errors)]);
+        echo json_encode(['error' => '檔案移動失敗，請檢查資料夾權限']);
     }
     exit;
 }
@@ -133,13 +102,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_houses') {
         $stmt->close();
     }
     
-    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Type: application/json');
     echo json_encode($members_list);
     exit; 
 }
 
 // ==========================================
-// 4. 處理表單送出：同時寫入 makeawish 與 更新 files 資料表
+// 4. 處理表單送出：寫入 makeawish 資料表
 // ==========================================
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $insert_id = isset($_POST['next_id']) ? intval($_POST['next_id']) : 1;
@@ -149,47 +118,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $generation_val = isset($_POST['hidden_generation']) ? intval($_POST['hidden_generation']) : 0;
     $number_of_houses = isset($_POST['hidden_houses']) ? intval($_POST['hidden_houses']) : 0;
     
-    $new_member_val = isset($_POST['hidden_new_member']) ? trim($_POST['hidden_new_member']) : '0';
-    
     $family_members = isset($_POST['familyMember']) ? $_POST['familyMember'] : '';
     $message_of_blessing = isset($_POST['content']) ? $_POST['content'] : '';
     $login_time = isset($_POST['login_time']) ? $_POST['login_time'] : null; 
 
-    $conn->begin_transaction();
-
-    try {
-        // A. 寫入祈願表
-        $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
-        $stmt->execute();
-        $stmt->close();
-
-        // B. 更新 files 表中的 reference_id 與上傳者資訊 (支援內含有中文名稱的網址比對)
-        if (preg_match_all('/\/icon\/([^\s"\'\>]+)/', $message_of_blessing, $matches)) {
-            foreach ($matches[1] as $filename_on_url) {
-                // 將可能被網址編碼的中文還原 (例如 %E5%AE%B6 -> 家族)
-                $decoded_filename = urldecode($filename_on_url);
-                $like_url = "%" . $decoded_filename;
-                
-                $stmt_update_file = $conn->prepare("UPDATE files SET reference_id = ?, uploaded_id = ?, uploaded_name = ? WHERE file_url LIKE ? AND reference_id = 0");
-                $stmt_update_file->bind_param("isss", $insert_id, $new_member_val, $name, $like_url);
-                $stmt_update_file->execute();
-                $stmt_update_file->close();
-            }
-        }
-
-        $conn->commit();
+    $stmt = $conn->prepare("INSERT INTO makeawish (ID, name, number_of_houses, emperor_shizu, generation, family_members, message_of_blessing, login_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("isiiisss", $insert_id, $name, $number_of_houses, $emperor_shizu, $generation_val, $family_members, $message_of_blessing, $login_time);
+    
+    if ($stmt->execute()) {
         header("Location: " . $_SERVER['PHP_SELF']);
         exit;
-
-    } catch (Exception $e) {
-        $conn->rollback();
-        echo "<script>alert('寫入失敗：" . addslashes($e->getMessage()) . "');</script>";
+    } else {
+        echo "<script>alert('寫入失敗：" . $stmt->error . "');</script>";
     }
+    $stmt->close();
 }
 
 // ==========================================
-// 5. 撈取目前大樹祈願清單
+// 5. 撈取目前資料表 makeawish 的最大 ID 與 跑馬燈清單
 // ==========================================
 $max_id = 0;
 $sql_max = "SELECT MAX(ID) AS max_id FROM makeawish";
@@ -200,16 +146,7 @@ if ($result_max && $row_max = $result_max->fetch_assoc()) {
 $next_id = $max_id + 1;
 
 $wishes_array = [];
-
-$sql_wishes = "SELECT 
-                    w.name, 
-                    w.emperor_shizu, 
-                    w.generation, 
-                    w.number_of_houses, 
-                    w.message_of_blessing
-               FROM makeawish w
-               ORDER BY w.ID DESC LIMIT 50";
-
+$sql_wishes = "SELECT name, emperor_shizu, generation, number_of_houses, message_of_blessing FROM makeawish ORDER BY ID DESC LIMIT 50";
 $result_wishes = $conn->query($sql_wishes);
 if ($result_wishes && $result_wishes->num_rows > 0) {
     while($w_row = $result_wishes->fetch_assoc()) {
@@ -222,8 +159,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     }
 } else {
     $wishes_array = [
-        [ "author" => "1長房大堂哥 國華 (第1大房)", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
-        [ "author" => "2二房 佩芬 (第2大房)", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
+        [ "author" => "1長房大堂哥 國華", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "感念曾祖父當年用一雙長滿繭的手..." ],
+        [ "author" => "2二房 佩芬", "emperor_shizu" => "來台第24世祖", "generation" => "定居大甲第5代", "content" => "小時候總聽阿公說『吃米擔水要思源』..." ]
     ];
 }
 ?>
@@ -288,69 +225,108 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .wish-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; width: 100%; }
         @keyframes scrollUp { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
 
-        /* 卡片主體與表格樣式 */
+        /* 卡片主體樣式 */
         .wish-card {
-            background: rgba(20, 54, 34, 0.65); border-radius: 6px 6px 12px 12px; padding: 22px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); position: relative; 
-            transition: transform 0.4s, background 0.4s, z-index 0.4s; height: auto; max-height: 460px; 
-            overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+            background: rgba(20, 54, 34, 0.65); 
+            border-top: 0px solid #a3ccab; 
+            border-radius: 6px 6px 12px 12px; 
+            padding: 22px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); 
+            backdrop-filter: blur(8px); 
+            position: relative; 
+            transition: transform 0.4s, background 0.4s, z-index 0.4s;
+            height: auto;
+            max-height: 420px; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .wish-card:hover { transform: scale(1.03) !important; background: rgba(20, 54, 34, 0.85); z-index: 50; }
+
         .wish-card::before {
             content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
             width: 10px; height: 10px; background: #f39c12; border-radius: 50%; box-shadow: 0 0 8px #f39c12;
         }
 
-        .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; flex-grow: 1; display: block; overflow: hidden; }
-        .wish-content > img { display: none !important; }
-
-        .wish-file-table {
-            width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 8px;
-            background: rgba(0, 0, 0, 0.2); border-radius: 6px; overflow: hidden; font-size: 0.85rem;
+        /* 內容容器排版 */
+        .wish-content { 
+            font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; 
+            min-height: 65px; flex-grow: 1; display: block; overflow: hidden;
         }
-        .wish-file-table tr { border-bottom: 1px solid rgba(255, 255, 255, 0.08); transition: background 0.2s; }
-        .wish-file-table tr:last-child { border-bottom: none; }
-        .wish-file-table tr:hover { background: rgba(255, 255, 255, 0.05); }
-        .wish-file-table td { padding: 8px 10px; vertical-align: middle; color: #e9e4db; text-align: left; }
-        .wish-file-icon { width: 24px; font-size: 1.1rem; text-align: center; }
-        .wish-file-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .wish-file-name a { color: #a3ccab; text-decoration: none; font-weight: 500; }
-        .wish-file-name a:hover { color: #f39c12; text-decoration: underline; }
         
-        .wish-table-thumb {
-            width: 42px; height: 32px; object-fit: cover; border-radius: 3px; 
-            cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); transition: transform 0.2s;
+        /* 大圖才限制在卡片尺寸的一半 (50%)，小圖不縮小也不拉大 */
+        .wish-content img {
+            max-width: 50% !important;
+            max-height: 140px !important; 
+            display: inline-block !important;
+            margin-top: 8px;
+            border-radius: 4px;
+            cursor: pointer !important;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s, border-color 0.2s;
         }
-        .wish-table-thumb:hover { transform: scale(1.1); border-color: #f39c12; }
+        .wish-content img:hover {
+            transform: scale(1.03);
+            border-color: #f39c12;
+        }
 
-        /* 大圖彈出視窗 */
+        /* 點擊圖片彈出獨立層 */
         .img-click-popup-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
-            z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.25s ease;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
+            z-index: 99999; display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.25s ease;
         }
         .img-click-popup-overlay.active { display: flex; opacity: 1; }
+        
         .img-popup-container {
-            position: relative; max-width: 90%; max-height: 85%; background: rgba(10, 31, 20, 0.95); padding: 12px;
-            border: 2px solid #a3ccab; border-radius: 8px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); animation: zoomInQuick 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative; max-width: 90%; max-height: 85%;
+            background: rgba(10, 31, 20, 0.95); padding: 12px;
+            border: 2px solid #a3ccab; border-radius: 8px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            animation: zoomInQuick 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .img-popup-container img { max-width: 100%; max-height: 75vh; display: block; object-fit: contain; border-radius: 4px; background: #000; }
-        .img-popup-action-group { position: absolute; top: -18px; right: -18px; display: flex; gap: 8px; z-index: 100001; }
+        .img-popup-container img {
+            max-width: 100%; max-height: 75vh; display: block; 
+            object-fit: contain; border-radius: 4px; background: #000;
+        }
+        
+        /* 彈出層右上角控制按鈕群組容器 */
+        .img-popup-action-group {
+            position: absolute; top: -18px; right: -18px;
+            display: flex; gap: 8px; z-index: 100001;
+        }
+
+        /* 彈出層右上打叉與下載按鈕共同基礎樣式 */
         .img-popup-btn {
-            width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; font-size: 16px; font-weight: bold; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
+            width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff;
+            border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
         }
+        
+        /* 下載按鈕特別顏色 (綠色底) */
         .img-popup-download-btn { background: #407a52; font-size: 18px; }
         .img-popup-download-btn:hover { background: #2d5a3a; transform: scale(1.1); }
+
+        /* 打叉關閉按鈕特別顏色 (紅色底) */
         .img-popup-close-btn { background: #e63946; font-size: 20px; }
         .img-popup-close-btn:hover { background: #d62828; transform: scale(1.1) rotate(90deg); }
 
-        @keyframes zoomInQuick { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+        @keyframes zoomInQuick {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
 
         .wish-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-top: 1px dashed rgba(255, 255, 255, 0.2); padding-top: 10px; }
         .wish-author { font-weight: bold; color: #f39c12; }
-        .wish-generation { background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .wish-generation { 
+            background-color: rgba(163, 204, 171, 0.2); color: #a3ccab; 
+            padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; 
+        }
 
-        /* 右側輸入視窗 */
+        /* ================= 右側浮動式輸入視窗 ================= */
         .sidebar {
             position: fixed; top: 0; right: -100%; width: 32%; min-width: 350px; max-width: 440px; height: 100vh;
             background: rgba(10, 31, 20, 0.95); backdrop-filter: blur(20px); padding: 50px 30px; display: flex; flex-direction: column;
@@ -362,6 +338,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         .counter-box { font-size: 1rem; background: rgba(163, 204, 171, 0.1); padding: 8px 15px; border-radius: 8px; text-align: center; color: #a3ccab; font-weight: bold; margin-bottom: 15px; border: 1px solid rgba(163, 204, 171, 0.2); }
         .counter-box span { font-size: 1.4rem; color: #f39c12; margin: 0 4px; }
+
         .form-title { font-size: 1.4rem; color: #a3ccab; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #a3ccab; padding-bottom: 10px; }
         .form-group { margin-bottom: 18px; }
         label { display: block; font-size: 0.95rem; margin-bottom: 8px; color: #cbd5e1; font-weight: bold; }
@@ -370,9 +347,12 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; font-family: inherit; font-size: 1rem; background-color: rgba(5, 15, 10, 0.7); color: #e9e4db; transition: all 0.3s; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #a3ccab; box-shadow: 0 0 8px rgba(163, 204, 171, 0.3); }
         textarea { resize: none; height: 150px; }
+        
         select:disabled { background-color: rgba(30, 45, 35, 0.8); color: #a3ccab; cursor: not-allowed; border-color: rgba(163, 204, 171, 0.4); }
 
-        .member-select-wrapper { background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(163, 204, 171, 0.4); border-radius: 8px; padding: 10px; margin-top: 10px; display: none; max-height: 160px; overflow-y: auto; }
+        .member-select-wrapper {
+            background: rgba(0, 0, 0, 0.3); border: 1px dashed rgba(163, 204, 171, 0.4); border-radius: 8px; padding: 10px; margin-top: 10px; display: none; max-height: 160px; overflow-y: auto;
+        }
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; cursor: pointer; }
         .member-item:last-child { border-bottom: none; }
         .member-item input[type="checkbox"] { width: auto; cursor: pointer; margin-right: 5px; }
@@ -380,6 +360,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .submit-btn { width: 100%; background: linear-gradient(135deg, #407a52, #143622); color: #e9e4db; border: none; padding: 14px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s; margin-top: 5px; margin-bottom: 20px; }
         .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3); }
         .sidebar-footer { font-size: 0.85rem; color: #94a3b8; text-align: center; }
+
+        .sidebar-footer a { color: #cbd5e1; text-decoration: none; }
+
         .highlight-val { color: #f39c12; font-weight: bold; margin: 0 3px; }
 
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -388,16 +371,31 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             .open-sidebar-btn { position: static; margin-bottom: 15px; display: block; }
             .scroll-container { height: 50vh; }
         }
+
         .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
 
-        /* Jodit 編輯器樣式彈出視窗 */
-        .editor-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px); z-index: 200; display: none; align-items: center; justify-content: center; }
+        /* ================= Jodit 編輯器彈出視窗 ================= */
+        .editor-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 32, 39, 0.7); backdrop-filter: blur(5px);
+            z-index: 200; display: none; align-items: center; justify-content: center;
+        }
         .editor-modal-overlay.active { display: flex; }
-        .editor-modal-content { background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25); width: 90%; height: 90%; max-width: 95vw; max-height: 95vh; }
-        .editor-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #bae6fd; padding-bottom: 10px; }
+        
+        /* 🛠️ 修正：將寬度與高度皆改為 90%，並調整內距與最大範圍限制 */
+        .editor-modal-content {
+            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 20px; 
+            display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            width: 90%; height: 90%; max-width: 95vw; max-height: 95vh;
+        }
+        .editor-modal-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
+            border-bottom: 2px solid #bae6fd; padding-bottom: 10px;
+        }
         .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; }
         .editor-modal-close { background: transparent; border: none; color: #64748b; font-size: 1.8rem; cursor: pointer; }
         
+        /* 🛠️ 修正：確保內容框架能充實佔滿 90% 視窗中的剩餘縱向高度 */
         .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; height: 100%; }
         .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
         .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
@@ -408,23 +406,93 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
         .jodit-toolbar-button__icon { fill: #1e293b !important; }
         .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
+        
         .expand-link { font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal; }
         .expand-link:hover { color: #ffd166; }
 
-        .jodit-wysiwyg { color: #000000; }
-        .jodit-wysiwyg a { text-decoration: underline !important; }
-        .jodit-source__textarea, .jodit-src, .jodit-source, .jodit-source__textarea textarea { color: #000000 !important; background-color: #ffffff !important; background: #ffffff !important; text-shadow: none !important; }
-        .jodit-container .ace_editor { background-color: #ffffff !important; }
-        .jodit-container .ace_editor .ace_scroller { background-color: #ffffff !important; }
-        .jodit-container .ace_editor * { text-shadow: none !important; background-color: transparent !important; }
-        .jodit-container .ace_editor .ace_text-layer { color: #000000 !important; }
+        /* ==========================================================
+           優化功能選單配色，移除非必要的全局文字顏色鎖定，還原塗色功能
+           ========================================================== */
+        
+        /* 1. 編輯器主編輯區：移除對所有子元件 (*) 的顏色限制，允許 Inline Style (顏色修改) 生效 */
+        .jodit-wysiwyg {
+            color: #000000; /* 只設在最外層作為基本預設色 */
+        }
+        .jodit-wysiwyg a {
+            text-decoration: underline !important;
+        }
 
-        .jodit-popup, .jodit-popup__content, .jodit-popup__container, .jodit-dialog, .jodit-dialog__box, .jodit-dialog__content, .jodit-dialog__header, .jodit-dialog__footer, .jodit-toolbar-list, .jodit-properties, .jodit-ui-form { background-color: #e0f2fe !important; color: #0f172a !important; border-color: #7dd3fc !important; }
-        .jodit-popup__content *, .jodit-toolbar-list *, .jodit-toolbar-button, .jodit-toolbar-list .jodit-toolbar-button__text { color: #000000 !important; }
-        .jodit-popup__content .jodit-colorpicker * { color: inherit !important; }
-        .jodit-nav-button:hover, .jodit-toolbar-button:hover, .jodit-popup__content .jodit-toolbar-button:hover { background-color: #bae6fd !important; }
-        .jodit-dialog input, .jodit-dialog select, .jodit-dialog textarea, .jodit-popup input, .jodit-popup select, .jodit-popup textarea, .jodit-ui-form input, .jodit-ui-form select, .jodit-ui-form textarea, .jproperties input, .jodit-properties select, .jodit-properties textarea { color: #000000 !important; background-color: #f0f9ff !important; border: 1px solid #7dd3fc !important; }
-        .jodit-ui-form label, .jodit-ui-label, .jodit-dialog__content label, .jodit-dialog__content .jodit-ui-label { color: #1e3a8a !important; font-weight: bold !important; }
+        /* 2. 原始碼模式文字 */
+        .jodit-source__textarea,
+        .jodit-src,
+        .jodit-source * {
+            color: #000000 !important;
+            background-color: #f8fafc !important;
+        }
+
+        /* 3. 所有下拉選單與對話框背景全部改成舒適的【淺藍色】 */
+        .jodit-popup,
+        .jodit-popup__content,
+        .jodit-popup__container,
+        .jodit-dialog,
+        .jodit-dialog__box,
+        .jodit-dialog__content,
+        .jodit-dialog__header,
+        .jodit-dialog__footer,
+        .jodit-toolbar-list,
+        .jodit-properties,
+        .jodit-ui-form {
+            background-color: #e0f2fe !important;  
+            color: #0f172a !important;            
+            border-color: #7dd3fc !important;     
+        }
+
+        /* 4. 下拉選單中項目與文字（如字型、大小選單內） */
+        .jodit-popup__content *,
+        .jodit-toolbar-list *,
+        .jodit-toolbar-button,
+        .jodit-toolbar-list .jodit-toolbar-button__text {
+            color: #000000 !important;            
+        }
+
+        /* 特別排除：修正點選「畫筆/調色盤」功能時，彈出的色彩色塊（Color Picker）文字與線條設定，避免色塊壞掉 */
+        .jodit-popup__content .jodit-colorpicker * {
+            color: inherit !important; 
+        }
+
+        /* 滑鼠移過去功能項目的時候，呈現更明顯的藍色高亮效果 */
+        .jodit-nav-button:hover,
+        .jodit-toolbar-button:hover,
+        .jodit-popup__content .jodit-toolbar-button:hover {
+            background-color: #bae6fd !important;  
+        }
+
+        /* 5. 对话框（如超連結屬性、表格設定）裡面的 input 輸入框 */
+        .jodit-dialog input,
+        .jodit-dialog select,
+        .jodit-dialog textarea,
+        .jodit-popup input,
+        .jodit-popup select,
+        .jodit-popup textarea,
+        .jodit-ui-form input,
+        .jodit-ui-form select,
+        .jodit-ui-form textarea,
+        .jodit-properties input,
+        .jodit-properties select,
+        .jodit-properties textarea {
+            color: #000000 !important;            
+            background-color: #f0f9ff !important;  
+            border: 1px solid #7dd3fc !important;  
+        }
+
+        /* 6. 功能彈出層內的欄位標籤提示文字（例如 URL, Text 等標題） */
+        .jodit-ui-form label,
+        .jodit-ui-label,
+        .jodit-dialog__content label,
+        .jodit-dialog__content .jodit-ui-label {
+            color: #1e3a8a !important;            
+            font-weight: bold !important;
+        }
     </style>
 </head>
 <body>
@@ -469,7 +537,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             <input type="hidden" id="hidden_shizu" name="hidden_shizu" value="0">
             <input type="hidden" id="hidden_generation" name="hidden_generation" value="0">
             <input type="hidden" id="hidden_houses" name="hidden_houses" value="0">
-            <input type="hidden" id="hidden_new_member" name="hidden_new_member" value="0">
             <input type="hidden" id="login_time" name="login_time" value="">
 
             <div class="form-group">
@@ -486,7 +553,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
             <div class="form-group">
                 <label for="familyMember">家庭成員</label>
-                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家(需寫出完整姓名或家庭稱謂)" required>
+                <input type="text" id="familyMember" name="familyMember" placeholder="本人或全家或2男1女或大姑小舊等稱呼" required>
             </div>
 
             <div class="form-group">
@@ -518,7 +585,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     <div class="editor-modal-overlay" id="editorModal">
         <div class="editor-modal-content">
             <div class="editor-modal-header">
-                <div class="editor-modal-title">🌿 祈願話語進階編輯 (可批次上傳多個、不限格式檔案)</div>
+                <div class="editor-modal-title">🌿 祈願話語進階編輯 (可於編輯器內上傳圖片、點圖調整長寬尺寸)</div>
                 <button class="editor-modal-close" id="closeEditorBtn">&times;</button>
             </div>
             <div class="editor-container-box">
@@ -538,81 +605,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         const sidebar = document.getElementById('sidebar');
 
         document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
-        document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
-
-        // 解析文字中的連結與圖片，格式化為一行一行的 Table 輸出
-        function parseContentFilesToTable(contentHtml) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = contentHtml;
-
-            // 抓取內容裡的所有 <a> 標籤與 <img> 標籤
-            const fileLinks = tempDiv.querySelectorAll('a[href*="/icon/"]');
-            const fileImgs = tempDiv.querySelectorAll('img[src*="/icon/"]');
-            
-            let filesArray = [];
-
-            // 1. 處理一般文件連結
-            fileLinks.forEach(link => {
-                const url = link.getAttribute('href');
-                let name = link.textContent.replace('📎 下載附件:', '').trim();
-                if(!name) {
-                    name = url.substring(url.lastIndexOf('/') + 1);
-                    // 嘗試還原網址可能被編碼的中文原名
-                    try { name = decodeURIComponent(name); } catch(e) {}
-                }
-                
-                filesArray.push({ type: 'file', url: url, name: name });
-                link.remove(); 
-            });
-
-            // 2. 處理圖片標籤
-            fileImgs.forEach(img => {
-                const url = img.getAttribute('src');
-                let name = url.substring(url.lastIndexOf('/') + 1);
-                try { name = decodeURIComponent(name); } catch(e) {}
-                
-                filesArray.push({ type: 'image', url: url, name: name });
-                img.remove(); 
-            });
-
-            // 3. 組裝成表格
-            let tableHtml = '';
-            if (filesArray.length > 0) {
-                tableHtml = '<table class="wish-file-table">';
-                filesArray.forEach(file => {
-                    // 去除可能留在檔名前面的隨機混淆碼
-                    let displayName = file.name;
-                    if (displayName.includes('_')) {
-                        const parts = displayName.split('_');
-                        // 如果前幾段符合隨機生成格式，拿掉前三段 (日期_時間_唯一碼_原檔名)
-                        if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
-                            displayName = parts.slice(3).join('_');
-                        }
-                    }
-
-                    if (file.type === 'image') {
-                        tableHtml += `
-                            <tr>
-                                <td class="wish-file-icon">🖼️</td>
-                                <td class="wish-file-name"><a href="${file.url}" class="card-img-trigger" target="_blank">${displayName}</a></td>
-                                <td style="text-align: right; width: 60px;"><img src="${file.url}" class="wish-table-thumb" alt="縮圖"></td>
-                            </tr>`;
-                    } else {
-                        tableHtml += `
-                            <tr>
-                                <td class="wish-file-icon">📎</td>
-                                <td class="wish-file-name" colspan="2"><a href="${file.url}" target="_blank">下載附件: ${displayName}</a></td>
-                            </tr>`;
-                    }
-                });
-                tableHtml += '</table>';
-            }
-
-            return {
-                cleanHtml: tempDiv.innerHTML,
-                tableHtml: tableHtml
-            };
-        }
+        document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.remove('active'));
 
         function createCardNode(wish) {
             const card = document.createElement('div');
@@ -620,13 +613,8 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const randomRotate = (Math.random() * 4 - 2).toFixed(1);
             card.style.transform = `rotate(${randomRotate}deg)`;
             
-            const parsed = parseContentFilesToTable(wish.content);
-
             card.innerHTML = `
-                <div class="wish-content">
-                    <div>${parsed.cleanHtml}</div>
-                    ${parsed.tableHtml}
-                </div>
+                <div class="wish-content">${wish.content}</div>
                 <div class="wish-meta">
                     <span class="wish-author">${wish.author}</span>
                     <span class="wish-generation">${wish.emperor_shizu}&emsp;${wish.generation}</span>
@@ -750,7 +738,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('hidden_shizu').value = dataset.shizu;
             document.getElementById('hidden_generation').value = dataset.gen;
             document.getElementById('hidden_houses').value = dataset.houses;
-            document.getElementById('hidden_new_member').value = dataset.new_member;
             
             const genSelect = document.getElementById('generation');
             if(genSelect.querySelector(`option[value="${dataset.shizu}"]`)){
@@ -772,7 +759,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             document.getElementById('hidden_shizu').value = 0;
             document.getElementById('hidden_generation').value = 0;
             document.getElementById('hidden_houses').value = 0;
-            document.getElementById('hidden_new_member').value = 0;
 
             const genSelect = document.getElementById('generation');
             genSelect.disabled = false;
@@ -794,16 +780,29 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         // Jodit 編輯器配置
         // ==========================================
         const fullFreeButtons = [
-            'source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|',
-            'superscript', 'subscript', '|', 'ul', 'ol', '|',
-            'outdent', 'indent', '|', 'font', 'fontsize', 'brush', 'paragraph', '|',
-            'image', 'file', 'video', 'table', 'link', '|', 'align', 'undo', 'redo', '|',
-            'hr', 'eraser', 'copyformat', '|', 'symbol', 'print', 'about'
+            'source', '|',
+            'bold', 'strikethrough', 'underline', 'italic', '|',
+            'superscript', 'subscript', '|',
+            'ul', 'ol', '|',
+            'outdent', 'indent', '|',
+            'font', 'fontsize', 'brush', 'paragraph', '|',
+            'image', 'file', 'video', 'table', 'link', '|',
+            'align', 'undo', 'redo', '|',
+            'hr', 'eraser', 'copyformat', '|',
+            'symbol', 'print', 'about'
         ];
 
         const joditEditor = new Jodit('#joditEditorTarget', {
-            buttons: fullFreeButtons, buttonsMD: fullFreeButtons, buttonsSM: fullFreeButtons, buttonsXS: fullFreeButtons, 
-            disablePlugins: [], height: '100%', language: 'zh_tw', style: { color: '#000000' },
+            buttons: fullFreeButtons,
+            buttonsMD: fullFreeButtons, 
+            buttonsSM: fullFreeButtons, 
+            buttonsXS: fullFreeButtons, 
+            disablePlugins: [], 
+            height: '100%',
+            language: 'zh_tw',
+            style: {
+                color: '#000000'
+            },
             controls: {
                 font: {
                     list: {
@@ -811,20 +810,19 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                         'PMingLiU, serif': '新細明體',
                         'DFKai-SB, serif': '標楷體',
                         'PingFang TC, sans-serif': '蘋方體 (Mac)',
+                        'Apple LiGothic, sans-serif': '蘋果儷中黑 (Mac)',
                         'Arial, Helvetica, sans-serif': 'Arial (無襯線體)',
-                        'Times New Roman, Times, serif': 'Times New Roman (襯線體)'
+                        'Times New Roman, Times, serif': 'Times New Roman (襯線體)',
+                        'Courier New, Courier, monospace': 'Courier New (等寬體)',
+                        'Comic Sans MS, cursive': 'Comic Sans MS',
+                        'Impact, Charcoal, sans-serif': 'Impact (粗體英)'
                     }
-                },
-                file: {
-                    text: '文件上傳 (檔案請保持在 500M 以內)',
-                    tooltip: '上傳任意格式文件'
                 }
             },
             uploader: {
                 url: '?action=upload_icon', 
                 format: 'json',
                 path: 'files',
-                multiple: true,
                 isSuccess: function (resp) { return resp.success === true; },
                 getMessage: function (resp) { return resp.error; },
                 process: function (resp) {
@@ -832,27 +830,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 },
                 defaultHandlerSuccess: function (data, resp) {
                     if (data.files && data.files.length) {
-                        data.files.forEach(fileUrl => {
-                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
-                            
-                            // 從網址抽取原檔名來顯示
-                            let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
-                            try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
-                            
-                            // 如果含有前綴隨機混淆碼，在畫面上秀出乾淨的原檔名
-                            if (displayFileName.includes('_')) {
-                                const parts = displayFileName.split('_');
-                                if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
-                                    displayFileName = parts.slice(3).join('_');
-                                }
-                            }
-
-                            if (isImage) {
-                                this.s.insertImage(fileUrl, null, 200); 
-                            } else {
-                                this.s.insertHTML(`<a href="${fileUrl}" target="_blank" style="color: #0284c7; text-decoration: underline;">📎 下載附件: ${displayFileName}</a>&nbsp;`);
-                            }
-                        });
+                        this.s.insertImage(data.files[0], null, 200); 
                     }
                 },
                 defaultHandlerError: function (err) { this.alerts.error(err.getMessage()); }
@@ -878,7 +856,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // 點擊卡片縮圖彈出控制
+        // 用滑鼠點擊卡片內圖片後打開新視窗控制
         // ==========================================
         const imgPopupOverlay = document.getElementById('imgPopupOverlay');
         const imgPopupTarget = document.getElementById('imgPopupTarget');
@@ -886,27 +864,29 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         const imgPopupDownloadBtn = document.getElementById('imgPopupDownloadBtn'); 
 
         marqueeTrack.addEventListener('click', function(e) {
-            const isThumb = e.target.classList.contains('wish-table-thumb');
-            const isImgLink = e.target.classList.contains('card-img-trigger');
-            
-            if (isThumb || isImgLink) {
+            if (e.target.tagName === 'IMG') {
                 e.preventDefault();
                 e.stopPropagation(); 
-                
-                const imgSrc = isThumb ? e.target.src : e.target.getAttribute('href');
-                
-                imgPopupTarget.src = imgSrc; 
-                imgPopupDownloadBtn.href = imgSrc; 
+                imgPopupTarget.src = e.target.src; 
+                imgPopupDownloadBtn.href = e.target.src; 
                 imgPopupOverlay.classList.add('active'); 
             }
         });
 
         imgPopupCloseBtn.addEventListener('click', closeImagePopup);
-        imgPopupOverlay.addEventListener('click', function(e) { if (e.target === imgPopupOverlay) closeImagePopup(); });
+
+        imgPopupOverlay.addEventListener('click', function(e) {
+            if (e.target === imgPopupOverlay) {
+                closeImagePopup();
+            }
+        });
 
         function closeImagePopup() {
             imgPopupOverlay.classList.remove('active');
-            setTimeout(() => { imgPopupTarget.src = ''; imgPopupDownloadBtn.href = ''; }, 200); 
+            setTimeout(() => { 
+                imgPopupTarget.src = ''; 
+                imgPopupDownloadBtn.href = ''; 
+            }, 200); 
         }
 
         // ==========================================
@@ -914,13 +894,23 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         // ==========================================
         function updateClock() {
             const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1; 
+            const date = now.getDate();        
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const fullDateTimeString = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
             const clockEl = document.getElementById('clock');
-            if(clockEl) clockEl.textContent = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            if(clockEl) clockEl.textContent = fullDateTimeString;
         }
         setInterval(updateClock, 1000);
 
         window.addEventListener('resize', renderMarquee);
-        window.addEventListener('DOMContentLoaded', () => { renderMarquee(); updateClock(); });
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMarquee();
+            updateClock();
+        });
     </script>
 </body>
 </html>
