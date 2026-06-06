@@ -389,6 +389,28 @@ class="c-main-navbar navbar navbar-default navbar-fixed-top fixed-top navbar-exp
                  └───────────────┘
 
 
++-------------------+----------------+--------------------------------+
+| 英文欄位名稱       | 中文對照       | 使用情境                       |
++-------------------+----------------+--------------------------------+
+| file_id           | 檔案編號       | 主鍵，唯一識別檔案              |
+| file_name         | 檔案名稱       | 原始檔案名稱                    |
+| file_path         | 檔案路徑       | 伺服器儲存位置                  |
+| file_url          | 檔案網址       | 提供下載或存取的 URL            |
+| file_type         | 檔案類型       | MIME 類型 (image/png, pdf...)   |
+| file_size         | 檔案大小       | 以位元組 (bytes) 記錄           |
+| upload_date       | 上傳日期       | 檔案上傳的時間戳記              |
+| uploaded_by       | 上傳者         | 使用者 ID 或名稱                |
+| description       | 檔案描述       | 檔案的文字說明                  |
+| status            | 狀態           | 是否啟用、刪除、封存            |
+| checksum          | 校驗碼         | MD5/SHA1 用於檔案完整性驗證     |
+| reference_id      | 參考編號       | 關聯到其他資料表 (如文章ID)     |
+| version           | 版本           | 檔案版本控制                    |
+| is_public         | 是否公開       | 0=私有, 1=公開                  |
++-------------------+----------------+--------------------------------+
+
+
+
+
 ✨ 關聯說明
     LEE_members 是核心表，其他表透過 member_id 外鍵連結。
     LEE_genealogy 使用自關聯 (parent_id) 表示家族世系。
