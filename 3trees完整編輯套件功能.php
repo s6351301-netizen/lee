@@ -292,7 +292,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             object-fit: contain; border-radius: 4px; background: #000;
         }
         
-        /* 彈出層右上角控制按鈕群組容器 */
+        /* 🛠️ 新增：彈出層右上角控制按鈕群組容器 */
         .img-popup-action-group {
             position: absolute; top: -18px; right: -18px;
             display: flex; gap: 8px; z-index: 100001;
@@ -306,7 +306,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: background 0.2s, transform 0.2s;
         }
         
-        /* 下載按鈕特別顏色 (綠色底) */
+        /* 🛠️ 新增：下載按鈕特別顏色 (綠色底) */
         .img-popup-download-btn { background: #407a52; font-size: 18px; }
         .img-popup-download-btn:hover { background: #2d5a3a; transform: scale(1.1); }
 
@@ -361,8 +361,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(163, 204, 171, 0.3); }
         .sidebar-footer { font-size: 0.85rem; color: #94a3b8; text-align: center; }
 
-        .sidebar-footer a { color: #cbd5e1; text-decoration: none; }
-
         .highlight-val { color: #f39c12; font-weight: bold; margin: 0 3px; }
 
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -373,6 +371,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
 
         .marquee-input { width: 300px; padding: 10px; font-size: 16px; overflow: hidden; white-space: nowrap; }
+        .marquee-input::-webkit-input-placeholder { animation: marquee 12s linear infinite; }
+        @keyframes marquee { 0% { text-indent: 100%; } 100% { text-indent: -130%; } }
+        .marquee-input:focus::-webkit-input-placeholder { animation: none; text-indent: 0; }
 
         /* ================= Jodit 編輯器彈出視窗 ================= */
         .editor-modal-overlay {
@@ -381,12 +382,10 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             z-index: 200; display: none; align-items: center; justify-content: center;
         }
         .editor-modal-overlay.active { display: flex; }
-        
-        /* 🛠️ 修正：將寬度與高度皆改為 90%，並調整內距與最大範圍限制 */
         .editor-modal-content {
-            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 20px; 
+            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 25px; 
             display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-            width: 90%; height: 90%; max-width: 95vw; max-height: 95vh;
+            width: 80%; height: 80%; max-width: 1200px; max-height: 800px;
         }
         .editor-modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
@@ -394,105 +393,20 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; }
         .editor-modal-close { background: transparent; border: none; color: #64748b; font-size: 1.8rem; cursor: pointer; }
-        
-        /* 🛠️ 修正：確保內容框架能充實佔滿 90% 視窗中的剩餘縱向高度 */
-        .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; height: 100%; }
+        .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; }
         .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
         .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
         .modal-btn-cancel { background: #94a3b8; color: #ffffff; }
         .modal-btn-submit { background: #0284c7; color: #ffffff; }
 
-        .jodit-container { background: #f0fdf4 !important; color: #000000 !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
+        .jodit-container { background: #f0fdf4 !important; color: #0f172a !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
+        .jodit-wysiwyg { background: #f0fdf4 !important; color: #0f172a !important; }
         .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
         .jodit-toolbar-button__icon { fill: #1e293b !important; }
         .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
         
         .expand-link { font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal; }
         .expand-link:hover { color: #ffd166; }
-
-        /* ==========================================================
-           優化功能選單配色，移除非必要的全局文字顏色鎖定，還原塗色功能
-           ========================================================== */
-        
-        /* 1. 編輯器主編輯區：移除對所有子元件 (*) 的顏色限制，允許 Inline Style (顏色修改) 生效 */
-        .jodit-wysiwyg {
-            color: #000000; /* 只設在最外層作為基本預設色 */
-        }
-        .jodit-wysiwyg a {
-            text-decoration: underline !important;
-        }
-
-        /* 2. 原始碼模式文字 */
-        .jodit-source__textarea,
-        .jodit-src,
-        .jodit-source * {
-            color: #000000 !important;
-            background-color: #f8fafc !important;
-        }
-
-        /* 3. 所有下拉選單與對話框背景全部改成舒適的【淺藍色】 */
-        .jodit-popup,
-        .jodit-popup__content,
-        .jodit-popup__container,
-        .jodit-dialog,
-        .jodit-dialog__box,
-        .jodit-dialog__content,
-        .jodit-dialog__header,
-        .jodit-dialog__footer,
-        .jodit-toolbar-list,
-        .jodit-properties,
-        .jodit-ui-form {
-            background-color: #e0f2fe !important;  
-            color: #0f172a !important;            
-            border-color: #7dd3fc !important;     
-        }
-
-        /* 4. 下拉選單中項目與文字（如字型、大小選單內） */
-        .jodit-popup__content *,
-        .jodit-toolbar-list *,
-        .jodit-toolbar-button,
-        .jodit-toolbar-list .jodit-toolbar-button__text {
-            color: #000000 !important;            
-        }
-
-        /* 特別排除：修正點選「畫筆/調色盤」功能時，彈出的色彩色塊（Color Picker）文字與線條設定，避免色塊壞掉 */
-        .jodit-popup__content .jodit-colorpicker * {
-            color: inherit !important; 
-        }
-
-        /* 滑鼠移過去功能項目的時候，呈現更明顯的藍色高亮效果 */
-        .jodit-nav-button:hover,
-        .jodit-toolbar-button:hover,
-        .jodit-popup__content .jodit-toolbar-button:hover {
-            background-color: #bae6fd !important;  
-        }
-
-        /* 5. 对话框（如超連結屬性、表格設定）裡面的 input 輸入框 */
-        .jodit-dialog input,
-        .jodit-dialog select,
-        .jodit-dialog textarea,
-        .jodit-popup input,
-        .jodit-popup select,
-        .jodit-popup textarea,
-        .jodit-ui-form input,
-        .jodit-ui-form select,
-        .jodit-ui-form textarea,
-        .jodit-properties input,
-        .jodit-properties select,
-        .jodit-properties textarea {
-            color: #000000 !important;            
-            background-color: #f0f9ff !important;  
-            border: 1px solid #7dd3fc !important;  
-        }
-
-        /* 6. 功能彈出層內的欄位標籤提示文字（例如 URL, Text 等標題） */
-        .jodit-ui-form label,
-        .jodit-ui-label,
-        .jodit-dialog__content label,
-        .jodit-dialog__content .jodit-ui-label {
-            color: #1e3a8a !important;            
-            font-weight: bold !important;
-        }
     </style>
 </head>
 <body>
@@ -605,7 +519,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         const sidebar = document.getElementById('sidebar');
 
         document.getElementById('openSidebarBtn').addEventListener('click', () => sidebar.classList.add('active'));
-        document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.remove('active'));
+        document.getElementById('closeSidebarBtn').addEventListener('click', () => sidebar.classList.remove('active'));
 
         function createCardNode(wish) {
             const card = document.createElement('div');
@@ -777,7 +691,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // Jodit 編輯器配置
+        // Jodit 編輯器配置 (已調整為免費版全部功能按鈕)
         // ==========================================
         const fullFreeButtons = [
             'source', '|',
@@ -789,7 +703,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             'image', 'file', 'video', 'table', 'link', '|',
             'align', 'undo', 'redo', '|',
             'hr', 'eraser', 'copyformat', '|',
-            'symbol', 'print', 'about'
+            'symbol', 'fullsize', 'print', 'about'
         ];
 
         const joditEditor = new Jodit('#joditEditorTarget', {
@@ -797,28 +711,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             buttonsMD: fullFreeButtons, 
             buttonsSM: fullFreeButtons, 
             buttonsXS: fullFreeButtons, 
-            disablePlugins: [], 
+            disablePlugins: [], // 移除原本的禁用限制，解鎖完整功能
             height: '100%',
             language: 'zh_tw',
-            style: {
-                color: '#000000'
-            },
-            controls: {
-                font: {
-                    list: {
-                        'Microsoft JhengHei, sans-serif': '微軟正黑體',
-                        'PMingLiU, serif': '新細明體',
-                        'DFKai-SB, serif': '標楷體',
-                        'PingFang TC, sans-serif': '蘋方體 (Mac)',
-                        'Apple LiGothic, sans-serif': '蘋果儷中黑 (Mac)',
-                        'Arial, Helvetica, sans-serif': 'Arial (無襯線體)',
-                        'Times New Roman, Times, serif': 'Times New Roman (襯線體)',
-                        'Courier New, Courier, monospace': 'Courier New (等寬體)',
-                        'Comic Sans MS, cursive': 'Comic Sans MS',
-                        'Impact, Charcoal, sans-serif': 'Impact (粗體英)'
-                    }
-                }
-            },
             uploader: {
                 url: '?action=upload_icon', 
                 format: 'json',
@@ -890,17 +785,21 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
 
         // ==========================================
-        // 即時動態時鐘功能
+        // 即時動態時鐘功能 (強制 24 小時制補零，年月日不補零)
         // ==========================================
         function updateClock() {
             const now = new Date();
+            
             const year = now.getFullYear();
             const month = now.getMonth() + 1; 
             const date = now.getDate();        
+            
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
+            
             const fullDateTimeString = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
+            
             const clockEl = document.getElementById('clock');
             if(clockEl) clockEl.textContent = fullDateTimeString;
         }

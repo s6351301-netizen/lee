@@ -382,21 +382,41 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .editor-modal-overlay.active { display: flex; }
         
-        /* 🛠️ 修正：將寬度與高度皆改為 90%，並調整內距與最大範圍限制 */
         .editor-modal-content {
-            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 20px; 
+            background: #eef7f4; border: 2px solid #a3d8f4; border-radius: 12px; padding: 25px; 
             display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-            width: 90%; height: 90%; max-width: 95vw; max-height: 95vh;
+            width: 80%; height: 80%; max-width: 1200px; max-height: 800px;
+            transition: all 0.2s ease;
         }
+        
+        /* 🛠️ 核心修正：當 Jodit 進入全螢幕狀態時，強迫外層自訂的彈出視窗框架（modal-content）也展開為 100% 滿版 */
+        .editor-modal-overlay:has(.jodit_fullsize) .editor-modal-content {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            border-radius: 0px !important;
+            border: none !important;
+            padding: 0px !important; /* 滿版時移除內距讓編輯器貼齊邊緣 */
+        }
+
+        /* 全螢幕狀態下隱藏我們自己寫的 Modal 標題與頁尾按鈕，因為 Jodit 全螢幕自帶關閉/還原功能 */
+        .editor-modal-overlay:has(.jodit_fullsize) .editor-modal-header,
+        .editor-modal-overlay:has(.jodit_fullsize) .editor-modal-footer {
+            display: none !important;
+        }
+        .editor-modal-overlay:has(.jodit_fullsize) .editor-container-box {
+            margin-bottom: 0px !important;
+            height: 100% !important;
+        }
+
         .editor-modal-header {
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
             border-bottom: 2px solid #bae6fd; padding-bottom: 10px;
         }
         .editor-modal-title { font-size: 1.2rem; color: #1e3a8a; font-weight: bold; }
         .editor-modal-close { background: transparent; border: none; color: #64748b; font-size: 1.8rem; cursor: pointer; }
-        
-        /* 🛠️ 修正：確保內容框架能充實佔滿 90% 視窗中的剩餘縱向高度 */
-        .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; height: 100%; }
+        .editor-container-box { flex: 1; min-height: 0; margin-bottom: 15px; }
         .editor-modal-footer { display: flex; justify-content: flex-end; gap: 15px; }
         .modal-btn { padding: 10px 24px; font-size: 1rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; transition: all 0.2s; }
         .modal-btn-cancel { background: #94a3b8; color: #ffffff; }
@@ -411,18 +431,15 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .expand-link:hover { color: #ffd166; }
 
         /* ==========================================================
-           優化功能選單配色，移除非必要的全局文字顏色鎖定，還原塗色功能
+           🛠️ 功能選單與彈出層配色優化
            ========================================================== */
-        
-        /* 1. 編輯器主編輯區：移除對所有子元件 (*) 的顏色限制，允許 Inline Style (顏色修改) 生效 */
         .jodit-wysiwyg {
-            color: #000000; /* 只設在最外層作為基本預設色 */
+            color: #000000; 
         }
         .jodit-wysiwyg a {
             text-decoration: underline !important;
         }
 
-        /* 2. 原始碼模式文字 */
         .jodit-source__textarea,
         .jodit-src,
         .jodit-source * {
@@ -430,7 +447,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             background-color: #f8fafc !important;
         }
 
-        /* 3. 所有下拉選單與對話框背景全部改成舒適的【淺藍色】 */
         .jodit-popup,
         .jodit-popup__content,
         .jodit-popup__container,
@@ -447,7 +463,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             border-color: #7dd3fc !important;     
         }
 
-        /* 4. 下拉選單中項目與文字（如字型、大小選單內） */
         .jodit-popup__content *,
         .jodit-toolbar-list *,
         .jodit-toolbar-button,
@@ -455,19 +470,16 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             color: #000000 !important;            
         }
 
-        /* 特別排除：修正點選「畫筆/調色盤」功能時，彈出的色彩色塊（Color Picker）文字與線條設定，避免色塊壞掉 */
         .jodit-popup__content .jodit-colorpicker * {
             color: inherit !important; 
         }
 
-        /* 滑鼠移過去功能項目的時候，呈現更明顯的藍色高亮效果 */
         .jodit-nav-button:hover,
         .jodit-toolbar-button:hover,
         .jodit-popup__content .jodit-toolbar-button:hover {
             background-color: #bae6fd !important;  
         }
 
-        /* 5. 对话框（如超連結屬性、表格設定）裡面的 input 輸入框 */
         .jodit-dialog input,
         .jodit-dialog select,
         .jodit-dialog textarea,
@@ -485,7 +497,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             border: 1px solid #7dd3fc !important;  
         }
 
-        /* 6. 功能彈出層內的欄位標籤提示文字（例如 URL, Text 等標題） */
         .jodit-ui-form label,
         .jodit-ui-label,
         .jodit-dialog__content label,
@@ -789,7 +800,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             'image', 'file', 'video', 'table', 'link', '|',
             'align', 'undo', 'redo', '|',
             'hr', 'eraser', 'copyformat', '|',
-            'symbol', 'print', 'about'
+            'symbol', 'fullsize', 'print', 'about'
         ];
 
         const joditEditor = new Jodit('#joditEditorTarget', {
