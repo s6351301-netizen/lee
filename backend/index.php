@@ -1,5 +1,56 @@
 <?php
 session_start();
+
+// ==========================================
+// 1. 資料庫連線設定與角色/會員號查詢
+// ==========================================
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "lee";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+if ($conn->connect_error) {
+    die("連線失敗: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
+
+$role_title = "";  // 用來儲存轉換後的中文稱謂
+$member_no = "";   // 用來儲存會員號
+
+// 檢查是否有登入 Session
+if (isset($_SESSION['name'])) {
+    $current_user = $_SESSION['name'];
+    
+    // 使用預備陳述式同時撈取 role 與 new_member 欄位
+    $stmt = $conn->prepare("SELECT role, new_member FROM account WHERE name = ?");
+    $stmt->bind_param("s", $current_user);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        // 1. 取得會員號
+        $member_no = !empty($row['new_member']) ? $row['new_member'] : "";
+        
+        // 2. 根據 role 欄位值轉換為中文職稱
+        switch ($row['role']) {
+            case 'admin':
+                $role_title = "（管理者）";
+                break;
+            case 'user':
+                $role_title = "（派下員）";
+                break;
+            case 'clan':
+                $role_title = "（宗親）";
+                break;
+            default:
+                $role_title = ""; 
+                break;
+        }
+    }
+    $stmt->close();
+}
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -200,18 +251,18 @@ session_start();
             style="color: rgb(3, 162, 13); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
             前台首頁
         </a>
-       &emsp;&emsp;
+       &emsp;
         <a href="index.html" title="後台首頁"
             style="color: rgb(4, 121, 167); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
             後台首頁
         </a>
-        &emsp;&emsp;       
+        &emsp;     
 <div style="text-align:right;">
     <?php if(isset($_SESSION['name'])): ?>
-        歡迎,<?php echo htmlspecialchars($_SESSION['name']); ?>
-    <?php endif; ?>
-</div>&emsp;&emsp;&emsp;
- <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
+        <?php echo htmlspecialchars($_SESSION['name']) .htmlspecialchars($member_no) .  $role_title; ?>
+        <?php endif; ?>
+    </div>&emsp;
+    <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
 
     </div>
 
@@ -230,7 +281,7 @@ session_start();
     <script class="clanMenuData">
         const clanMenuData = [
             {
-                id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵首頁歡迎資訊</span>"
+                id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵後台系統使用手冊資訊</span>"
                 , url: "home.html", parentId: 0
             },
             {
@@ -260,7 +311,8 @@ session_start();
             { id: 13, name: "<span style='font-size:16px;'>4-2.優秀獎學金申請php</span>", url: "clan_system.php", parentId: 11 },
             { id: 14, name: "<span style='font-size:16px;'>4-3.優秀獎學金申請json</span>", url: "scholarship2.html", parentId: 11 },
             { id: 15, name: "<span style='font-size:16px;'>4-4.填寫許願卡</span>", url: "../3trees.php", parentId: 11 },
-            { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 }
+            { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 },
+            { id: 17, name: "<span style='font-size:16px;'>4-5.會員資料</span>", url: "member.php", parentId: 11 }
         ];
 
         function buildTree(list, parentId = 0) {

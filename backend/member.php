@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宗親會【會員入會申請表】</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        .header-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .meta-info input[type="text"] {
+            border: none;
+            border-bottom: 1px solid #333;
+            width: 120px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .meta-info input[type="text"]:focus {
+            outline: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        td {
+            padding: 10px;
+            vertical-align: middle;
+            font-size: 16px;
+        }
+        .label {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: bold;
+            width: 15%;
+            letter-spacing: 2px;
+        }
+        input[type="text"], input[type="date"], input[type="tel"], input[type="email"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            padding: 6px;
+            font-size: 15px;
+            border-radius: 4px;
+        }
+        input[type="text"]:focus, input[type="date"]:focus, input[type="tel"]:focus, input[type="email"]:focus {
+            border-color: #666;
+            outline: none;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        .photo-area {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px dashed #999;
+            background-color: #fafafa;
+        }
+        .photo-area input {
+            margin-top: 8px;
+            font-size: 12px;
+            width: 90%;
+        }
+        .note-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #444;
+            margin-top: 20px;
+            border-top: 1px dashed #ccc;
+            padding-top: 15px;
+        }
+        .submit-btn {
+            display: block;
+            width: 200px;
+            margin: 30px auto 0 auto;
+            padding: 12px;
+            background-color: #4A6572;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover {
+            background-color: #344955;
+        }
+        @media (max-width: 600px) {
+            .meta-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+            td {
+                display: block;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            .label {
+                background-color: #e6e6e6;
+                text-align: left;
+            }
+            .photo-area {
+                height: auto;
+                padding: 15px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <form action="#" method="post" enctype="multipart/form-data">
+        
+        <div class="header-title">台中市李武略派下李氏宗親會【會員入會申請表】</div>
+        
+        <div class="meta-info">
+            <div>收件日期：<input type="text" placeholder="年 / 月 / 日"></div>
+            <div>編號：<input type="text" placeholder="請勿填寫"></div>
+        </div>
+        
+        <table>
+            <tr>
+                <td class="label">姓名</td>
+                <td style="width: 25%;"><input type="text" required></td>
+                <td class="label">性別</td>
+                <td style="width: 20%;">
+                    <div class="radio-group">
+                        <label><input type="radio" name="gender" value="男" required> 男</label>
+                        <label><input type="radio" name="gender" value="女"> 女</label>
+                    </div>
+                </td>
+                <td class="label">籍貫<br>(祖籍地)</td>
+                <td style="width: 20%;"><input type="text" placeholder="例如：福建安溪"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">出生<br>年月日</td>
+                <td colspan="3">
+                    <input type="date" required>
+                </td>
+                <td colspan="2" rowspan="2">
+                    <div class="photo-area">
+                        <span>貼相片處</span>
+                        <input type="file" accept="image/*">
+                    </div>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="label">學歷</td>
+                <td colspan="3"><input type="text"></td>
+            </tr>
+            <tr>
+                <td class="label">現職 /<br>經歷</td>
+                <td colspan="5"><input type="text" placeholder="請填寫現任職務與重要經歷"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">身分證<br>字號</td>
+                <td colspan="2"><input type="text" required style="text-transform: uppercase;"></td>
+                <td class="label">公司<br>電話</td>
+                <td colspan="2"><input type="tel"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">行動<br>電話</td>
+                <td colspan="2"><input type="tel" required></td>
+                <td class="label">住家<br>電話</td>
+                <td colspan="2"><input type="tel"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">E-mail</td>
+                <td colspan="5"><input type="email"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">通訊<br>地址</td>
+                <td colspan="5"><input type="text" required placeholder="請填寫正楷詳細地址"></td>
+            </tr>
+            
+            <tr>
+                <td class="label">介紹人</td>
+                <td colspan="5">
+                    <input type="text" placeholder="本會宗親（若無則免填）">
+                </td>
+            </tr>
+        </table>
+
+        <div class="note-text">
+            <strong>備註說明：</strong><br>
+            1. 依據本會章程，個人會員入會費為新台幣 <strong>壹仟元</strong>。<br>
+            2. 請填妥本表後，連同入會費及相關身分證明文件送交本會承辦人辦理。<br>
+            3. 本表蒐集之個人資料，僅限於本會會務營運及聯絡宗親使用，本會將依法予以保護。
+        </div>
+
+        <button type="submit" class="submit-btn">提交申請表</button>
+        
+    </form>
+</div>
+
+</body>
+</html>
