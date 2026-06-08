@@ -322,7 +322,7 @@ if ($keyword !== '') {
             white-space: nowrap;
         }
 
-         .search-input0 {
+        .search-input0 {
             width: 49%;
             box-sizing: border-box;
             padding: 10px;
@@ -645,8 +645,8 @@ if ($keyword !== '') {
 
     <div class="edit-container" id="editContainer">
         <div class="edit-title">
-            M 編輯許願卡資料方塊 (關鍵字ID: <span id="txt_view_id" style="color:red; font-weight:bold;">#</span>)
-            <span id="lockStatusBadge" style="color: #16a34a; font-size: 0.9rem; margin-left: 10px; display: none;">🔒 欄位已鎖定</span>
+            編輯許願卡資料方塊 (關鍵字ID: <span id="txt_view_id" style="color:#1e3a8a; font-weight:bold;">#</span>)
+            <span id="lockStatusBadge" style="color: #16a34a; font-size: 0.9rem; margin-left: 10px; display: none;">🔒 3.姓名欄位已鎖定</span>
             <span id="unlockBtn" class="btn-unlock" onclick="unlockFields()">解鎖更換</span>
         </div>
         <form method="POST" action="" onsubmit="prepareSubmitForm()">
@@ -685,8 +685,8 @@ if ($keyword !== '') {
                 </div>
                 <div class="edit-half-block">
                     <div class="input-sub-item">
-                        <span>6.大甲代</span>
-                        <input type="text" id="u_dajia_generation" class="search-input readonly-gray" readonly placeholder="由姓名自動帶出">
+                        <span>6.定居大甲</span>
+                        <input type="text" id="u_dajia_generation" class="search-input readonly-gray" readonly placeholder="由姓名自動帶出" 代>
                     </div>
                 </div>
             </div>
@@ -878,7 +878,7 @@ if ($keyword !== '') {
                         let house = data.number_of_houses ? data.number_of_houses : '?';
                         let shizu = data.emperor_shizu ? data.emperor_shizu : '?';
                         document.getElementById('u_house_shizu').value = `第 ${house} 大房第 ${shizu} 世祖`;
-                        document.getElementById('u_dajia_generation').value = `大甲 ${data.generation ? data.generation : '?'} 代`;
+                        document.getElementById('u_dajia_generation').value = `第 ${data.generation ? data.generation : '?'} 代`;
 
                         if (data.login_time) {
                             let formattedTime = data.login_time.replace(' ', 'T').substring(0, 16);
