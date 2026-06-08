@@ -367,12 +367,12 @@ if ($keyword !== '') {
         }
 
         .btn-exact {
-            background: #d97706;
+            background: #407a52;
             padding: 0 15px;
         }
 
         .btn-exact:hover {
-            background: #b45309;
+            background: #2d5a3a;
         }
 
         .btn-update {

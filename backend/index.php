@@ -259,7 +259,8 @@ session_start();
             { id: 12, name: "<span style='font-size:16px;'>4-1.當屆會員代表名冊</span>", url: "member_list.html", parentId: 11 },
             { id: 13, name: "<span style='font-size:16px;'>4-2.優秀獎學金申請php</span>", url: "clan_system.php", parentId: 11 },
             { id: 14, name: "<span style='font-size:16px;'>4-3.優秀獎學金申請json</span>", url: "scholarship2.html", parentId: 11 },
-            { id: 14, name: "<span style='font-size:16px;'>4-4.填寫許願卡</span>", url: "../3trees.php", parentId: 11 }
+            { id: 15, name: "<span style='font-size:16px;'>4-4.填寫許願卡</span>", url: "../3trees.php", parentId: 11 },
+            { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 }
         ];
 
         function buildTree(list, parentId = 0) {
