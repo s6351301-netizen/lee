@@ -17,6 +17,7 @@ $conn->set_charset("utf8mb4");
 
 $role_title = "";  // 用來儲存轉換後的中文稱謂
 $member_no = "";   // 用來儲存會員號
+$user_role = "";   // 用來儲存原始角色欄位，供 JS 判斷使用
 
 // 檢查是否有登入 Session
 if (isset($_SESSION['name'])) {
@@ -31,6 +32,7 @@ if (isset($_SESSION['name'])) {
     if ($row = $result->fetch_assoc()) {
         // 1. 取得會員號
         $member_no = !empty($row['new_member']) ? $row['new_member'] : "";
+        $user_role = $row['role']; // 記錄原始 role 值
         
         // 2. 根據 role 欄位值轉換為中文職稱
         switch ($row['role']) {
@@ -77,8 +79,6 @@ $conn->close();
 
         .header {
             height: 60px;
-            /* background-color: #010111;
-               天藍到海軍藍linear-gradient(125deg, #22d3ee 0%, #3b82f6 52%, #0f172a 100%); */
             background: radial-gradient(circle, #2892a0 0%, #05285f 54%, #0f172a 100%);
             color: #ffffff;
             display: flex;
@@ -100,67 +100,45 @@ $conn->close();
             font-size: 14px;
         }
 
-        /* 🌟 修改此處：調整為固定寬度並設定伸縮限制 */
         .sidebar {
             width: 200px;
-            /* 初始寬度 */
-            /*左邊選單占整體版面趴數*/
             min-width: 150px;
-            /* 最小縮到這樣 */
             max-width: 500px;
-            /* 最大拉到這樣 */
             border-right: 1px solid #dcdfe6;
             overflow-y: auto;
-            /* 藍色到綠色，帶透明度 */
-            /*background: linear-gradient(to bottom, rgba(1, 30, 75, 0.4), rgba(0, 51, 19, 0.8));
-      background-image: url();*/
-            /*右邊選單邊界的線之顏色*/
-            /* padding: 15px 0;*/
         }
 
-        /* 🌟 新增：左右拖曳阻隔線樣式 */
         #drag-bar {
             width: 2px;
             background-color: #dcdfe6;
             cursor: col-resize;
-            /* 滑鼠移上去變左右雙箭頭 ↔ */
             flex-shrink: 0;
-            /* 防止阻隔線被擠壓 */
             transition: background 0.1s;
         }
 
-        /* 滑鼠滑過去，或正在拉動時變藍色 */
         #drag-bar:hover,
         body.is-dragging #drag-bar {
             background-color: #68696a;
         }
 
-
-        /* 🌟 核心修正：當全域處於拖曳狀態時，強制讓右側 iframe 暫時失去滑鼠反應 */
         body.is-dragging #contentFrame {
             pointer-events: none;
         }
 
-        /* 🌟 修改此處：移除 width: 86%，改用 flex-grow 自適應填滿 */
         .content-area {
-            /*width: 86%;右邊選單占整體版面趴數*/
             flex-grow: 1;
-            /* 自動填滿右邊剩餘空間 */
             height: 100%;
             border: none;
             background-color: #fcfcfc;
         }
 
-        /* 2. 修改這裡：確保最外層與內層的列表縮排正確 */
         .tree-view,
         .tree-view ul {
             list-style-type: none;
             padding-left: 0px;
-            /*樹狀選單對於外框.sidebar {距離,若不要則註解或0PX*/
             margin: 0;
         }
 
-        /* 讓最外層的 第一層選單 完全靠左到底 */
         .tree-view>ul {
             padding-left: 0 !important;
             margin-left: 0 !important;
@@ -171,7 +149,6 @@ $conn->close();
             margin: 8px 0;
         }
 
-        /* 3. 修改這裡：調整每一行內容的內縮，讓最左邊貼齊邊界 */
         .node-content {
             display: inline-flex;
             align-items: center;
@@ -181,8 +158,6 @@ $conn->close();
             font-size: 14px;
             transition: all 0.2s;
             width: 100%;
-            /*padding: 6px 8px;
-            padding-left: 10px;*/
         }
 
         .node-content:hover {
@@ -190,7 +165,6 @@ $conn->close();
             color: #1b1b34;
         }
 
-        /* 4. 修改這裡：如果最外層項目是葉子節點（例如首頁），直接靠左到底 */
         .tree-view>ul>.is-leaf>.node-content {
             padding-left: 0px;
         }
@@ -210,14 +184,12 @@ $conn->close();
             transform: rotate(90deg);
         }
 
-        /* 隱藏箭頭但保留子層空間，最外層除外 */
         .is-leaf>.node-content .arrow {
             visibility: hidden;
             width: 16px;
             display: none;
         }
 
-        /* 最外層的第一層葉子項目，直接不需要箭頭的佔位空間 */
         .tree-view>ul>.is-leaf>.node-content .arrow {
             display: none;
         }
@@ -227,7 +199,6 @@ $conn->close();
             font-size: 14px;
         }
 
-        /* 最外層第一層葉子全都關閉display: none;全部打開display: block; */
         .subtree {
             display: none;
         }
@@ -257,13 +228,12 @@ $conn->close();
             後台首頁
         </a>
         &emsp;     
-<div style="text-align:right;">
-    <?php if(isset($_SESSION['name'])): ?>
-        <?php echo htmlspecialchars($_SESSION['name']) .htmlspecialchars($member_no) .  $role_title; ?>
-        <?php endif; ?>
-    </div>&emsp;
-    <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
-
+        <div style="text-align:right;">
+            <?php if(isset($_SESSION['name'])): ?>
+                <?php echo htmlspecialchars($_SESSION['name']) . htmlspecialchars($member_no) . $role_title; ?>
+            <?php endif; ?>
+        </div>&emsp;
+        <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
     </div>
 
     <div class="main-container">
@@ -279,6 +249,9 @@ $conn->close();
     </div>
 
     <script class="clanMenuData">
+        // 將 PHP 的角色變數安全地傳遞給 JavaScript
+        const userRole = "<?php echo htmlspecialchars($user_role); ?>";
+
         const clanMenuData = [
             {
                 id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵首頁歡迎資訊</span>"
@@ -296,13 +269,13 @@ $conn->close();
             },
             { id: 6, name: "<span style='font-size:16px;'>2-1.隴西堂號由來</span>", url: "bohai.html", parentId: 5 },
             { id: 7, name: "<span style='font-size:16px;'>2-2.歷代昭穆字輩表</span>", url: "genealogy.html", parentId: 5 },
-            { id: 7, name: "<span style='font-size:16px;'>2-3.歷代昭穆字輩表json</span>", url: "genealogy2.html", parentId: 5 },
+            { id: 7.1, name: "<span style='font-size:16px;'>2-3.歷代昭穆字輩表json</span>", url: "genealogy2.html", parentId: 5 }, // 修正重複的 id
             {
                 id: 8, name: "<span style='font-family:DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>03 會務與祭祀管理</span>"
                 , url: "null", parentId: 0
             },
             { id: 9, name: "<span style='font-size:16px;'>3-1.春季祭祖大典紀錄</span>", url: "spring.html", parentId: 8 },
-            { id: 10, name: "<span style='font-size:16px;'>3-2.派下員掃墓祭掃公告</span>", url: "grave.html", parentId: 8 },
+            { id: 10, name: "<span style='font-size:16px;'>3-2.派下員掃墓祭祖公告</span>", url: "grave.html", parentId: 8 },
             {
                 id: 11, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>04 派下員名冊管理</span>"
                 , url: "null", parentId: 0
@@ -314,6 +287,45 @@ $conn->close();
             { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 },
             { id: 17, name: "<span style='font-size:16px;'>4-5.會員資料</span>", url: "member.php", parentId: 11 }
         ];
+
+        // 根據使用者權限過濾選單
+        function filterMenuData(list, role) {
+            // 如果是管理者，全開不限制
+            if (role === 'admin') return list;
+
+            // 定義非管理者所允許看到的子項目 ID 陣列 (預設首頁 id:1 皆可看)
+            let allowedIds = [1]; 
+
+            if (role === 'user') {
+                // 派下員：1-1 (id:3), 1-2 (id:4), 2-1 (id:6), 2-2 (id:7)
+                allowedIds.push(3, 4, 6, 7);
+            } else if (role === 'clan') {
+                // 宗親：1-1 (id:3), 1-2 (id:4), 3-1 (id:9), 3-2 (id:10)
+                allowedIds.push(3, 4, 9, 10);
+            } else {
+                // 若未登入或無符合角色，僅留首頁
+                allowedIds = [1];
+            }
+
+            // 1. 先篩選出符合條件的子項目與首頁
+            const filteredItems = list.filter(item => allowedIds.includes(item.id));
+
+            // 2. 自動把這些項目的「父層大分類項目」撈出來加入，避免樹狀結構斷層
+            const finalMenu = [...filteredItems];
+            filteredItems.forEach(item => {
+                if (item.parentId !== 0) {
+                    // 尋找父分類
+                    const parentNode = list.find(p => p.id === item.parentId);
+                    // 確保父分類沒被重複加過
+                    if (parentNode && !finalMenu.some(m => m.id === parentNode.id)) {
+                        finalMenu.push(parentNode);
+                    }
+                }
+            });
+
+            // 依照原始陣列順序或 id 排序，確保選單不會亂序
+            return finalMenu.sort((a, b) => a.id - b.id);
+        }
 
         function buildTree(list, parentId = 0) {
             const tree = [];
@@ -365,34 +377,30 @@ $conn->close();
             });
         }
 
-        renderTree(buildTree(clanMenuData), document.getElementById('menu-tree'));
+        // 先執行權限過濾，再進行樹狀結構建立與渲染
+        const allowedMenuData = filterMenuData(clanMenuData, userRole);
+        renderTree(buildTree(allowedMenuData), document.getElementById('menu-tree'));
 
-        // 🌟 新增：左右拖曳寬度控制 JavaScript 邏輯
+        // 左右拖曳寬度控制 JavaScript 邏輯
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('sidebar');
             const dragBar = document.getElementById('drag-bar');
             let isResizing = false;
 
-            // 1. 滑鼠按下拖曳線
             dragBar.addEventListener('mousedown', (e) => {
                 isResizing = true;
                 document.body.classList.add('is-dragging');
-                e.preventDefault(); // 防止選取到網頁文字
+                e.preventDefault();
             });
 
-            // 2. 滑鼠移動動態計算寬度
             document.addEventListener('mousemove', (e) => {
                 if (!isResizing) return;
-
-                let newWidth = e.clientX; // 滑鼠當前的水平座標位置
-
-                // 設定拉動邊界限制：最小 150px，最大 500px
+                let newWidth = e.clientX;
                 if (newWidth >= 150 && newWidth <= 500) {
                     sidebar.style.width = newWidth + 'px';
                 }
             });
 
-            // 3. 放開滑鼠結束拖曳
             document.addEventListener('mouseup', () => {
                 if (isResizing) {
                     isResizing = false;
