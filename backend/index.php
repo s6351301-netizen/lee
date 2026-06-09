@@ -237,7 +237,7 @@ $conn->close();
             display: block;
         }
 
-        /* 🎯 郵件通知圖示專用全新樣式 */
+        /* 🎯 訊息通知圖示專用全新樣式 */
         .mail-notification-link {
             display: inline-flex;
             align-items: center;
@@ -276,7 +276,7 @@ $conn->close();
         <span style="font-family: 'DFKai-sb', '標楷體', serif;font-size: 36px;">
             李武略</span>
         派下李氏宗親會 - 後台管理系統
-        &emsp;&emsp;&emsp;&emsp;&emsp;
+        &emsp;
         <img src="../icon/logo.svg" alt="Li Wulue's Li Clan Association李武略派下李氏宗親會" style="height: 50px; width: auto;">
         <a href="index.html" title="前台首頁"
             style="color: rgb(3, 162, 13); font-family: 'DFKai-sb', '標楷體', serif; font-size: 18px;text-decoration: none;">
@@ -293,7 +293,7 @@ $conn->close();
                 <?php echo htmlspecialchars($_SESSION['name']) . htmlspecialchars($member_no) . $role_title; ?>
                 
                 <a href="view-voicemail.php" target="contentFrame" class="mail-notification-link" title="查看祈願信箱留言">
-                    ✉ 郵件
+                    ✉ 訊息
                     <?php if ($unread_count > 0): ?>
                         <span class="mail-badge"><?php echo $unread_count; ?></span>
                     <?php else: ?>
@@ -337,7 +337,7 @@ $conn->close();
             { id: 14, name: "<span style='font-size:16px;'>4-3.優秀獎學金申請json</span>", url: "scholarship2.html", parentId: 11 },
             { id: 15, name: "<span style='font-size:16px;'>4-4.填寫許願卡</span>", url: "../3trees.php", parentId: 11 },
             { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 },
-            { id: 17, name: "<span style='font-size:16px;'>4-6.會員資料</span>", url: "member.php", parentId: 11 },
+            { id: 17, name: "<span style='font-size:16px;'>4-6.會員資料session傳值</span>", url: "member.php", parentId: 11 },
             { id: 18, name: "<span style='font-size:16px;'>4-7.新增語音/影音留言</span>", url: "voicemail.php", parentId: 11 },
             { id: 19, name: "<span style='font-size:16px;'>4-8.查看語音/影音留言</span>", url: "view-voicemail.php", parentId: 11 }
         ];
