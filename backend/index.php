@@ -17,6 +17,7 @@ $conn->set_charset("utf8mb4");
 
 $role_title = "";  // 用來儲存轉換後的中文稱謂
 $member_no = "";   // 用來儲存會員號
+$unread_count = 0; // 🎯 新增：用來儲存未讀信件總數
 
 // 檢查是否有登入 Session
 if (isset($_SESSION['name'])) {
@@ -31,6 +32,7 @@ if (isset($_SESSION['name'])) {
     if ($row = $result->fetch_assoc()) {
         // 1. 取得會員號
         $member_no = !empty($row['new_member']) ? $row['new_member'] : "";
+        $user_role = $row['role']; // 記錄原始 role 值
         
         // 2. 根據 role 欄位值轉換為中文職稱
         switch ($row['role']) {
@@ -47,6 +49,36 @@ if (isset($_SESSION['name'])) {
                 $role_title = ""; 
                 break;
         }
+
+        // ==========================================
+        // 🎯 核心追加：同步至名冊撈取世代與大房，用以精準統計未讀信件總數
+        // ==========================================
+        $my_gen = ""; $my_houses = "";
+        $stmt_mem = $conn->prepare("SELECT generation, number_of_houses FROM members WHERE name = ? LIMIT 1");
+        $stmt_mem->bind_param("s", $current_user);
+        $stmt_mem->execute();
+        $res_mem = $stmt_mem->get_result();
+        if ($row_m = $res_mem->fetch_assoc()) {
+            $my_gen = $row_m['generation'];
+            $my_houses = $row_m['number_of_houses'];
+        }
+        $stmt_mem->close();
+
+        // 統計四種收件管道交集下，所有 is_read = 0 的未讀信件總數
+        $sql_unread = "SELECT COUNT(*) as total FROM messages WHERE is_read = 0 AND (
+            (to_type = 'user' AND to_target = ?) OR
+            (to_type = 'generation' AND to_target = ?) OR
+            (to_type = 'houses' AND to_target = ?) OR
+            (to_type = 'role' AND to_target = ?)
+        )";
+        $stmt_unread = $conn->prepare($sql_unread);
+        $stmt_unread->bind_param("ssss", $member_no, $my_gen, $my_houses, $user_role);
+        $stmt_unread->execute();
+        $res_unread = $stmt_unread->get_result();
+        if ($row_u = $res_unread->fetch_assoc()) {
+            $unread_count = (int)$row_u['total'];
+        }
+        $stmt_unread->close();
     }
     $stmt->close();
 }
@@ -77,8 +109,6 @@ $conn->close();
 
         .header {
             height: 60px;
-            /* background-color: #010111;
-               天藍到海軍藍linear-gradient(125deg, #22d3ee 0%, #3b82f6 52%, #0f172a 100%); */
             background: radial-gradient(circle, #2892a0 0%, #05285f 54%, #0f172a 100%);
             color: #ffffff;
             display: flex;
@@ -100,67 +130,45 @@ $conn->close();
             font-size: 14px;
         }
 
-        /* 🌟 修改此處：調整為固定寬度並設定伸縮限制 */
         .sidebar {
             width: 200px;
-            /* 初始寬度 */
-            /*左邊選單占整體版面趴數*/
             min-width: 150px;
-            /* 最小縮到這樣 */
             max-width: 500px;
-            /* 最大拉到這樣 */
             border-right: 1px solid #dcdfe6;
             overflow-y: auto;
-            /* 藍色到綠色，帶透明度 */
-            /*background: linear-gradient(to bottom, rgba(1, 30, 75, 0.4), rgba(0, 51, 19, 0.8));
-      background-image: url();*/
-            /*右邊選單邊界的線之顏色*/
-            /* padding: 15px 0;*/
         }
 
-        /* 🌟 新增：左右拖曳阻隔線樣式 */
         #drag-bar {
             width: 2px;
             background-color: #dcdfe6;
             cursor: col-resize;
-            /* 滑鼠移上去變左右雙箭頭 ↔ */
             flex-shrink: 0;
-            /* 防止阻隔線被擠壓 */
             transition: background 0.1s;
         }
 
-        /* 滑鼠滑過去，或正在拉動時變藍色 */
         #drag-bar:hover,
         body.is-dragging #drag-bar {
             background-color: #68696a;
         }
 
-
-        /* 🌟 核心修正：當全域處於拖曳狀態時，強制讓右側 iframe 暫時失去滑鼠反應 */
         body.is-dragging #contentFrame {
             pointer-events: none;
         }
 
-        /* 🌟 修改此處：移除 width: 86%，改用 flex-grow 自適應填滿 */
         .content-area {
-            /*width: 86%;右邊選單占整體版面趴數*/
             flex-grow: 1;
-            /* 自動填滿右邊剩餘空間 */
             height: 100%;
             border: none;
             background-color: #fcfcfc;
         }
 
-        /* 2. 修改這裡：確保最外層與內層的列表縮排正確 */
         .tree-view,
         .tree-view ul {
             list-style-type: none;
             padding-left: 0px;
-            /*樹狀選單對於外框.sidebar {距離,若不要則註解或0PX*/
             margin: 0;
         }
 
-        /* 讓最外層的 第一層選單 完全靠左到底 */
         .tree-view>ul {
             padding-left: 0 !important;
             margin-left: 0 !important;
@@ -171,7 +179,6 @@ $conn->close();
             margin: 8px 0;
         }
 
-        /* 3. 修改這裡：調整每一行內容的內縮，讓最左邊貼齊邊界 */
         .node-content {
             display: inline-flex;
             align-items: center;
@@ -181,8 +188,6 @@ $conn->close();
             font-size: 14px;
             transition: all 0.2s;
             width: 100%;
-            /*padding: 6px 8px;
-            padding-left: 10px;*/
         }
 
         .node-content:hover {
@@ -190,7 +195,6 @@ $conn->close();
             color: #1b1b34;
         }
 
-        /* 4. 修改這裡：如果最外層項目是葉子節點（例如首頁），直接靠左到底 */
         .tree-view>ul>.is-leaf>.node-content {
             padding-left: 0px;
         }
@@ -210,14 +214,12 @@ $conn->close();
             transform: rotate(90deg);
         }
 
-        /* 隱藏箭頭但保留子層空間，最外層除外 */
         .is-leaf>.node-content .arrow {
             visibility: hidden;
             width: 16px;
             display: none;
         }
 
-        /* 最外層的第一層葉子項目，直接不需要箭頭的佔位空間 */
         .tree-view>ul>.is-leaf>.node-content .arrow {
             display: none;
         }
@@ -227,13 +229,42 @@ $conn->close();
             font-size: 14px;
         }
 
-        /* 最外層第一層葉子全都關閉display: none;全部打開display: block; */
         .subtree {
             display: none;
         }
 
         .expanded>.subtree {
             display: block;
+        }
+
+        /* 🎯 郵件通知圖示專用全新樣式 */
+        .mail-notification-link {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: #ffedd5;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-family: inherit;
+            margin-left: 8px;
+            transition: background 0.2s;
+            vertical-align: middle;
+        }
+        .mail-notification-link:hover {
+            background: rgba(243, 156, 18, 0.3);
+            color: #ffffff;
+        }
+        .mail-badge {
+            background-color: #ef4444;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 10px;
+            padding: 1px 6px;
+            margin-left: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -257,12 +288,21 @@ $conn->close();
             後台首頁
         </a>
         &emsp;     
-<div style="text-align:right;">
-    <?php if(isset($_SESSION['name'])): ?>
-        <?php echo htmlspecialchars($_SESSION['name']) .htmlspecialchars($member_no) .  $role_title; ?>
-        <?php endif; ?>
-    </div>&emsp;
-    <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
+        <div style="text-align:right;">
+            <?php if(isset($_SESSION['name'])): ?>
+                <?php echo htmlspecialchars($_SESSION['name']) . htmlspecialchars($member_no) . $role_title; ?>
+                
+                <a href="view-voicemail.php" target="contentFrame" class="mail-notification-link" title="查看祈願信箱留言">
+                    ✉ 郵件
+                    <?php if ($unread_count > 0): ?>
+                        <span class="mail-badge"><?php echo $unread_count; ?></span>
+                    <?php else: ?>
+                        <span style="color: #94a3b8; margin-left: 4px;">(0)</span>
+                    <?php endif; ?>
+                </a>
+            <?php endif; ?>
+        </div>&emsp;
+        <a href="../backend/logout.php" style="color:GreenYellow; font-family:'DFKai-SB'; text-decoration:none;">登出</a>
 
     </div>
 
@@ -280,40 +320,26 @@ $conn->close();
 
     <script class="clanMenuData">
         const clanMenuData = [
-            {
-                id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵首頁歡迎資訊</span>"
-                , url: "home.html", parentId: 0
-            },
-            {
-                id: 2, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>01 宗親會簡介</span>"
-                , url: "null", parentId: 0
-            },
+            { id: 1, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color:#000080;font-size: 20px;'>🔵首頁歡迎資訊</span>", url: "home.html", parentId: 0 },
+            { id: 2, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>01 宗親會簡介</span>", url: "null", parentId: 0 },
             { id: 3, name: "<span style='font-size: 16px;'>1-1.緣起與歷史沿革</span>", url: "history.html", parentId: 2 },
             { id: 4, name: "<span style='font-size: 16px;'>1-2.組織章程與組織編制</span>", url: "charter.html", parentId: 2 },
-            {
-                id: 5, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>02 始祖與開台源流</span>"
-                , url: "null", parentId: 0
-            },
+            { id: 5, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>02 始祖與開台源流</span>", url: "null", parentId: 0 },
             { id: 6, name: "<span style='font-size:16px;'>2-1.隴西堂號由來</span>", url: "bohai.html", parentId: 5 },
             { id: 7, name: "<span style='font-size:16px;'>2-2.歷代昭穆字輩表</span>", url: "genealogy.html", parentId: 5 },
             { id: 7, name: "<span style='font-size:16px;'>2-3.歷代昭穆字輩表json</span>", url: "genealogy2.html", parentId: 5 },
-            {
-                id: 8, name: "<span style='font-family:DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>03 會務與祭祀管理</span>"
-                , url: "null", parentId: 0
-            },
+            { id: 8, name: "<span style='font-family:DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>03 會務與祭祀管理</span>", url: "null", parentId: 0 },
             { id: 9, name: "<span style='font-size:16px;'>3-1.春季祭祖大典紀錄</span>", url: "spring.html", parentId: 8 },
             { id: 10, name: "<span style='font-size:16px;'>3-2.派下員掃墓祭掃公告</span>", url: "grave.html", parentId: 8 },
-            {
-                id: 11, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>04 派下員名冊管理</span>"
-                , url: "null", parentId: 0
-            },
+            { id: 11, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>04 派下員名冊管理</span>", url: "null", parentId: 0 },
             { id: 12, name: "<span style='font-size:16px;'>4-1.當屆會員代表名冊</span>", url: "member_list.html", parentId: 11 },
             { id: 13, name: "<span style='font-size:16px;'>4-2.優秀獎學金申請php</span>", url: "clan_system.php", parentId: 11 },
             { id: 14, name: "<span style='font-size:16px;'>4-3.優秀獎學金申請json</span>", url: "scholarship2.html", parentId: 11 },
             { id: 15, name: "<span style='font-size:16px;'>4-4.填寫許願卡</span>", url: "../3trees.php", parentId: 11 },
             { id: 16, name: "<span style='font-size:16px;'>4-5.修改/刪除許願卡</span>", url: "3treesdell.php", parentId: 11 },
             { id: 17, name: "<span style='font-size:16px;'>4-6.會員資料</span>", url: "member.php", parentId: 11 },
-            { id: 18, name: "<span style='font-size:16px;'>4-7.會員語音/影音留言</span>", url: "voicemail.php", parentId: 11 }
+            { id: 18, name: "<span style='font-size:16px;'>4-7.新增語音/影音留言</span>", url: "voicemail.php", parentId: 11 },
+            { id: 19, name: "<span style='font-size:16px;'>4-8.查看語音/影音留言</span>", url: "view-voicemail.php", parentId: 11 }
         ];
 
         function buildTree(list, parentId = 0) {
@@ -368,32 +394,25 @@ $conn->close();
 
         renderTree(buildTree(clanMenuData), document.getElementById('menu-tree'));
 
-        // 🌟 新增：左右拖曳寬度控制 JavaScript 邏輯
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('sidebar');
             const dragBar = document.getElementById('drag-bar');
             let isResizing = false;
 
-            // 1. 滑鼠按下拖曳線
             dragBar.addEventListener('mousedown', (e) => {
                 isResizing = true;
                 document.body.classList.add('is-dragging');
-                e.preventDefault(); // 防止選取到網頁文字
+                e.preventDefault();
             });
 
-            // 2. 滑鼠移動動態計算寬度
             document.addEventListener('mousemove', (e) => {
                 if (!isResizing) return;
-
-                let newWidth = e.clientX; // 滑鼠當前的水平座標位置
-
-                // 設定拉動邊界限制：最小 150px，最大 500px
+                let newWidth = e.clientX;
                 if (newWidth >= 150 && newWidth <= 500) {
                     sidebar.style.width = newWidth + 'px';
                 }
             });
 
-            // 3. 放開滑鼠結束拖曳
             document.addEventListener('mouseup', () => {
                 if (isResizing) {
                     isResizing = false;

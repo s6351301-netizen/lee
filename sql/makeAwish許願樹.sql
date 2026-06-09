@@ -75,6 +75,17 @@ emperor_shizu世祖(台灣算起)
 
 
 
+-- 2. 建立資料表 留言信箱
+CREATE TABLE `messages` (
+  `id` int(11) NOT NULL COMMENT '訊息流水號',
+  `file_id` int(11) DEFAULT NULL COMMENT '關聯到 files 資料表的 id',
+  `from_id` varchar(100) DEFAULT NULL COMMENT '發信者編號 (new_member)',
+  `from_name` varchar(255) DEFAULT NULL COMMENT '發信者姓名',
+  `to_type` enum('user','generation','houses','role') NOT NULL COMMENT '收件種類 (個人/世代/大房/角色)',
+  `to_target` varchar(255) NOT NULL COMMENT '收件目標識別值 (如會員號、admin、或第幾代)',
+  `is_read` tinyint(1) DEFAULT 0 COMMENT '0=未讀, 1=已讀',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '留言日期'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='祈願信箱發送紀錄表';
 
 
 
