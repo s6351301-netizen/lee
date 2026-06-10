@@ -103,12 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $stmt_msg->close();
 
-            echo "🎉 🌿 祈願影音卡已成功群發至所有指定對象的信箱！";
+            echo "✉ 影音訊息已成功群發至所有指定對象！";
         } else {
             echo "【檔案搬移失敗】無法儲存影音檔。";
         }
     } else {
-        echo "【上傳失敗】後端未收到影音卡錄影檔案。";
+        echo "【上傳失敗】後端未收到影音檔案。";
     }
     
     $conn->close();
@@ -146,8 +146,8 @@ if (isset($_SESSION['name'])) {
         $my_gen = $row['generation'];
         $my_houses = $row['number_of_houses'];
         
-        // 預先產生代入下方內文大框框的文字內容格式
-        $meta_init_text = "您的姓名：{$my_name}， 編號：{$my_member_id}， 第{$my_shizu}世祖 {$my_gen}代 {$my_houses}大房。\n-----------------------------------\n";
+        // 🚀 修改：補足缺少之「第」5代、「第」1大房
+        $meta_init_text = "寄件者：{$my_name}， 編號：{$my_member_id}， 第{$my_shizu}世祖 第{$my_gen}代 第{$my_houses}大房。\n-----------------------------------\n";
     }
     $stmt->close();
 }
@@ -169,6 +169,9 @@ $conn->close();
         .highlight { color: #d97706; margin: 0 2px; font-size: 1.1em; }
         input[type="text"], textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; }
         
+        /* 🚀 修改：郵件內文 / 留言描述 整個靠右對齊 */
+        textarea { text-align:left; }
+
         .checkbox-zone { background: #fafafa; border: 1px solid #ddd; border-radius: 6px; /*padding: 12px;*/ max-height: 300px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 8px; }
         .checkbox-item { display: flex; align-items: center; background: white; padding: 5px 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.9em; cursor: pointer; }
         .checkbox-item input { margin-right: 5px; width: auto; }
@@ -202,7 +205,7 @@ $conn->close();
             <input type="hidden" name="uploaded_id" value="<?php echo htmlspecialchars($my_member_id); ?>">
 
             <div class="form-group ajax-container">
-                <h2 for="searchReceiver">🔍 1.單獨指定收件人(打姓名或編號關鍵字進行模糊篩選)：</h2>
+                <h2 factor="searchReceiver">🔍 1.單獨指定收件人(打姓名或編號關鍵字進行模糊篩選)：</h2>
                 <input type="text" id="searchReceiver" placeholder="🔍 輸入關鍵字快速過濾人選...">
                 <div id="receiverDropdown" class="ajax-dropdown"></div>
             </div>
@@ -215,7 +218,8 @@ $conn->close();
                 <h2>🎯 2.在下方勾選要寄送群組對象：</h2>
                 
                 <p style="font-size:0.85em; color:#555; margin-bottom:4px; font-weight:bold;">👥 依系統群組與大甲世代群組選擇：</p>
-                <div class="checkbox-zone" style="max-height:110px; margin-bottom:12px;">
+                
+                <div class="checkbox-zone" style="margin-bottom:12px; overflow-y:visible;">
                     <label class="checkbox-item"><input type="checkbox" name="targets[]" value="role:admin">🛡️ 管理者群組(admin)</label>
                     <label class="checkbox-item"><input type="checkbox" name="targets[]" value="role:user">👥 派下員群組(user)</label>
                     <label class="checkbox-item"><input type="checkbox" name="targets[]" value="role:clan">🍂 宗親群組(clan)</label>
@@ -231,11 +235,11 @@ $conn->close();
             </div>
 
             <div class="form-group">
-                <h2 for="description">✍️ 3. 郵件內文 / 留言描述：</h2>
-                <textarea id="description" name="description" rows="5" required>
-                    <?php echo htmlspecialchars($meta_init_text); ?></textarea>
+                <h2 factor="description">✍️ 3. 郵件內文 / 留言描述：</h2>
+                <textarea id="description" name="description" rows="5" required><?php echo htmlspecialchars($meta_init_text); ?></textarea>
                 <div style="margin-top: 5px;">
                     <button type="button" id="voiceTypeBtn" class="btn" style="background:#e2e8f0;">🎤 語音輸入</button>
+                    <button type="button" id="deviceTestBtn" class="btn" style="background:#d1fae5; color:#065f46; font-weight:bold;">⚙ 電腦影音檢測和功能測式</button>
                 </div>
             </div>
             
@@ -255,7 +259,7 @@ $conn->close();
             </div>
 
             <div class="form-group">
-                <h2 for="isPublic">是否公開此信件：</h2>
+                <h2 factor="isPublic">是否公開此信件：</h2>
                 <select id="isPublic" name="public">
                     <option value="1">私有 (僅收件對象可見)</option>
                     <option value="0">公開 (所有人可見)</option>
@@ -398,6 +402,11 @@ $conn->close();
         recognition.onresult = (e) => document.getElementById('description').value += e.results[0][0].transcript;
     } else { document.getElementById('voiceTypeBtn').style.display = 'none'; }
 
+    // 🚀 電腦影音檢測按鈕預留事件點擊處理
+    document.getElementById('deviceTestBtn').addEventListener('click', () => {
+        alert("正在啟動多媒體設備檢測調試環境，請確保瀏覽器鏡頭與麥克風權限已允許。");
+    });
+
     // 表單非同步打包發送
     document.getElementById('commentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -409,7 +418,7 @@ $conn->close();
         }
 
         if (!finalVideoBlobOrFile) {
-            alert("請附加您錄製的祈願影音檔案卡片！"); return;
+            alert("請附加您錄製影音檔案！"); return;
         }
 
         const formData = new FormData(document.getElementById('commentForm'));

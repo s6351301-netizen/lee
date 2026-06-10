@@ -42,10 +42,9 @@ if ($row_a = $res_acc->fetch_assoc()) {
 }
 $stmt_acc->close();
 
-// 3. 撈取寄給我的信件
-// 注意：role 比對需用原始英文代號
+// 3. 撈取寄給我的信件 (依時間由近至遠降冪排列)
 $raw_role_val = array_search($my_role, $role_map) ?: $my_role; 
-$sql_mail = "SELECT m.id as msg_id, m.is_read, m.created_at, m.from_name, f.description, f.file_url, f.file_type
+$sql_mail = "SELECT m.id as msg_id, m.is_read, m.created_at, m.from_name, f.file_id, f.description, f.file_url, f.file_type
              FROM messages m
              LEFT JOIN files f ON m.file_id = f.file_id
              WHERE 
@@ -82,10 +81,18 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>✉ 個人郵件信箱</title>
     <style>
-        body { font-family: "Microsoft JhengHei", Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 10px; background-color: #f4f6f4; }
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; max-width: 750px; margin: 20px auto; padding: 10px; background-color: #f4f6f4; }
         .mailbox-container { background: white; padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .mailbox-title { font-size: 1.4em; color: #1e3a1e; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #2e5c2e; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .back-home { font-size: 0.6em; background: #2e5c2e; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; }
+        
+        /* 🚀 新增：頂部排版表格樣式 */
+        .mail-summary-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 0.95em; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-radius: 6px; overflow: hidden; }
+        .mail-summary-table th { background-color: #2e5c2e; color: white; padding: 10px 12px; text-align: left; font-weight: bold; }
+        .mail-summary-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; background-color: #fff; color: #334155; }
+        .mail-summary-table tr:hover td { background-color: #f8fafc; }
+        .table-section-title { font-size: 1.1em; color: #2e5c2e; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        
         .mail-card { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 15px; }
         .mail-header { display: flex; justify-content: space-between; font-size: 0.9em; color: #64748b; border-bottom: 1px dashed #e2e8f0; padding-bottom: 6px; margin-bottom: 10px; }
         .sender-name { font-weight: bold; color: #2e5c2e; font-size: 1.05em; }
@@ -98,6 +105,51 @@ $conn->close();
 </head>
 <body>
     <div class="mailbox-container">
+        
+        <div class="table-section-title">📊 影音信件收件索引清單 (依發表時間降冪排列)</div>
+        <table class="mail-summary-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID (影音)</th>
+                    <th style="width: 100px;">寄件人</th>
+                    <th>信件摘要描述</th>
+                    <th style="width: 160px;">發表時間</th>
+                    <th style="width: 80px;">狀態</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($mail_list)): ?>
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">暫無信件索引紀錄</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($mail_list as $mail): ?>
+                        <tr>
+                            <td><strong>#<?php echo $mail['file_id'] ? htmlspecialchars($mail['file_id']) : $mail['msg_id']; ?></strong></td>
+                            <td><span class="sender-name"><?php echo htmlspecialchars($mail['from_name']); ?></span></td>
+                            <td>
+                                <div style="max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <?php 
+                                        // 擷取前30個字作為摘要預覽
+                                        $summary = mb_strimwidth($mail['description'], 0, 50, "...", "UTF-8");
+                                        echo htmlspecialchars($summary); 
+                                    ?>
+                                </div>
+                            </td>
+                            <td><span style="font-size: 0.9em; color: #64748b;"><?php echo $mail['created_at']; ?></span></td>
+                            <td>
+                                <?php if ($mail['is_read'] == 0): ?>
+                                    <span class="new-badge" style="margin-left:0;">NEW</span>
+                                <?php else: ?>
+                                    <span style="color:#94a3b8; font-size:0.85em;">已讀</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
         <div class="mailbox-title">
             <span>✉ 您的個人專屬信箱</span>
             <a href="home.html" class="back-home">➔ 回到首頁</a>

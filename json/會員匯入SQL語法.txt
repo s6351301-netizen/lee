@@ -1,5 +1,15 @@
 密碼若使用單向雜湊演算法，設計目的就是不可逆，不能「解碼」回原始密碼。
 
+-- 1. 移除原本 id 的自動遞增屬性（使其退為普通欄位）
+ALTER TABLE `members` MODIFY COLUMN `id` INT NOT NULL;
+
+-- 2. 刪除原本舊的主鍵設定
+ALTER TABLE `members` DROP PRIMARY KEY;
+
+-- 3. 將 new_member 設為真正的資料表主鍵
+ALTER TABLE `members` ADD PRIMARY KEY (`new_member`);
+
+
 
 
 -- 1. 建立資料表（已修正型態瑕疵）

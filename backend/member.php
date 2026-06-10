@@ -10,27 +10,54 @@ $pdo = new PDO("mysql:host=localhost;dbname=lee;charset=utf8mb4", "root", "", [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
 ]);
 
-// 2. 依據 Session 姓名取得會員 ID (預設防呆為 2)
+// 2. 依據 Session 姓名取得當前【登入者】的唯一關鍵字：new_member (現在會員號)
 $current_user = $_SESSION['name'] ?? '';
-$stmt = $pdo->prepare("SELECT id FROM `members` WHERE `name` = ? LIMIT 1");
-$stmt->execute([$current_user]);
-$member_id = $stmt->fetchColumn() ?: 2;
+$stmt_login = $pdo->prepare("SELECT `new_member` FROM `members` WHERE `name` = ? LIMIT 1");
+$stmt_login->execute([$current_user]);
+$login_user_num = $stmt_login->fetchColumn() ?: '39'; // 撈出如：39
+// 建立當前登入者的完整資訊比對字串 (例如："39 李寶珠")
+$login_user_info = $login_user_num . ' ' . $current_user;
+
+// 💡 核心修正：主系統框架正在查看、編輯的關鍵鑰匙，是「現在會員號 (new_member)」
+// 優先順序：1. 網址帶來的編號 2. 外部主框架既有的變數 3. 預設顯示登入者自己
+$target_member_num = $_GET['new_member'] ?? $new_member ?? $login_user_num;
 
 // 3. 【動作處理】匯出成 Word 檔案
 if (isset($_GET['action']) && $_GET['action'] === 'export_word') {
-    $stmt = $pdo->prepare("SELECT * FROM `members` WHERE `id` = ?");
-    $stmt->execute([$member_id]);
+    // 💡 核心修正：以 new_member 作為撈取條件
+    $stmt = $pdo->prepare("SELECT * FROM `members` WHERE `new_member` = ?");
+    $stmt->execute([$target_member_num]);
     $m = $stmt->fetch();
 
     $avatar_file = "";
     if (is_dir('uploads')) {
-        $files = glob("uploads/avatar_" . $member_id . "_*");
+        // 大頭照命名維持與該會員的 new_member 綁定
+        $files = glob("uploads/avatar_" . $target_member_num . "_*");
         if (!empty($files)) {
             usort($files, function ($a, $b) { return filemtime($b) - filemtime($a); });
             $avatar_file = $files[0];
         }
     }
     $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['living_status'] ?? '') === '存') ? 'yes' : 'no';
+
+    // 將大頭照圖片轉換為 Base64 內嵌編碼，確保 Word 檔案能成功讀取並顯示照片
+    $word_avatar_img = "貼照片處";
+    if (!empty($avatar_file) && file_exists($avatar_file)) {
+        $img_data = base64_encode(file_get_contents($avatar_file));
+        $img_info = getimagesize($avatar_file);
+        $mime_type = $img_info['mime'] ?? 'image/jpeg';
+        $word_avatar_img = '<img src="data:' . $mime_type . ';base64,' . $img_data . '" width="120" height="150">';
+    }
+
+    // Word 匯出時做「本人」的邏輯判斷
+    $db_updater = $m['last_updater'] ?? '';
+    $word_display_updater = '無紀錄';
+    if (!empty($db_updater)) {
+        $word_display_updater = htmlspecialchars($db_updater);
+        if (!empty($current_user) && strpos($db_updater, $current_user) !== false) {
+            $word_display_updater .= '(本人)';
+        }
+    }
 
     $filename = "會員入會申請表_" . ($m['name'] ?? '未命名') . ".doc";
     
@@ -68,11 +95,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_word') {
                 <th>性別</th>
                 <td><?= htmlspecialchars($m['gender'] ?? '') ?></td>
                 <td rowspan="3" style="text-align:center; width:130px;">
-                    <?php if (!empty($avatar_file) && file_exists($avatar_file)): ?>
-                        <img src="<?= $avatar_file ?>" width="120" height="150">
-                    <?php else: ?>
-                        貼照片處
-                    <?php endif; ?>
+                    <?= $word_avatar_img ?>
                 </td>
             </tr>
             <tr>
@@ -130,7 +153,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_word') {
             <tr>
                 <th>備註</th>
                 <td colspan="4">
-                    <div style="color:#c0392b; font-weight:bold;">🕒 最後一次修改時間：<?= !empty($m['update_time']) ? htmlspecialchars($m['update_time']) : '無紀錄' ?></div>
+                    <div style="color:#c0392b; font-weight:bold;">
+                        🕒 最後一次修改時間：<?= !empty($m['update_time']) ? htmlspecialchars($m['update_time']) : '無紀錄' ?> &emsp;
+                        👤 最後更新者：<?= $word_display_updater ?>
+                    </div>
                     <br>
                     <?= nl2br(htmlspecialchars($m['remarks'] ?? '')) ?>
                 </td>
@@ -147,50 +173,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     unset($_POST['update']); 
     unset($_POST['has_right_option']); 
 
+    // 💡 核心修正：以現在會員號作索引，撈出未修改前的舊資料進行比對
+    $stmt_old = $pdo->prepare("SELECT * FROM `members` WHERE `new_member` = ?");
+    $stmt_old->execute([$target_member_num]);
+    $old_data = $stmt_old->fetch();
+
     // 處理新大頭照上傳
+    $is_photo_updated = false;
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
         $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
-        $photo_name = "avatar_" . $member_id . "_" . time() . "." . $ext;
+        $photo_name = "avatar_" . $target_member_num . "_" . time() . "." . $ext;
         if (!is_dir('uploads')) {
             mkdir('uploads', 0777, true);
         }
         move_uploaded_file($_FILES['photo']['tmp_name'], 'uploads/' . $photo_name);
         $photo_path = "uploads/" . $photo_name;
+        $is_photo_updated = true; 
     } else {
         $photo_path = $_POST['current_photo_path'] ?? '';
     }
     unset($_POST['current_photo_path']); 
 
-    // 💡 修正：接收前端帶有秒數的時間並轉化為標準 SQL 格式存入資料庫
+    // 接收前端帶有秒數的時間並轉化為標準 SQL 格式存入資料庫
     if (!empty($_POST['receive_date'])) {
-        $_POST['receive_date'] = date('Y-m-d H:i:s', strtotime($_POST['receive_date']));
+        $formatted_receive_date = date('Y-m-d H:i:s', strtotime($_POST['receive_date']));
     } else {
-        $_POST['receive_date'] = null;
+        $formatted_receive_date = null;
     }
 
-    $_POST['update_time'] = date('Y-m-d H:i:s');
-    $_POST['remarks'] = trim($_POST['remarks'] ?? ''); 
+    // 定義資料庫欄位與表單中文名稱的對照表
+    $field_names_zh = [
+        'receive_date'      => '收件日期',
+        'number_of_houses'  => '大房',
+        'new_member'        => '編號',
+        'name'              => '姓名',
+        'gender'            => '性別',
+        'id_card_num'       => '身分證字號',
+        'birthday'          => '出生日期',
+        'emperor_shizu'    => '遷台世祖',
+        'generation'        => '居大甲代',
+        'SendSubordinates'  => '派下員狀態',
+        'living_status'     => '生存狀態',
+        'old_member'        => '前會員號',
+        'placeOfBirth'      => '出生地或籍貫',
+        'education'         => '學歷',
+        'experience'        => '現職／經歷',
+        'address'           => '通訊地址',
+        'mobile_phone'      => '行動電話',
+        'home_phone'        => '住家電話',
+        'company_phone'     => '公司電話',
+        'email'             => 'E-mail',
+        'introducer'        => '介紹人'
+    ];
 
-    // 執行動態 SQL 更新
+    // 開始進行修改欄位比對
+    $changed_fields = [];
+
+    if ($is_photo_updated) {
+        $changed_fields[] = '大頭照';
+    }
+
+    foreach ($field_names_zh as $col => $zh_name) {
+        if (isset($_POST[$col])) {
+            $old_val = $old_data[$col] ?? '';
+            $new_val = $_POST[$col];
+
+            if ($col === 'receive_date') {
+                $old_val = !empty($old_val) ? date('Y-m-d H:i:s', strtotime($old_val)) : null;
+                $new_val = $formatted_receive_date;
+            }
+            if ($col === 'birthday') {
+                $old_val = !empty($old_val) ? date('Y-m-d', strtotime($old_val)) : '';
+                $new_val = !empty($new_val) ? date('Y-m-d', strtotime($new_val)) : '';
+            }
+
+            if (trim((string)$old_val) !== trim((string)$new_val)) {
+                $changed_fields[] = $zh_name;
+            }
+        }
+    }
+
+    $_POST['receive_date'] = $formatted_receive_date;
+    $_POST['update_time'] = date('Y-m-d H:i:s');
+
+    // 💡 修正：明確將當前點擊按鈕的「登入者」(39 李寶珠) 寫入最後更新者欄位，達成精準防呆
+    $_POST['last_updater'] = $login_user_info;
+
+    // 處理備註內容追加邏輯
+    $old_remarks = trim($old_data['remarks'] ?? '');
+    $new_remarks_input = trim($_POST['remarks'] ?? '');
+
+    if (!empty($changed_fields)) {
+        $log_string = implode(', ', $changed_fields) . ', ' . $_POST['update_time'] . ' 修改' . PHP_EOL;
+        
+        if (!empty($new_remarks_input)) {
+            $_POST['remarks'] = $new_remarks_input . PHP_EOL . $log_string;
+        } else {
+            $_POST['remarks'] = $log_string;
+        }
+    } else {
+        $_POST['remarks'] = $new_remarks_input;
+    }
+
+    // 💡 核心修正：動態 SQL 更新條件，由 id 修改為真正的關聯主鍵 `new_member`
     $fields = array_keys($_POST);
     $set_sql = implode('=?, ', $fields) . '=?';
-    $sql = "UPDATE `members` SET {$set_sql} WHERE `id` = ?";
+    $sql = "UPDATE `members` SET {$set_sql} WHERE `new_member` = ?";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(array_merge(array_values($_POST), [$member_id]));
+    $stmt->execute(array_merge(array_values($_POST), [$target_member_num]));
 
-    header("Location: " . $_SERVER['PHP_SELF']);
+    // 重新整理網頁並維持當前查看的編號
+    header("Location: " . $_SERVER['PHP_SELF'] . (isset($_GET['new_member']) ? '?new_member=' . $_GET['new_member'] : ''));
     exit;
 }
 
 // 5. 【情境一】讀取現有資料直接導入顯示
-$stmt = $pdo->prepare("SELECT * FROM `members` WHERE `id` = ?");
-$stmt->execute([$member_id]);
+// 💡 核心修正：以 new_member (現在會員號) 作為外部主框架對接的唯一數據源
+$stmt = $pdo->prepare("SELECT * FROM `members` WHERE `new_member` = ?");
+$stmt->execute([$target_member_num]);
 $m = $stmt->fetch();
 
 $avatar_file = "";
 if (is_dir('uploads')) {
-    $files = glob("uploads/avatar_" . $member_id . "_*");
+    $files = glob("uploads/avatar_" . $target_member_num . "_*");
     if (!empty($files)) {
         usort($files, function ($a, $b) { return filemtime($b) - filemtime($a); });
         $avatar_file = $files[0];
@@ -198,6 +304,16 @@ if (is_dir('uploads')) {
 }
 
 $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['living_status'] ?? '') === '存') ? 'yes' : 'no';
+
+// 💡 核心修正：精準以登入 Session 姓名(李寶珠) 做為本人識別，不論查到誰的表單，顯示本人功能都不會錯亂
+$web_display_updater = '無紀錄';
+$db_updater = $m['last_updater'] ?? '';
+if (!empty($db_updater)) {
+    $web_display_updater = htmlspecialchars($db_updater);
+    if (!empty($current_user) && strpos($db_updater, $current_user) !== false) {
+        $web_display_updater .= '(本人)';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -213,7 +329,6 @@ $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['livin
         .top-info { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: bold; }
         .top-info input { border: none; border-bottom: 1px solid #000; padding: 2px 5px; outline: none; font-size: 15px; }
         
-        /* 💡 修正：為收件日期的 datetime-local 欄位設定合適寬度以完整容納秒數 */
         .input-datetime { width: 240px; border: none; border-bottom: 1px solid #000; font-size: 15px; }
         
         table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
@@ -231,7 +346,8 @@ $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['livin
         .btn-center { text-align: center; margin-top: 25px; }
         .btn-submit { background: #1a5276; color: #fff; padding: 12px 40px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 2px; }
         .btn-submit:hover { background: #113f5c; }
-        .remarks-time-header { font-size: 13px; color: #c0392b; font-weight: bold; margin-bottom: 5px; display: block; }
+        
+        .remarks-time-header { font-size: 13px; color: #c0392b; font-weight: bold; margin-bottom: 5px; display: flex; gap: 20px; }
 
         .action-box { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; gap: 10px; }
         .action-btn { color: white; border: none; padding: 10px 18px; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; text-decoration: none; }
@@ -254,7 +370,7 @@ $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['livin
 
     <div class="action-box">
         <button type="button" class="action-btn btn-print" onclick="window.print()">🖨️ 列印申請表</button>
-        <a href="?action=export_word" target="download_frame" class="action-btn btn-word">📝 匯出成 WORD</a>
+        <a href="?action=export_word<?= isset($_GET['new_member']) ? '&new_member=' . $_GET['new_member'] : '' ?>" target="download_frame" class="action-btn btn-word">📝 匯出成 WORD</a>
     </div>
 
     <iframe name="download_frame" style="display:none;"></iframe>
@@ -371,7 +487,10 @@ $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['livin
                 <tr>
                     <th>備註</th>
                     <td colspan="5">
-                        <span class="remarks-time-header">🕒 最後一次修改時間：<?= !empty($m['update_time']) ? htmlspecialchars($m['update_time']) : '無紀錄' ?></span>
+                        <div class="remarks-time-header">
+                            <span>🕒 最後一次修改時間：<?= !empty($m['update_time']) ? htmlspecialchars($m['update_time']) : '無紀錄' ?></span>
+                            <span>👤 最後更新者：<?= $web_display_updater ?></span>
+                        </div>
                         <textarea name="remarks" rows="4"><?= htmlspecialchars($m['remarks'] ?? '') ?></textarea>
                     </td>
                 </tr>
