@@ -75,6 +75,35 @@ emperor_shizu世祖(台灣算起)
 
 
 
+
+-- ============================================================
+-- 資料庫: lee
+-- 動作: 乾淨重建 files 資料表 (從無到有)
+-- ============================================================
+
+-- 1. 如果資料庫中已經有舊的 files 表，先將其刪除以確保全新建立
+DROP TABLE IF EXISTS `files`;
+
+-- 2. 重新建立全新的 files 資料表
+CREATE TABLE `files` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '檔案自動遞增流水號',
+  `file_name` VARCHAR(255) NOT NULL COMMENT '原始檔案名稱 (保留原檔名)',
+  `file_path` VARCHAR(500) NOT NULL COMMENT '伺服器實體儲存絕對路徑',
+  `file_url` VARCHAR(500) NOT NULL COMMENT '網頁前端顯示與下載網址 (URL)',
+  `file_type` VARCHAR(100) NOT NULL COMMENT '檔案 MIME 類型 (例如 image/jpeg, application/pdf)',
+  `file_size` BIGINT NOT NULL COMMENT '檔案大小 (單位: Bytes，防範 500M 大檔採用 BIGINT)',
+  `status` VARCHAR(20) DEFAULT 'active' COMMENT '檔案狀態 (預設為 active)',
+  `reference_id` INT DEFAULT 0 COMMENT '關聯祈願編號 (對應 makeawish 表的 ID，預設為 0)',
+  `uploaded_id` VARCHAR(50) DEFAULT '0' COMMENT '上傳者會員編號/身分標記 (對應 members 表的 new_member)',
+  `uploaded_name` VARCHAR(100) DEFAULT NULL COMMENT '上傳者姓名 (對應作者欄位)',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '檔案上傳時間',
+  
+  -- 建立索引以優化程式碼中透過 file_url、reference_id 及 uploaded_id 的查詢與更新速度
+  INDEX `idx_file_url` (`file_url`),
+  INDEX `idx_reference_id` (`reference_id`),
+  INDEX `idx_uploaded_id` (`uploaded_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='檔案上傳與祈願關聯資料表';
+
 -- 2. 建立資料表 留言信箱
 CREATE TABLE `messages` (
   `id` int(11) NOT NULL COMMENT '訊息流水號',

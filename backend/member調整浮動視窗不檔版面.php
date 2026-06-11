@@ -63,7 +63,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_word') {
     header("Expires: 0");
     header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
     header("Pragma: public");
-    
 ?>
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 
@@ -900,7 +899,8 @@ if (!empty($db_updater)) {
                                 &emsp;&emsp;
                             <strong>派下權：</strong>
                             <label><input type="radio" name="has_right_option" value="yes" <?= $has_right === 'yes' ? 'checked' : '' ?> onclick="validateRight(this)">有</label>
-                            <label><input type="radio" name="has_right_option" value="no" <?= $has_right === 'no' ? 'checked' : '' ?> onclick="validateRight(this)">無</label>                  
+                            <label><input type="radio" name="has_right_option" value="no" <?= $has_right === 'no' ? 'checked' : '' ?> onclick="validateRight(this)">無</label>
+                     
                     </td>
                     <th>前會員號</th>
                     <td colspan="2"><input type="text" name="old_member" value="<?= htmlspecialchars($m['old_member'] ?? '') ?>"></td>
