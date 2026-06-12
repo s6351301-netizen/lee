@@ -9,7 +9,28 @@
 主要參考https://simular.co/
 
 
+以下原始碼,做判斷修正:
+若插入圖片或影音檔超過一個卡片的範圍,就讓這張卡片獨立一個一列不用再跟後續的其他卡片排再一起顯示出來.
+在"[展開進階編輯]"展開新視窗後,只要插入的影片是來自於上傳影片到本主機裡面,都應改語法為
+<video width="640" height="360" controls autoplay muted>
+  <source src="" type="video/mp4">
+  您的瀏覽器不支援 HTML5 影片播放。
+</video>
+而src=""裡面放的網址就是上傳影片的網址
 
+
+
+這原始資料是一張明信片統計祭祖活動是否要出席,且拍了2年在一起.
+依照下面題的要求,在網頁李面設計兩張明信片,第一張在上面第二張在下面.
+
+
+明信片規格說明
+https://www.post.gov.tw/post/internet/Postal/index.jsp?ID=1380181772297
+
+直式國內明信片(114年版)第一張右邊,寄件與收件者.
+https://stamp.post.gov.tw/post/stamp_mall/big/p_goods/content/magnify.jsp?p_id=04000446&pos=pimg0
+橫式國內明信片(115年版)第二張右邊,寄件與收件者.
+https://stamp.post.gov.tw/post/stamp_mall/big/p_goods/content/magnify.jsp?p_id=04000448&pos=pimg0
 
 
 
