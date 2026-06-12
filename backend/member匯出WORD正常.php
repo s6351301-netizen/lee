@@ -222,11 +222,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     }
     $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['living_status'] ?? '') === '存') ? 'yes' : 'no';
 
+    // 💡 技術轉移與突破：將 Word 的 Base64 結合 Excel 專用 MSO/VML 錨定渲染語法
     $excel_avatar_img = "貼照片處";
     if (!empty($avatar_file) && file_exists($avatar_file)) {
         $img_data = base64_encode(file_get_contents($avatar_file));
         $img_info = getimagesize($avatar_file);
         $mime_type = $img_info['mime'] ?? 'image/jpeg';
+
+        // 核心移植：使用微軟專用繪圖標籤模式，強迫 Excel 核心主動解析儲存格內的 Base64 數據流
         $excel_avatar_img = '
         <img src="data:' . $mime_type . ';base64,' . $img_data . '" width="120" height="150" style="display:block; width:120px; height:150px; margin:0 auto;">';
     }
@@ -719,6 +722,22 @@ if (!empty($db_updater)) {
             align-items: center;
         }
 
+        /*   .action-btn {
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            white-space: nowrap;
+        } */
+
         .action-btn {
             color: white;
             border: none;
@@ -729,8 +748,11 @@ if (!empty($db_updater)) {
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
             display: flex;
+            /* 改成 block-level flex 容器 */
             flex-direction: column;
+            /* 垂直排列 */
             align-items: flex-start;
+            /* 靠左對齊 */
             gap: 6px;
             text-decoration: none;
             white-space: nowrap;
@@ -855,8 +877,9 @@ if (!empty($db_updater)) {
                     <th>派下世代</th>
                     <td colspan="3">
                         <div class="flex-row">
-                            <div>遷台第<input type="text" name="emperor_shizu" id="emperor_shizu" class="inline-input" style="width:40px;" value="<?= htmlspecialchars($m['emperor_shizu'] ?? '') ?>" oninput="syncShizuToGeneration(this)">世祖</div>
-                            <div>居大甲第<input type="text" name="generation" id="generation" class="inline-input" style="width:40px;" value="<?= htmlspecialchars($m['generation'] ?? '') ?>" oninput="syncGenerationToShizu(this)">代</div>
+                            <div>遷台第<input type="text" name="emperor_shizu" class="inline-input" style="width:40px;" value="<?= htmlspecialchars($m['emperor_shizu'] ?? '') ?>">世祖</div>
+                            <div>居大甲第<input type="text" name="generation" class="inline-input" style="width:40px;" value="<?= htmlspecialchars($m['generation'] ?? '') ?>">代</div>
+
                         </div>
                     </td>
                 </tr>
@@ -937,43 +960,6 @@ if (!empty($db_updater)) {
     </div>
 
     <script>
-        // 🔒 迴圈防止鎖：避免雙向聯動觸發導致無窮遞迴
-        let isSyncing = false;
-
-        // 1. 輸入世祖 -> 自動帶出代數 (當世祖 >= 20，自動累加，30世祖以上亦同)
-        function syncShizuToGeneration(shizuInput) {
-            if (isSyncing) return;
-            isSyncing = true;
-
-            const shizuValue = parseInt(shizuInput.value.trim(), 10);
-            const genInput = document.getElementById('generation');
-            
-            if (!isNaN(shizuValue) && shizuValue >= 20) {
-                genInput.value = shizuValue - 19;
-            } else {
-                genInput.value = ''; // 世祖被清空或小於20時，清空代數
-            }
-
-            isSyncing = false;
-        }
-
-        // 2. 輸入代數 -> 自動帶出世祖 (代數 >= 1 即可觸發對應，無限自動累加)
-        function syncGenerationToShizu(genInput) {
-            if (isSyncing) return;
-            isSyncing = true;
-
-            const genValue = parseInt(genInput.value.trim(), 10);
-            const shizuInput = document.getElementById('emperor_shizu');
-            
-            if (!isNaN(genValue) && genValue >= 1) {
-                shizuInput.value = genValue + 19;
-            } else {
-                shizuInput.value = ''; // 代數被清空或小於1時，清空世祖
-            }
-
-            isSyncing = false;
-        }
-
         function triggerUpload() {
             document.getElementById('photoInput').click();
         }
