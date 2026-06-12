@@ -339,7 +339,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         .wish-content { font-size: 0.95rem; line-height: 1.6; color: #ece6dc; margin-bottom: 15px; min-height: 65px; flex-grow: 1; display: block; overflow: hidden; }
         .wish-content img { max-width: 100%; height: auto; border-radius: 4px; margin: 5px 0; }
-        .wish-content video { max-width: 100%; border-radius: 4px; margin: 5px 0; background: #000; cursor: pointer; }
+        .wish-content video { max-width: 100%; border-radius: 4px; margin: 5px 0; background: #000; }
 
         .wish-file-table {
             width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 8px;
@@ -360,7 +360,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         }
         .wish-table-thumb:hover { transform: scale(1.1); border-color: #f39c12; }
 
-        /* 大圖與影音彈出視窗 */
+        /* 大圖彈出視窗 */
         .img-click-popup-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 15, 10, 0.85); backdrop-filter: blur(8px);
             z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.25s ease;
@@ -370,7 +370,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             position: relative; max-width: 90%; max-height: 85%; background: rgba(10, 31, 20, 0.95); padding: 12px;
             border: 2px solid #a3ccab; border-radius: 8px; box-shadow: 0 25px 60px rgba(0,0,0,0.6); animation: zoomInQuick 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .img-popup-container img, .img-popup-container video { max-width: 100%; max-height: 75vh; display: block; object-fit: contain; border-radius: 4px; background: #000; }
+        .img-popup-container img { max-width: 100%; max-height: 75vh; display: block; object-fit: contain; border-radius: 4px; background: #000; }
         .img-popup-action-group { position: absolute; top: -18px; right: -18px; display: flex; gap: 8px; z-index: 100001; }
         .img-popup-btn {
             width: 36px; height: 36px; color: #ffffff; border: 2px solid #ffffff; border-radius: 50%; font-size: 16px; font-weight: bold; 
@@ -473,7 +473,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         .jodit-container { background: #f0fdf4 !important; color: #000000 !important; height: 100% !important; border: 1px solid #cbd5e1 !important; }
         .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
         .jodit-toolbar-button__icon { fill: #1e293b !important; }
-        .jodit-toolbar-button__icon { fill: #1e293b !important; }
         .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
         .expand-link { font-size: 0.85rem; color: #f39c12; cursor: pointer; margin-left: 10px; text-decoration: underline; font-weight: normal; }
         .expand-link:hover { color: #ffd166; }
@@ -517,9 +516,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
     </div>
 
     <div class="img-click-popup-overlay" id="imgPopupOverlay">
-        <div class="img-popup-container" id="imgPopupContainer">
+        <div class="img-popup-container">
             <div class="img-popup-action-group">
-                <a href="" id="imgPopupDownloadBtn" class="img-popup-btn img-popup-download-btn" title="下載此檔案" download="家族祈願檔案">⬇</a>
+                <a href="" id="imgPopupDownloadBtn" class="img-popup-btn img-popup-download-btn" title="下載此圖片" download="家族祈願圖片">⬇</a>
                 <button class="img-popup-btn img-popup-close-btn" id="imgPopupCloseBtn" title="關閉視窗">&times;</button>
             </div>
             <img src="" id="imgPopupTarget" alt="完整大圖顯示">
@@ -649,14 +648,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                 }
                 
                 const isImageFile = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-                const isVideoFile = /\.(mp4|webm|ogg|mov|avi)$/i.test(url);
                 if (isImageFile) {
                     if (!filesArray.some(f => f.url === url)) {
                         filesArray.push({ type: 'image', url: url, name: name });
-                    }
-                } else if (isVideoFile) {
-                    if (!filesArray.some(f => f.url === url)) {
-                        filesArray.push({ type: 'video', url: url, name: name });
                     }
                 } else {
                     filesArray.push({ type: 'file', url: url, name: name });
@@ -682,12 +676,6 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                                 <td class="wish-file-icon">🖼️</td>
                                 <td class="wish-file-name"><a href="${file.url}" class="card-img-trigger" target="_blank">${displayName}</a></td>
                                 <td style="text-align: right; width: 60px;"><img src="${file.url}" class="wish-table-thumb" alt="縮圖"></td>
-                            </tr>`;
-                    } else if (file.type === 'video') {
-                        tableHtml += `
-                            <tr>
-                                <td class="wish-file-icon">🎬</td>
-                                <td class="wish-file-name" colspan="2"><a href="${file.url}" class="card-video-trigger" target="_blank">播放影片: ${displayName}</a></td>
                             </tr>`;
                     } else {
                         tableHtml += `
@@ -750,7 +738,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
             const isMobile = window.innerWidth <= 768;
             const itemsPerRow = isMobile ? 1 : 3;
 
-            // 建立一筆乾記的臨時分組結構
+            // 建立一筆乾淨的臨時分組結構
             let currentRow = [];
 
             wishesData.forEach(wish => {
@@ -983,11 +971,9 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
                             if (isImage) {
                                 this.s.insertImage(fileUrl, null, 200); 
                             } else if (isVideo) {
-                                // 🚀 修正與功能新增：
-                                // 改寫為指定格式，因為加入聲音預設開啟需求，這裡移除 muted 以便點擊放大時能順利開聲音自動播放。
-                                // 為了防止在縮圖輪播時部分瀏覽器因安全政策阻擋，此處加上 playsinline，小卡片狀態下不自動播放避免吵雜。
+                                // 🚀 修正點：當偵測到上傳的檔案是本機影片時，改寫為指定的 HTML5 語法
                                 const videoHtml = `
-                                    <video width="320" height="180" controls playsinline>
+                                    <video width="640" height="360" controls autoplay muted>
                                         <source src="${fileUrl}" type="video/mp4">
                                         您的瀏覽器不支援 HTML5 影片播放。
                                     </video><br>&nbsp;`;
@@ -1021,70 +1007,26 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
         });
 
         // ==========================================
-        // 點擊卡片縮圖、首圖、或者影片標籤大圖/原始大小影片彈出控制
+        // 點擊卡片縮圖或首圖大圖彈出控制
         // ==========================================
         const imgPopupOverlay = document.getElementById('imgPopupOverlay');
-        const imgPopupContainer = document.getElementById('imgPopupContainer');
         const imgPopupTarget = document.getElementById('imgPopupTarget');
         const imgPopupCloseBtn = document.getElementById('imgPopupCloseBtn');
         const imgPopupDownloadBtn = document.getElementById('imgPopupDownloadBtn'); 
 
         marqueeTrack.addEventListener('click', function(e) {
-            // 偵測點擊目標
             const isThumb = e.target.classList.contains('wish-table-thumb');
             const isHeroImg = e.target.classList.contains('wish-card-hero-image');
             const isImgLink = e.target.classList.contains('card-img-trigger');
-            const isVideoLink = e.target.classList.contains('card-video-trigger');
-            const isNativeVideo = e.target.tagName.toLowerCase() === 'video';
             
-            if (isThumb || isImgLink || isHeroImg || isVideoLink || isNativeVideo) {
+            if (isThumb || isImgLink || isHeroImg) {
                 e.preventDefault();
                 e.stopPropagation(); 
                 
-                // 先清除可能殘留的影片元件
-                const oldVideo = imgPopupContainer.querySelector('video');
-                if (oldVideo) oldVideo.remove();
-                imgPopupTarget.style.display = 'none';
-
-                let fileSrc = '';
-
-                if (isNativeVideo) {
-                    // 如果直接點擊內嵌的 video 標籤
-                    const sourceEl = e.target.querySelector('source');
-                    fileSrc = sourceEl ? sourceEl.src : e.target.src;
-                } else if (isVideoLink) {
-                    // 如果點擊的是表格中的影片連結
-                    fileSrc = e.target.getAttribute('href');
-                } else {
-                    // 如果點擊的是圖片系列
-                    fileSrc = (isThumb || isHeroImg) ? e.target.src : e.target.getAttribute('href');
-                }
-
-                // 判斷是影片還是圖片
-                const isVideoFile = isNativeVideo || isVideoLink || /\.(mp4|webm|ogg|mov|avi)$/i.test(fileSrc);
-
-                if (isVideoFile) {
-                    // 🚀 新增功能：動態建立一個滿版/原始比例大小的影片元件，且「聲音開啟」、「自動播放」
-                    const videoVideoEl = document.createElement('video');
-                    videoVideoEl.src = fileSrc;
-                    videoVideoEl.controls = true;
-                    videoVideoEl.autoplay = true; 
-                    videoVideoEl.muted = false; // 🔊 聲音預設是開啟
-                    videoVideoEl.style.maxWidth = '100%';
-                    videoVideoEl.style.maxHeight = '75vh';
-                    videoVideoEl.style.display = 'block';
-                    videoVideoEl.style.background = '#000';
-                    videoVideoEl.id = 'imgPopupVideoTarget';
-                    
-                    // 將其塞到下載按鈕與圖片之後
-                    imgPopupContainer.appendChild(videoVideoEl);
-                } else {
-                    // 圖片顯示
-                    imgPopupTarget.src = fileSrc; 
-                    imgPopupTarget.style.display = 'block';
-                }
+                const imgSrc = (isThumb || isHeroImg) ? e.target.src : e.target.getAttribute('href');
                 
-                imgPopupDownloadBtn.href = fileSrc; 
+                imgPopupTarget.src = imgSrc; 
+                imgPopupDownloadBtn.href = imgSrc; 
                 imgPopupOverlay.classList.add('active'); 
             }
         });
@@ -1094,16 +1036,7 @@ if ($result_wishes && $result_wishes->num_rows > 0) {
 
         function closeImagePopup() {
             imgPopupOverlay.classList.remove('active');
-            // 🚀 關閉時記得暫停影片，避免背景持續有聲音
-            const activeVideo = document.getElementById('imgPopupVideoTarget');
-            if (activeVideo) activeVideo.pause();
-            
-            setTimeout(() => { 
-                imgPopupTarget.src = ''; 
-                imgPopupDownloadBtn.href = ''; 
-                const activeVideo = document.getElementById('imgPopupVideoTarget');
-                if (activeVideo) activeVideo.remove();
-            }, 200); 
+            setTimeout(() => { imgPopupTarget.src = ''; imgPopupDownloadBtn.href = ''; }, 200); 
         }
 
         // ==========================================
