@@ -395,7 +395,78 @@
     }
 } 
         
+/* =======================================================================
+   新增：1. 郵遞區號方框（Zip Code）—— 依序滑落彈跳動畫
+   ====================================================================== */
 
+@media screen {
+    /* 1. 初始化所有郵遞區號格子，讓它們預設透明，並準備執行彈跳動畫 */
+    .zip-code-zone .zip-box {
+        opacity: 0;
+        animation: zipDropBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* 2. 郵遞區號 為每一個格子設定「由左至右」的依序延遲時間 (每格差 0.1 秒) */
+    /* 右上角收件人郵遞區號 (前3碼) */
+    .recipient-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 0.1s; }
+    .recipient-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 0.2s; }
+    .recipient-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 0.3s; }
+    /* 右上角收件人郵遞區號 (後3碼) */
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 0.4s; }
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 0.5s; }
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 0.6s; }
+
+    /* 左下角寄件人郵遞區號 (前3碼) */
+    .sender-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 0.7s; }
+    .sender-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 0.8s; }
+    .sender-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 0.9s; }
+    /* 左下角寄件人郵遞區號 (後3碼) */
+    .sender-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 1.0s; }
+    .sender-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 1.1s; }
+    .sender-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 1.2s; }
+
+    /* 郵遞區號 連字號 3+3 中間的 "-" 預設隱藏，等格子掉完後一起淡入 */
+    .zip-hyphen {
+        opacity: 0;
+        animation: fadeInHyphen 0.4s ease forwards 0.7s;
+    }
+}
+
+/* 3. 郵遞區號 定義從上方滑落並帶有物理彈跳感（Bounce）的軌跡 */
+@keyframes zipDropBounce {
+    0% {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.7); /* 從上方 40px 處掉落縮小 */
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(5px) scale(1.05);  /* 稍微掉過頭並放大 */
+    }
+    80% {
+        transform: translateY(-2px) scale(0.98); /* 微幅往上回彈 */
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);       /* 完美定位 */
+    }
+}
+
+/* 郵遞區號 連字號淡入動畫 */
+@keyframes fadeInHyphen {
+    to { opacity: 1; }
+}
+
+/* =======================================================================
+   🖨️ 郵遞區號 列印/打印保護：強制取消所有限制，數字方框 100% 正常印出
+   ======================================================================= */
+@media print {
+    .zip-code-zone .zip-box,
+    .zip-hyphen {
+        animation: none !important;     /* 徹底關閉動畫 */
+        opacity: 1 !important;          /* 確保文字完全現形不透明 */
+        transform: none !important;     /* 移除任何位移，回歸正軌 */
+    }
+}
     </style>
 
 
