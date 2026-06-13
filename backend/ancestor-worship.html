@@ -296,66 +296,7 @@
                 box-shadow: none !important;
                 /* 移除螢幕發光，避免列印出現黑邊 */
             }
-        }
-
-
-
-        /* =======================================================================
-   新增：5. 整個明信片外框—— 3D 翻頁（Flip）效果且在列印時不受影響.
-   ======================================================================= */
-        @media screen {
-
-            /* 1. 為雙面容器增加 3D 視角透視度 */
-            .postcard-twin-container {
-                perspective: 1500px;
-            }
-
-            /* 2. 定義左側(背面)與右側(正面)的 3D 翻轉動畫基礎設定 */
-            .postcard-twin-container .postcard-face {
-                transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s;
-                transform-style: preserve-3d;
-                backface-visibility: hidden;
-                /* 翻過去時隱藏背面 */
-            }
-
-            /* 3. 滑鼠移入容器時的 3D 旋轉反應 */
-            /* 左側(背面)滑鼠移入時：往前翻轉 180 度 */
-            .postcard-twin-container .postcard-face:first-child:hover {
-                transform: scale(1.02) rotateY(180deg);
-                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
-            }
-
-            /* 右側(正面)滑鼠移入時：往後翻轉 -180 度 */
-            .postcard-twin-container .postcard-face:last-child:hover {
-                transform: scale(1.02) rotateY(-180deg);
-                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
-            }
-        }
-
-        /* =======================================================================
-   🖨️ 列印/打印保護：強制取消 3D 旋轉與動畫，回歸完美靜態輸出
-   5. 整個明信片外框—— 3D 翻頁（Flip）效果且在列印時不受影響.
-   ======================================================================= */
-        @media print {
-            .postcard-twin-container {
-                perspective: none !important;
-            }
-
-            .postcard-face {
-                animation: none !important;
-                transform: none !important;
-                /* 強制移除 3D 旋轉角度 */
-                transition: none !important;
-                /* 關閉過渡動畫 */
-                box-shadow: none !important;
-                page-break-inside: avoid;
-            }
-
-            .notice-bottom {
-                animation: none !important;
-                /* 同步關閉警示文字搖晃 */
-            }
-        }   
+        } 
         
 /* =======================================================================
    修正：3. 「報名單」內文（背面）—— 專為直書設計的鋼筆手寫動畫
@@ -409,21 +350,21 @@
     /* 2. 郵遞區號 為每一個格子設定「由左至右」的依序延遲時間 (每格差 0.1 秒) */
     /* 右上角收件人郵遞區號 (前3碼) */
     .recipient-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 0.1s; }
-    .recipient-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 0.5s; }
-    .recipient-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 1.0s; }
+    .recipient-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 0.3s; }
+    .recipient-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 0.5s; }
     /* 右上角收件人郵遞區號 (後3碼) */
-    .recipient-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 1.5s; }
-    .recipient-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 2.0s; }
-    .recipient-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 2.5s; }
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 0.7s; }
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 0.9s; }
+    .recipient-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 1.3s; }
 
     /* 左下角寄件人郵遞區號 (前3碼) */
-    .sender-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 3.0s; }
-    .sender-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 3.5s; }
-    .sender-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 4.0s; }
+    .sender-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 1.5s; }
+    .sender-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 1.7s; }
+    .sender-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 1.9s; }
     /* 左下角寄件人郵遞區號 (後3碼) */
-    .sender-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 4.5s; }
-    .sender-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 5.0s; }
-    .sender-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 5.5s; }
+    .sender-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 2.1s; }
+    .sender-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 1.3s; }
+    .sender-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 2.5s; }
 
     /* 郵遞區號 連字號 3+3 中間的 "-" 預設隱藏，等格子掉完後一起淡入 */
     .zip-hyphen {
