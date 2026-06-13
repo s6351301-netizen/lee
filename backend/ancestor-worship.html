@@ -61,7 +61,7 @@
             box-sizing: border-box;
         }
 
-      
+
 
         /* 核心直書縱排設定 */
         .vertical-text-mode {
@@ -128,12 +128,13 @@
 
         /* 左邊上方郵票（微縮至寬 50px * 高 60px） */
         .stamp-placeholder {
-            width:60px;
-            height:70px;
+            width: 60px;
+            height: 70px;
             border: 1.2px dashed #ff0000;
             background-image: url("https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D768_01.jpg");
-            background-repeat: no-repeat;    /* 避免重複平鋪 */
-            background-size:60px 70px;
+            background-repeat: no-repeat;
+            /* 避免重複平鋪 */
+            background-size: 60px 70px;
         }
 
         /* 左邊上方郵票 滑鼠移過去時換成另一張圖片 
@@ -188,7 +189,7 @@
             position: absolute;
             left: 25px;
             top: 100px;
-            height:480px;
+            height: 480px;
             font-size: 14px;
             color: #000000;
             line-height: 25px;
@@ -230,15 +231,180 @@
             margin-top: auto;
             padding-right: 4px;
         }
+
+
+        /* 1. 收件人姓名,上下漂浮的動態效果「懸浮感」 */
+        .floating-block {
+            animation: floatMove 3s ease-in-out infinite;
+        }
+
+        @keyframes floatMove {
+            0%, 100% {
+                transform: translate(-50%, -50%);  }
+
+            50% {
+                transform: translate(-50%, -55%);
+            }
+
+            /* 向上飄移 5% */
+        }
+
+        /* 2. 讓警示文字每 2 秒自動搖晃一次，提醒親人回函 */
+        .notice-bottom {
+            animation: textShake 2s ease-in-out infinite;
+        }
+
+        @keyframes textShake {
+
+            0%,
+            90%,
+            100% {
+                transform: translateX(0);
+            }
+
+            92% {
+                transform: translateX(-4px);
+            }
+
+            94% {
+                transform: translateX(4px);
+            }
+
+            96% {
+                transform: translateX(-2px);
+            }
+
+            98% {
+                transform: translateX(2px);
+            }
+        }
+
+        /* 收件人姓名,上下漂浮的動態效果,在列銀時鎖定*/
+        @media screen {
+            .floating-block {
+                animation: floatMove 3s ease-in-out infinite;
+            }
+        }
+
+        /* 🖨️ 列印/打印時的專用樣式：強制靜態、關閉動畫，確保印刷精準 */
+        @media print {
+            .floating-block {
+                animation: none !important;
+                /* 關閉所有動畫 */
+                transform: translate(-50%, -50%) !important;
+                /* 穩穩鎖在正中央 */
+                box-shadow: none !important;
+                /* 移除螢幕發光，避免列印出現黑邊 */
+            }
+        }
+
+
+
+        /* =======================================================================
+   新增：5. 整個明信片外框—— 3D 翻頁（Flip）效果且在列印時不受影響.
+   ======================================================================= */
+        @media screen {
+
+            /* 1. 為雙面容器增加 3D 視角透視度 */
+            .postcard-twin-container {
+                perspective: 1500px;
+            }
+
+            /* 2. 定義左側(背面)與右側(正面)的 3D 翻轉動畫基礎設定 */
+            .postcard-twin-container .postcard-face {
+                transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s;
+                transform-style: preserve-3d;
+                backface-visibility: hidden;
+                /* 翻過去時隱藏背面 */
+            }
+
+            /* 3. 滑鼠移入容器時的 3D 旋轉反應 */
+            /* 左側(背面)滑鼠移入時：往前翻轉 180 度 */
+            .postcard-twin-container .postcard-face:first-child:hover {
+                transform: scale(1.02) rotateY(180deg);
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
+            }
+
+            /* 右側(正面)滑鼠移入時：往後翻轉 -180 度 */
+            .postcard-twin-container .postcard-face:last-child:hover {
+                transform: scale(1.02) rotateY(-180deg);
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
+            }
+        }
+
+        /* =======================================================================
+   🖨️ 列印/打印保護：強制取消 3D 旋轉與動畫，回歸完美靜態輸出
+   5. 整個明信片外框—— 3D 翻頁（Flip）效果且在列印時不受影響.
+   ======================================================================= */
+        @media print {
+            .postcard-twin-container {
+                perspective: none !important;
+            }
+
+            .postcard-face {
+                animation: none !important;
+                transform: none !important;
+                /* 強制移除 3D 旋轉角度 */
+                transition: none !important;
+                /* 關閉過渡動畫 */
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+
+            .notice-bottom {
+                animation: none !important;
+                /* 同步關閉警示文字搖晃 */
+            }
+        }   
+        
+/* =======================================================================
+   修正：3. 「報名單」內文（背面）—— 專為直書設計的鋼筆手寫動畫
+   ====================================================================== */
+
+@media screen {
+    /* 1. 初始化內文，讓它預設寬度為 0 隱藏，並隱藏溢出內容 */
+    .back-content-spec .main-text {
+        max-width: 0px;
+        white-space: nowrap; /* 防止字體在寬度變大時亂換行 */
+        overflow: hidden;
+        
+        /* 執行登場動畫：總長 4 秒，延遲 0.8 秒（等 3D 翻頁穩定後）播完停在最後一格 */
+        animation: verticalWrite 4s cubic-bezier(0.4, 0, 0.2, 1) 0.8s forwards;
+    }
+}
+
+/* 2. 讓直書區塊的寬度由 0 慢慢往左邊撐開，完美模擬由右至左一列列寫出來的效果 */
+@keyframes verticalWrite {
+    0% {
+        max-width: 0px;
+    }
+    100% {
+        max-width: 288px; /* 撐滿迷你明信片的寬度 */
+    }
+}
+
+/* =======================================================================
+   🖨️ 列印/打印保護：強制取消所有限制，字體 100% 完整印出
+   ======================================================================= */
+@media print {
+    .back-content-spec .main-text {
+        animation: none !important;     /* 徹底關閉動畫 */
+        max-width: none !important;    /* 解除寬度限制 */
+        overflow: visible !important;  /* 確保文字完全可見 */
+        white-space: normal !important; /* 恢復正常換行規則 */
+    }
+} 
+        
+
     </style>
 
 
-    
+
 </head>
 
 <body>
-    
-    
+
+
     <h2>祭祖活動出席統計(3x5 英吋迷你尺寸明信片)</h2>
     <div class="postcard-twin-container">
 
@@ -248,7 +414,8 @@
                 <div class="main-text">
                     一、本人願意參加本公業民國<span class="combine-num">115</span>年<span class="combine-num">1</span>月
                     <span class="combine-num">1</span>日(農曆<span class="combine-num">114</span><br>
-                    &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期四，會員大會(祭祖並聚餐)。<br>
+                    &emsp;&emsp;年<span class="combine-num">11</span>月<span
+                        class="combine-num">13</span>日)星期四，會員大會(祭祖並聚餐)。<br>
                     二、參加人員有本人外還有太太和小孩，共計<span class="combine-num">10</span>名。<br>
                     三、若本人無法來參加，授權由_______代理出席。<br>
                 </div>
@@ -258,7 +425,7 @@
             </div>
         </div>
 
-        <div class="postcard-face" style="margin-top: 30px;">    
+        <div class="postcard-face" style="margin-top: 30px;">
             <div class="recipient-zip zip-code-zone">
                 <div class="zip-container">
                     <div class="zip-box">1</div>
@@ -302,33 +469,34 @@
 
             <div class="sender-address vertical-text-mode">
                 寄件人：台中市李武略派下李氏宗親會 啟<br>
-                &emsp;&emsp;&emsp;&emsp;臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span class="combine-num">45</span>號
+                &emsp;&emsp;&emsp;&emsp;臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span
+                    class="combine-num">45</span>號
             </div>
         </div>
     </div>
- 
-<script>
-const stamp = document.querySelector('.stamp-placeholder');
 
-// 圖片清單（數字 1–10）
-const images = [
-  "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg", // 數字1-4
-  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D561_02.561.1B.jpg", // 數字5
-  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148_01.1B.jpg",      // 數字6
-  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A146III_01.9-B.jpg", // 數字7
-  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148II_01.jpg",      // 數字8
-  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/30809909.JPG", // 數字9
-  "https://www.cepp.gov.tw/Uploads/WebLevelD/gz1hu1xp.toj.jpg" // 數字10
-];
+    <script>
+        const stamp = document.querySelector('.stamp-placeholder');
 
-let index = 0;
+        // 圖片清單（數字 1–10）
+        const images = [
+            "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg", // 數字1-4
+            "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D561_02.561.1B.jpg", // 數字5
+            "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148_01.1B.jpg",      // 數字6
+            "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A146III_01.9-B.jpg", // 數字7
+            "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148II_01.jpg",      // 數字8
+            "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/30809909.JPG", // 數字9
+            "https://www.cepp.gov.tw/Uploads/WebLevelD/gz1hu1xp.toj.jpg" // 數字10
+        ];
 
-// 每 2 秒切換一次圖片
-setInterval(() => {
-  stamp.style.backgroundImage = `url(${images[index]})`;
-  index = (index + 1) % images.length;
-}, 1000);
-</script>    
+        let index = 0;
+
+        // 每 2 秒切換一次圖片
+        setInterval(() => {
+            stamp.style.backgroundImage = `url(${images[index]})`;
+            index = (index + 1) % images.length;
+        }, 1000);
+    </script>
 
 </body>
 
