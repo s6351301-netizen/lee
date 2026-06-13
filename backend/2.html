@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直式國內明信片（114年版）- 標準縮小正反對照版</title>
+    <style>
+        body {
+            font-family: "DFKai-SB", "標楷體", Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: #f0f0f0; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .version-tag {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        /* 雙面並排容器 */
+        .postcard-twin-container {
+            display: flex;
+            flex-direction: row;
+            gap: 40px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 明信片單面外框（標準縮小：高 450px * 寬 320px） */
+        .postcard-face {
+            background-color: #fffdf7; /* 模擬微黃紙質 */
+            width: 320px;
+            height: 450px;
+            border: 2px solid #a1a1a1;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            position: relative;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 頂部正面/背面標籤 */
+        .face-label {
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            position: absolute;
+            top: -30px;
+            left: 0;
+            font-size: 13px;
+            font-weight: bold;
+            color: #34495e;
+            background-color: #e1e8ed;
+            padding: 2px 10px;
+            border-radius: 4px;
+        }
+
+        /* 核心直書縱排設定 */
+        .vertical-text-mode {
+            writing-mode: vertical-rl;
+            -webkit-writing-mode: vertical-rl;
+        }
+
+        /* 數字直立修正 */
+        .combine-num {
+            text-combine-upright: digits 3;
+            -webkit-text-combine-upright: digits 3;
+            font-family: Arial, sans-serif;
+            display: inline-block;
+        }
+
+        /* =======================================================================
+           【右側：明信片正面 - 樣式修正】
+           ======================================================================= */
+        
+        /* 郵遞區號方框樣式 */
+        .zip-code-zone {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .zip-container {
+            display: flex;
+            gap: 2px;
+        }
+        .zip-box {
+            width: 15px;
+            height: 20px;
+            border: 1px solid #ff0000;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ff0000;
+            font-family: Arial, sans-serif;
+        }
+        .zip-hyphen {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* 右上角收件人郵遞區號 */
+        .recipient-zip {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+
+        /* 左下角寄件人郵遞區號 */
+        .sender-zip {
+            position: absolute;
+            left: 20px;
+            bottom: 15px;
+        }
+
+        /* 左邊上方郵票 */
+        .stamp-placeholder {
+            width: 55px;
+            height: 65px;
+            border: 1.5px dashed #ff0000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            color: #ff0000;
+            font-size: 10px;
+            text-align: center;
+            writing-mode: horizontal-tb;
+        }
+
+        /* 中央浮動塊 (置於版面正中央) */
+        .floating-block {
+            width: 75px;
+            height: 300px;
+            background-color: #ffffff;
+            border: 3px double #ff0000; 
+            border-radius: 10px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.25); 
+            z-index: 10;
+        }
+
+        .floating-block h1 {
+            color: black;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            margin: 0;
+        }
+
+        /* 收件者地址（長度限制版面 8 成，約 360px） */
+        .recipient-address {
+            position: absolute;
+            right: 20px;
+            top: 45px; 
+            height: 360px; 
+            font-size: 15px;
+            color: #222;
+            line-height: 22px;
+        }
+
+        /* 寄件者地址（自郵票下方高度 95px 起算） */
+        .sender-address {
+            position: absolute;
+            left: 20px;
+            top: 95px; 
+            height: 240px;
+            font-size: 12px;
+            color: #555;
+            line-height: 18px;
+        }
+
+        /* =======================================================================
+           【左側：明信片背面 - 內文面樣式】
+           ======================================================================= */
+        .back-content-spec {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            box-sizing: border-box;
+            padding: 5px;
+        }
+
+        .form-title {
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .main-text {
+            font-size: 13px;
+            line-height: 1.9;
+            color: #2c3e50;
+        }
+
+        .php-fill-line {
+            border-left: 1px solid #333;
+            padding: 10px 0;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .notice-bottom {
+            font-size: 11px;
+            color: #c0392b;
+            font-weight: bold;
+            line-height: 1.5;
+            margin-top: auto; /* 保留推到底部的結構 */
+            border-right: 1px dotted #e0e0e0;
+            padding-right: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>直式國內明信片標準對照版面</h2>
+    <div class="version-tag">結構：左邊保留背面內文（第一版） / 右邊為全新規格浮動正面面</div>
+
+    <div class="postcard-twin-container">
+
+        <div class="postcard-face" style="margin-top: 30px;">
+            <div class="face-label">◄ 背面 (內文面)</div>
+            
+            <div class="back-content-spec vertical-text-mode">
+                <div class="form-title">報名單</div>
+                <div class="main-text">
+一、 本人願意參加本公業民國115年1月1日
+    (農曆114年11月13日)星期四會員
+    大會(祭祖並聚餐)。
+
+二、 參加人數共 <span class="php-fill-line">&nbsp;&nbsp;&nbsp;&nbsp;</span> 名。
+                </div>
+                <div class="notice-bottom">
+                    *請盡速回函以便礁定人數，訂購餐盒，謝謝！
+                </div>
+            </div>
+        </div>
+
+        <div class="postcard-face" style="margin-top: 30px;">
+            <div class="face-label">► 正面 (名址面)</div>
+            
+            <div class="recipient-zip zip-code-zone">
+                <div class="zip-container">
+                    <div class="zip-box">1</div><div class="zip-box">0</div><div class="zip-box">0</div>
+                </div>
+                <div class="zip-hyphen">-</div>
+                <div class="zip-container">
+                    <div class="zip-box">0</div><div class="zip-box">2</div><div class="zip-box">4</div>
+                </div>
+            </div>
+
+            <div class="stamp-placeholder">
+                PLACE<br>STAMP
+            </div>
+
+            <div class="sender-zip zip-code-zone">
+                <div class="zip-container">
+                    <div class="zip-box">4</div><div class="zip-box">0</div><div class="zip-box">3</div>
+                </div>
+                <div class="zip-hyphen">-</div>
+                <div class="zip-container">
+                    <div class="zip-box">0</div><div class="zip-box">1</div><div class="zip-box">2</div>
+                </div>
+            </div>
+
+            <div class="floating-block vertical-text-mode">
+                <h1>李美玲小姐收</h1>
+            </div>
+
+            <div class="recipient-address vertical-text-mode">
+                臺北市中正區重慶南路一段<span class="combine-num">123</span>號<span class="combine-num">5</span>樓之<span class="combine-num">12</span>
+            </div>
+
+            <div class="sender-address vertical-text-mode">
+                寄件人：某某公業派下管理委員會 啟<br>
+                臺中市西區臺灣大道二段<span class="combine-num">99</span>號大樓
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
