@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中華郵政標準橫式明信片 - A6尺寸正反對照版面</title>
+    <style>
+        /* =======================================================================
+           網頁通用基礎樣式
+           ======================================================================= */
+        body {
+            background-color: #f4f6f9;
+            font-family: "Microsoft JhengHei", "微軟正黑體", Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 50px; 
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* 頂部網路圖片對照區塊 */
+        .source-image-container {
+            width: 100%;
+            max-width: 700px;
+            background-color: #fff;
+            border: 1px solid #dcdde1;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .source-image-container h3 {
+            margin-top: 0;
+            color: #34495e;
+            font-size: 16px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+            text-align: left;
+        }
+        .source-img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        /* =======================================================================
+           【核心修正】符合 A6 (6英吋 × 4英吋) 比例的外框樣式 (576px * 384px)
+           ======================================================================= */
+        .postcard-horizontal-standard {
+            background-color: #ffffff;
+            width: 576px;  /* 對應 6 英吋等比網頁寬度 */
+            height: 384px; /* 對應 4 英吋等比網頁高度 */
+            border: 2px solid #b5b5b5;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            position: relative;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+
+        /* 正面/背面結構辨識標籤 */
+        .face-label {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            font-size: 13px;
+            font-weight: bold;
+            color: #34495e;
+            background-color: #e1e8ed;
+            padding: 3px 12px;
+            border-radius: 4px;
+        }
+
+        /* =======================================================================
+           【正面 - 名址面專用 CSS】
+           ======================================================================= */
+        .postcard-title-standard {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+            color: #b32424; 
+            letter-spacing: 4px;
+        }
+
+        .stamp-box-standard {
+            position: absolute;
+            right: 25px;
+            top: 25px;
+            width: 75px;
+            height: 90px;
+            border: 1px solid #b32424;
+            background-color: #fff5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 11px;
+            color: #b32424;
+            line-height: 1.4;
+        }
+
+        .address-group-standard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .info-label-standard {
+            font-size: 11px;
+            color: #b32424;
+            font-weight: bold;
+            margin-bottom: -4px;
+        }
+
+        .guide-line-standard {
+            width: 100%;
+            border-bottom: 1px dashed #b32424; 
+            height: 20px;
+            line-height: 22px;
+            font-size: 13px;
+            color: #333333;
+            padding-left: 5px;
+            box-sizing: border-box;
+        }
+
+        .sender-container-standard {
+            position: absolute;
+            left: 25px;
+            top: 25px;
+            width: 190px;
+        }
+
+        .recipient-container-standard {
+            position: absolute;
+            right: 25px;
+            bottom: 50px;
+            width: 270px;
+        }
+
+        .barcode-zone-standard {
+            position: absolute;
+            left: 25px;
+            bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .mock-barcode-standard {
+            width: 130px;
+            height: 28px;
+            background: linear-gradient(90deg, 
+                #333 2px, transparent 2px, #333 3px, transparent 5px,
+                #333 7px, transparent 7px, #333 9px, transparent 10px,
+                #333 14px, transparent 15px, #333 16px, transparent 18px,
+                #333 19px, transparent 22px, #333 24px, transparent 25px
+            );
+            background-size: 18px 100%;
+        }
+
+        .barcode-num-standard {
+            font-size: 10px;
+            color: #333333;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        /* =======================================================================
+           【背面 - 內文面專用 CSS】
+           ======================================================================= */
+        .back-content-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 15px;
+            background-color: #fffdf9; 
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .back-form-title {
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 8px;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .back-main-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #222222;
+            white-space: pre-wrap;
+        }
+
+        .back-fill-line {
+            border-bottom: 2px solid #333333;
+            padding: 0 20px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .back-notice-text {
+            font-size: 13px;
+            color: #c0392b;
+            font-weight: bold;
+            line-height: 1.5;
+            margin-top: auto; 
+            border-top: 1px dotted #ccc;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>祭祖活動出席統計明信片系統</h1>
+    <div class="subtitle">系統開發階段：中華郵政官方 A6 最大尺寸規範（6英吋 × 4英吋）正反面校對</div>
+
+    <div class="source-image-container">
+        <h3>📷 原始明信片統計資料照片 (兩年對照圖)</h3>
+        <img class="source-img" src="https://pimg.1px.tw/blog/s6351302/album/906309693941703421/906309813689098823.jpg" alt="祭祖是否出席統計資料_明信片原始檔">
+    </div>
+
+
+    <div style="margin-top: 30px;">
+        <h3 style="color: #2c3e50; margin-bottom: 10px;">橫式明信片規格（A6 尺寸 6" × 4"） - 背面內文</h3>
+       <br>
+        <div class="postcard-horizontal-standard">
+            <div class="face-label">◄ 背面 (內文面)</div>
+            
+            <div class="back-content-container">
+                <div class="back-form-title">報名單</div>
+                
+                <div class="back-main-text">
+一、 本人願意參加本公業民國115年1月1日
+    (農曆114年11月13日)星期四會員
+    大會(祭祖並聚餐)。
+
+二、 參加人數共 <span class="back-fill-line">&nbsp;&nbsp;&nbsp;&nbsp;</span> 名。
+                </div>
+                
+                <div class="back-notice-text">
+                    *請盡速回函以便礁定人數，訂購餐盒，謝謝！
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div style="margin-top: 30px;">
+        <h3 style="color: #2c3e50; margin-bottom: 10px;">橫式明信片規格（A6 尺寸 6" × 4"） - 正面名址</h3>
+        <br>
+        <div class="postcard-horizontal-standard">
+            <div class="face-label">► 正面 (名址面)</div>
+            
+            <div class="postcard-title-standard">郵政明信片</div>
+
+            <div class="stamp-box-standard">
+                郵資符誌<br>或貼郵票<br>處
+            </div>
+
+            <div class="sender-container-standard address-group-standard">
+                <div class="info-label-standard">〈寄件人〉郵遞區號</div>
+                <div class="guide-line-standard">403-012</div>
+                
+                <div class="info-label-standard">地址</div>
+                <div class="guide-line-standard">台中市西區台灣大道二段99號</div>
+                <div class="guide-line-standard"></div> 
+                
+                <div class="info-label-standard">姓名</div>
+                <div class="guide-line-standard">某某公業管理委員會 啟</div>
+            </div>
+
+            <div class="recipient-container-standard address-group-standard">
+                <div class="info-label-standard">〈收件人〉郵遞區號</div>
+                <div class="guide-line-standard">100-024</div>
+                
+                <div class="info-label-standard">地址</div>
+                <div class="guide-line-standard">臺北市中正區重慶南路一段123號</div>
+                <div class="guide-line-standard">5樓之12</div> 
+                
+                <div class="info-label-standard">姓名</div>
+                <div class="guide-line-standard" style="font-weight: bold; font-size: 14px;">李大同 先生 收</div>
+            </div>
+
+            <div class="barcode-zone-standard">
+                <div class="mock-barcode-standard"></div>
+                <div class="barcode-num-standard">04000415 中華郵政股份有限公司發行</div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

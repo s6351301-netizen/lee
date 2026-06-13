@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>祭祖活動出席統計明信片系統 - 直橫式全功能校對版面</title>
+    <style>
+        /* 網頁通用基礎樣式 */
+        body {
+            background-color: #f4f6f9;
+            font-family: "Microsoft JhengHei", "微軟正黑體", Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-top: 0;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* 頂部網路圖片對照區塊 */
+        .source-image-container {
+            width: 100%;
+            max-width: 700px;
+            background-color: #fff;
+            border: 1px solid #dcdde1;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .source-image-container h3 {
+            margin-top: 0;
+            color: #34495e;
+            font-size: 16px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+            text-align: left;
+        }
+        .source-img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        /* 明信片通用外框容器（14.8cm x 10.5cm 中華郵政等比放大至 650px） */
+        .postcard-container {
+            background-color: #fffcf5; /* 模擬明信片微黃紙質 */
+            width: 650px;
+            height: 460px;
+            border: 2px solid #b5b5b5;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            position: relative;
+            padding: 25px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+
+        /* 郵票預留位置樣式 */
+        .stamp-box {
+            position: absolute;
+            width: 75px;
+            height: 90px;
+            border: 2px dashed #e74c3c;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #e74c3c;
+            background-color: rgba(231, 76, 60, 0.03);
+            right: 25px;
+            top: 25px;
+        }
+
+        /* 郵遞區號紅色框樣式 */
+        .zip-code-container {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .zip-box {
+            width: 20px;
+            height: 26px;
+            border: 1px solid #e74c3c;
+            text-align: center;
+            line-height: 26px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        /* 明信片左側：內文與報名單區 */
+        .left-content {
+            width: 55%;
+            height: 100%;
+            border-right: 1px dashed #ccc;
+            padding-right: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 15px;
+        }
+        
+        .form-title {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 6px;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .main-text-area {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #2c3e50;
+            white-space: pre-wrap;
+        }
+        
+        .notice-text {
+            font-size: 13px;
+            color: #c0392b;
+            font-weight: bold;
+            line-height: 1.5;
+            margin-top: 10px;
+            border-top: 1px dotted #ccc;
+            padding-top: 10px;
+        }
+
+        /* 明信片右側：郵政收寄件人資訊 */
+        .right-address {
+            width: 45%;
+            height: 100%;
+            padding-left: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        
+        /* 橫式規格的郵遞區號位置（避開右上方郵票） */
+        .h-recipient-zip {
+            margin-top: 105px;
+        }
+
+        .address-lines {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .line-item {
+            border-bottom: 1px solid #7f8c8d;
+            height: 32px;
+            line-height: 37px;
+            font-size: 14px;
+            color: #34495e;
+            padding-left: 5px;
+        }
+        .line-item.recipient-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            height: 42px;
+            line-height: 47px;
+        }
+
+        /* 寄件人資訊區 */
+        .sender-info-box {
+            margin-top: 25px;
+            border-top: 1px dashed #d0d0d0;
+            padding-top: 8px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>祭祖活動出席統計明信片系統</h1>
+    <div class="subtitle">系統開發階段：直/橫式標準版面配置與內文代入校對</div>
+
+    <div class="source-image-container">
+        <h3>📷 原始明信片統計資料照片 (兩年對照圖)</h3>
+        <img class="source-img" src="https://pimg.1px.tw/blog/s6351302/album/906309693941703421/906309813689098823.jpg" alt="祭祖是否出席統計資料_明信片原始檔">
+    </div>
+
+
+    <div>
+        <h3 style="color: #2c3e50; margin-bottom: 10px;">第一張：115年度 國內橫式明信片規格</h3>
+        <div class="postcard-container">
+            <div class="stamp-box">郵票<br>PLACE STAMP</div>
+
+            <div class="left-content">
+                <div class="form-title">報名單</div>
+                <div class="main-text-area">
+一、 本人願意參加本公業民國115年1月1日
+    (農曆114年11月13日)星期四會員
+    大會(祭祖並聚餐)。
+
+二、 參加人數共 <span style="border-bottom: 1px solid #333; padding: 0 15px; font-weight: bold;"></span> 名。
+                </div>
+                <div class="notice-text">
+                    *請盡速回函以便礁定人數，訂購餐盒，謝謝！
+                </div>
+            </div>
+            
+            <div class="right-address">
+                <div class="h-recipient-zip">
+                    <div style="font-size: 11px; color: #e74c3c;">收件人郵遞區號</div>
+                    <div class="zip-code-container">
+                        <div class="zip-box">4</div><div class="zip-box">1</div><div class="zip-box">1</div>
+                        －<div class="zip-box">2</div><div class="zip-box">2</div>
+                    </div>
+                </div>
+                
+                <div class="address-lines">
+                    <div class="line-item">地址：台中市西區台灣大道二段 YYY 號</div>
+                    <div class="line-item recipient-name">姓名：李大同 先生 收</div>
+                </div>
+                
+                <div class="sender-info-box">
+                    <strong>寄件人：</strong><br>
+                    某某公業派下管理委員會 啟<br>
+                    郵遞區號：407024
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

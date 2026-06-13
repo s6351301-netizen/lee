@@ -20,6 +20,29 @@
 
 
 
+
+
+
+數字1-4
+https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg
+數字5
+https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D561_02.561.1B.jpg
+數字6
+https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148_01.1B.jpg
+數字7
+https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A146III_01.9-B.jpg
+數字8
+https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148II_01.jpg
+數字9
+
+https://c.p02.c4a.im/images/item/7031155/84f347fb7bc6714cdf5cfc4b9cb4124d609c9a3db95811015cb8f170bc25fc3b?d=583x585
+數字10
+https://www.cepp.gov.tw/Uploads/WebLevelD/gz1hu1xp.toj.jpg
+
+
+
+
+
 這原始資料是一張明信片統計祭祖活動是否要出席,且拍了2年在一起.
 依照下面提的要求,在網頁裡面設計兩張明信片,第一張在上面第二張在下面.
 先寫出HTML語法,後面要將資料庫的內容(收件者/寄件者和明信片內文)帶入寫成PHP網頁.

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直式國內明信片（114年版）- 迷你尺寸3x5英吋正反對照版</title>
+    <style>
+        body {
+            font-family: "DFKai-SB", "標楷體", Arial, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            /* 靠左對齊 */
+            justify-content: center;
+            /* 垂直置中 */
+            min-height: 100vh;
+            margin: 0;
+            padding-left: 2%;
+            /* 往右偏移 30% */
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+            font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+            font-size: 18px;
+            position: absolute;
+            /* 讓元素脫離正常文流 */
+            top: 4%;
+            /* 垂直置中 */
+            left: 25%;
+            /* 水平置中 */
+            transform: translate(-50%, -50%);
+            /* 修正偏移 */
+            margin: 0;
+        }
+
+        /* 雙面並排容器 */
+        .postcard-twin-container {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 【核心修正】明信片單面外框：鎖定迷你明信片標準尺寸（寬 288px * 高 480px，符合 3x5 英吋比例） */
+        .postcard-face {
+            background-color: #fffdf7;
+            /* 模擬微黃紙質 */
+            width: 288px;
+            height: 480px;
+            border: 2px solid #a1a1a1;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+            position: relative;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+      
+
+        /* 核心直書縱排設定 */
+        .vertical-text-mode {
+            writing-mode: vertical-rl;
+            -webkit-writing-mode: vertical-rl;
+        }
+
+        /* 數字與符號直立修正（改用 all 確保問號也能正常橫書正立） */
+        .combine-num {
+            text-combine-upright: all;
+            -webkit-text-combine-upright: all;
+            font-family: Arial, sans-serif;
+            display: inline-block;
+        }
+
+        /* =======================================================================
+           【右側：明信片正面 - 迷你尺寸空間精細定位】
+           ======================================================================= */
+
+        /* 郵遞區號方框樣式（微縮調整以適應迷你版面） */
+        .zip-code-zone {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            z-index: 5;
+        }
+
+        .zip-container {
+            display: flex;
+            gap: 1.5px;
+        }
+
+        .zip-box {
+            width: 13px;
+            height: 18px;
+            border: 1px solid #ff0000;
+            text-align: center;
+            line-height: 18px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #ff0000;
+            font-family: Arial, sans-serif;
+        }
+
+        .zip-hyphen {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        /* 右上角收件人郵遞區號 */
+        .recipient-zip {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+        }
+
+        /* 左下角寄件人郵遞區號 */
+        .sender-zip {
+            position: absolute;
+            left: 15px;
+            bottom: 15px;
+        }
+
+        /* 左邊上方郵票（微縮至寬 50px * 高 60px） */
+        .stamp-placeholder {
+            width:60px;
+            height:70px;
+            border: 1.2px dashed #ff0000;
+            background-image: url("https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D768_01.jpg");
+            background-repeat: no-repeat;    /* 避免重複平鋪 */
+            background-size:60px 70px;
+        }
+
+        /* 左邊上方郵票 滑鼠移過去時換成另一張圖片 
+        .stamp-placeholder:hover {
+            background-image: url("https://pic.pimg.tw/holin168/1740961764-3470723461-g_n.jpg");
+        }*/
+
+        /* 中央浮動姓名塊 (依比例微縮，置於版面正中央) */
+        .floating-block {
+            width: 65px;
+            height: 300px;
+            background-color: #ffffff;
+            border: 2px solid #ff0000;
+            outline: 1px solid #ff0000;
+            /* 模擬雙層紅框效果 */
+            outline-offset: -4px;
+            border-radius: 8px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.12);
+            z-index: 10;
+        }
+
+        .floating-block h1 {
+            color: black;
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin: 0;
+        }
+
+        /* [地址在上] 收件者地址（長度鎖定迷你版面 8 成，約 384px） */
+        .recipient-address {
+            position: absolute;
+            right: 45px;
+            top: 62px;
+            /* 避開右上郵遞區號 */
+            height: 384px;
+            font-size: 13px;
+            color: #000000;
+            line-height: 18px;
+            letter-spacing: 0.5px;
+        }
+
+        /* [內容在下] 寄件者地址（靠左邊，自郵票下方高度 100px 起算往下寫） */
+        .sender-address {
+            position: absolute;
+            left: 25px;
+            top: 100px;
+            height: 280px;
+            font-size: 14px;
+            color: #000000;
+            line-height: 20px;
+        }
+
+        /* =======================================================================
+           【左側：明信片背面 - 內文面樣式微縮】
+           ======================================================================= */
+        .back-content-spec {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            box-sizing: border-box;
+            padding: 0;
+        }
+
+        .back-content-spec .form-title {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .back-content-spec .main-text {
+            padding: 14px;
+            font-size: 18px;
+            line-height: 2;
+            color: #2c3e50;
+        }
+
+        .notice-bottom {
+            font-size: 14px;
+            color: #c0392b;
+            font-weight: bold;
+            line-height: 1.4;
+            margin-top: auto;
+            padding-right: 4px;
+        }
+    </style>
+
+
+    
+</head>
+
+<body>
+    
+    
+    <h2>祭祖活動出席統計(3x5 英吋迷你尺寸明信片)</h2>
+    <div class="postcard-twin-container">
+
+        <div class="postcard-face" style="margin-top: 30px;">
+            <div class="back-content-spec vertical-text-mode">
+                <div class="form-title">報名單</div>
+                <div class="main-text">
+                    一、本人願意參加本公業民國<span class="combine-num">115</span>年<span class="combine-num">1</span>月<span
+                        class="combine-num">1</span>日
+                    <br>&emsp;&emsp;(農曆<span class="combine-num">114</span>年<span class="combine-num">11</span>月<span
+                        class="combine-num">13</span>日)星期四，
+                    <br>&emsp;&emsp;會員大會(祭祖並聚餐)。<br>
+
+                    二、參加人員有本人外還有太太和小孩，<br>&emsp;&emsp;人數共計<span class="combine-num">10</span>名。<br>
+                </div>
+                <div class="notice-bottom">
+                    *請盡速回函以便礁定人數，訂購餐盒，謝謝！<br>
+                </div>
+            </div>
+        </div>
+
+        <div class="postcard-face" style="margin-top: 30px;">    
+            <div class="recipient-zip zip-code-zone">
+                <div class="zip-container">
+                    <div class="zip-box">1</div>
+                    <div class="zip-box">0</div>
+                    <div class="zip-box">0</div>
+                </div>
+                <div class="zip-hyphen">-</div>
+                <div class="zip-container">
+                    <div class="zip-box">0</div>
+                    <div class="zip-box">2</div>
+                    <div class="zip-box">4</div>
+                </div>
+            </div>
+
+            <div class="stamp-placeholder">
+                <span class="stamp-placeholder"></span>
+            </div>
+
+            <div class="sender-zip zip-code-zone">
+                <div class="zip-container">
+                    <div class="zip-box">4</div>
+                    <div class="zip-box">0</div>
+                    <div class="zip-box">3</div>
+                </div>
+                <div class="zip-hyphen">-</div>
+                <div class="zip-container">
+                    <div class="zip-box">0</div>
+                    <div class="zip-box">1</div>
+                    <div class="zip-box">2</div>
+                </div>
+            </div>
+
+            <div class="floating-block vertical-text-mode">
+                <h1>李美玲 小姐收</h1>
+            </div>
+
+            <div class="recipient-address vertical-text-mode">
+                臺北市中正區重慶南路一段<span class="combine-num">123</span>號<span class="combine-num">5</span>樓之<span
+                    class="combine-num">12</span>
+            </div>
+
+            <div class="sender-address vertical-text-mode">
+                寄件人：台中市李武略派下李氏宗親會 啟<br>
+                臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span class="combine-num">45</span>號
+            </div>
+        </div>
+    </div>
+ 
+<script>
+const stamp = document.querySelector('.stamp-placeholder');
+
+// 圖片清單（數字 1–10）
+const images = [
+  "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg", // 數字1-4
+  "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/b/b6/Nicaragua1_1913.jpg",
+  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/D561_02.561.1B.jpg", // 數字5
+  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148_01.1B.jpg",      // 數字6
+  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A146III_01.9-B.jpg", // 數字7
+  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/A148II_01.jpg",      // 數字8
+  "https://www.post.gov.tw/post/FileCenter/post_ww2/stamp_pic/stamp_bpic/30809909.JPG", // 數字9
+  "https://www.cepp.gov.tw/Uploads/WebLevelD/gz1hu1xp.toj.jpg" // 數字10
+];
+
+let index = 0;
+
+// 每 2 秒切換一次圖片
+setInterval(() => {
+  stamp.style.backgroundImage = `url(${images[index]})`;
+  index = (index + 1) % images.length;
+}, 1000);
+</script>    
+
+</body>
+
+</html>
