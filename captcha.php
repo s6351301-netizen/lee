@@ -17,13 +17,13 @@ $bg = imagecolorallocate($image, 255, 255, 255);
 $text_color = imagecolorallocate($image, 139, 0, 0);
 
 // 畫文字
-imagestring($image, 5, 25, 10, $code, $text_color);
+imagestring($image, 16, 36, 11, $code, $text_color);
 
 // 干擾線顏色 (黑色)
 $line_color = imagecolorallocate($image, 0, 0, 0);
 
 // 畫干擾線
-for ($i = 0; $i < 5; $i++) {
+for ($i = 0; $i < 1; $i++) {
     imageline($image, 0, rand()%$height, $width, rand()%$height, $line_color);
 }
 
