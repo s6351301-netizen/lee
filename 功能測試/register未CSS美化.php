@@ -60,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if ($stmt->execute()) {
                 //$success = "註冊成功，請前往登入頁面";
-                $success = '註冊成功，請前往 <a href="login.php" style="color: #27ae60; text-decoration: underline;">會員登入</a>頁面';
+                $success = '註冊成功，請前往 <a href="login.php">會員登入</a>頁面';
             } else {
                 $error = "註冊失敗: " . $stmt->error;
             }
@@ -73,36 +73,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>會員註冊</title>
     <style>
-        /* 移植登入頁面的全域與卡片風格 */
-        body { font-family: "Microsoft JhengHei", Arial, sans-serif; margin: 40px; background-color: #f9f9f9; }
-        .register-box { max-width: 600px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #1a5276; margin-top: 0; }
-        
-        /* 表格結構重塑與排版最佳化 */
-        table { border-collapse: collapse; width: 100%; }
-        td { padding: 8px; vertical-align: middle; }
-        .label { width: 160px; text-align: right; font-weight: bold; color: #333; padding-right: 15px; }
-        
-        /* 移植輸入框與下拉選單風格 */
-        input[type="text"], input[type="email"], input[type="password"], input[type="date"], select { 
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit;
-        }
-        
-        /* 移植提交按鈕與滑鼠懸停風格 */
-        input[type="submit"] { width: 100%; padding: 10px; background-color: #1a5276; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        input[type="submit"]:hover { background-color: #113f5c; }
-        
-        /* 錯誤與成功訊息 */
-        .error { color: #c0392b; font-weight: bold; text-align: center; margin-bottom: 15px; }
-        .success { color: #27ae60; font-weight: bold; text-align: center; margin-bottom: 15px; }
+        table { border-collapse: collapse; width: 600px; }
+        td { padding: 8px; }
+        .label { width: 200px; text-align: right; font-weight: bold; }
+        .error { color: red; }
+        .success { color: green; }
     </style>
 </head>
 <body>
-
-<div class="register-box">
     <h2>會員註冊</h2>
 
     <?php if ($error != ""): ?>
@@ -144,10 +124,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </table>
     </form>
 
-    <div style="text-align: right; margin-top: 15px;">
-        <a href="login.php" style="font-size: 14px; color: #2980b9; text-decoration: none;">會員登入</a>
-    </div>
-</div>
-
+    <a href="login.php">會員登入</a>
 </body>
 </html>
