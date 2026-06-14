@@ -1,11 +1,7 @@
 參考以下範例,將所有功能與效果全部綜合起來,寫出最單純前端網頁,需要各分頁請自行添增.
-
 主要https://tseng-clan.com/
-
 主要參考https://simular.co/
-
 次要參考https://www.tseng-ty.org.tw/
-
 主要參考https://simular.co/
 
 
@@ -17,10 +13,6 @@
   您的瀏覽器不支援 HTML5 影片播放。
 </video>
 而src=""裡面放的網址就是上傳影片的網址
-
-
-
-
 
 
 數字1-4

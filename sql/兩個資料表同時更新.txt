@@ -1,0 +1,170 @@
+要求
+資料表`account`和`members`用ID和`name`姓名這三個欄位去做結合,形成帳號會員檢視表,兩個表的所有欄位都要有,
+資料表`account`和`members`只要更新其中一個表的`status`值另外一個表也會跟著被更新,
+`new_member`與`name`和`status`的值在新其中一個表被更新,另外一個表也會跟著被更新.
+提供只能寫一次SQL語法.
+
+-- 資料表結構 `account`
+CREATE TABLE `account` (
+  `id` int(11) NOT NULL COMMENT '流水號',
+  `new_member` varchar(50) DEFAULT NULL COMMENT '現在會員號',
+  `old_member` varchar(50) NOT NULL COMMENT '前會員號',
+  `name` varchar(50) NOT NULL COMMENT '姓名',
+  `gender` varchar(10) NOT NULL COMMENT '性別',
+  `email` varchar(255) NOT NULL COMMENT '電子信箱',
+  `password` varchar(255) NOT NULL COMMENT '密碼',
+  `role` enum('admin','user','clan') DEFAULT 'user' COMMENT '權限(管理者/派下員/宗親)',
+  `join_date` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '註冊日期',
+  `status` varchar(20) DEFAULT '1' COMMENT '帳號停用或使用中(1:使用中, 0:停用)',
+  `discontinued_date` date DEFAULT NULL COMMENT '停用日期',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '備註',
+  `menu_id` varchar(10) NOT NULL COMMENT '選單項目 ID：對應網頁中 clanMenuData 陣列的 id（例如：3 代表 1-1、7.1 代表 2-3 json 選單）。',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '權限建立時間',
+  `updated_at` datetime DEFAULT NULL COMMENT '權限更新時間'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='帳號資料表';
+
+-- 資料表結構 `members`
+CREATE TABLE `members` (
+  `id` int(11) NOT NULL COMMENT '流水號',
+  `receive_date` date DEFAULT NULL COMMENT '收件日期',
+  `old_member` varchar(50) DEFAULT NULL COMMENT '前會員號',
+  `new_member` varchar(50) DEFAULT NULL COMMENT '現在會員號',
+  `generation` int(11) NOT NULL COMMENT '世代(大甲算起)',
+  `emperor_shizu` int(11) NOT NULL COMMENT '世祖(台灣算起)',
+  `number_of_houses` int(11) NOT NULL COMMENT '房數',
+  `name` varchar(50) NOT NULL COMMENT '姓名',
+  `gender` varchar(10) DEFAULT NULL COMMENT '性別',
+  `id_card_num` varchar(20) DEFAULT NULL COMMENT '身分證字號',
+  `birthday` date DEFAULT NULL COMMENT '生日',
+  `placeOfBirth` varchar(100) DEFAULT NULL COMMENT '出生地或籍貫(祖籍地)',
+  `education` varchar(100) DEFAULT NULL COMMENT '學歷',
+  `experience` text DEFAULT NULL COMMENT '現職/經歷',
+  `address` varchar(255) DEFAULT NULL COMMENT '地址',
+  `zip_code` text NOT NULL COMMENT '郵遞區號6碼',
+  `mobile_phone` varchar(20) DEFAULT NULL COMMENT '行動電話',
+  `home_phone` varchar(20) DEFAULT NULL COMMENT '住家電話',
+  `company_phone` varchar(20) DEFAULT NULL COMMENT '公司電話',
+  `email` varchar(100) DEFAULT NULL COMMENT 'E-mail',
+  `introducer` varchar(50) DEFAULT NULL COMMENT '介紹人',
+  `SendSubordinates` text DEFAULT NULL COMMENT '派下員狀態說明',
+  `living_status` enum('存','亡','未知') NOT NULL DEFAULT '未知' COMMENT '生存狀態(存/亡/未知)',
+  `status` tinyint(1) DEFAULT 1 COMMENT '帳號停用或使用中(1:使用中, 0:停用)',
+  `remarks` text DEFAULT NULL COMMENT '備註',
+  `update_time` datetime DEFAULT NULL COMMENT '最後更新時間',
+  `last_updater` varchar(50) DEFAULT NULL COMMENT '最後更新者'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+(一) account_members_view 檢視表
+CREATE VIEW account_members_view AS
+SELECT 
+    a.id AS account_id,
+    a.new_member AS account_new_member,
+    a.old_member AS account_old_member,
+    a.name AS account_name,
+    a.gender AS account_gender,
+    a.email AS account_email,
+    a.password,
+    a.role,
+    a.join_date,
+    a.status AS account_status,
+    a.discontinued_date,
+    a.remarks AS account_remarks,
+    a.menu_id,
+    a.created_at,
+    a.updated_at,
+    m.id AS member_id,
+    m.receive_date,
+    m.old_member AS member_old_member,
+    m.new_member AS member_new_member,
+    m.generation,
+    m.emperor_shizu,
+    m.number_of_houses,
+    m.name AS member_name,
+    m.gender AS member_gender,
+    m.id_card_num,
+    m.birthday,
+    m.placeOfBirth,
+    m.education,
+    m.experience,
+    m.address,
+    m.zip_code,
+    m.mobile_phone,
+    m.home_phone,
+    m.company_phone,
+    m.email AS member_email,
+    m.introducer,
+    m.SendSubordinates,
+    m.living_status,
+    m.status AS member_status,
+    m.remarks AS member_remarks,
+    m.update_time,
+    m.last_updater
+FROM account a
+INNER JOIN members m
+    ON a.id = m.id
+   AND a.name = m.name;
+
+
+(二)自動更新值
+步驟 1：請先刪除原本的兩個 Trigger(沒有就不用刪除)
+DROP TRIGGER IF EXISTS trg_account_sync;
+DROP TRIGGER IF EXISTS trg_members_sync;
+
+資料表`account`和`members`只要更新其中一個表的`new_member`與`name`和`status`的值
+在新其中一個表被更新,另外一個表也會跟著被更新.提供只能寫一次SQL語法.
+
+📋 預存程序語法
+DELIMITER $$
+CREATE PROCEDURE sync_account_members(
+    IN p_id INT,
+    IN p_name VARCHAR(50),
+    IN p_new_member VARCHAR(50),
+    IN p_status TINYINT
+)
+BEGIN
+    -- 更新 account 表
+    UPDATE account
+    SET name = p_name,
+        new_member = p_new_member,
+        status = p_status
+    WHERE id = p_id;
+
+    -- 更新 members 表
+    UPDATE members
+    SET name = p_name,
+        new_member = p_new_member,
+        status = p_status
+    WHERE id = p_id;
+END$$
+
+DELIMITER ;
+
+
+
+📊 儲存程序 vs TRIGGER 比較表
++----------------+--------------------------------------------+--------------------------------------------+
+|     項目       | 儲存程序 (Stored Procedure)                | 觸發器 (Trigger)                            |
++----------------+--------------------------------------------+--------------------------------------------+
+| 用途           | 封裝一組 SQL 操作，需人工或程式呼叫         | 自動在 INSERT/UPDATE/DELETE 事件發生時執行  |
++----------------+--------------------------------------------+--------------------------------------------+
+| 執行方式       | 使用 CALL procedure_name 主動執行          | 自動觸發，不需人工呼叫                      |
++----------------+--------------------------------------------+--------------------------------------------+
+| 優點           | - 可重複使用，邏輯集中                     | - 自動化，保證資料一致性                    |
+|                | - 可接受參數，靈活度高                     | - 適合即時同步或審計                        |
+|                | - 適合批次更新或跨表操作                   |                                            |
++----------------+--------------------------------------------+--------------------------------------------+
+| 缺點           | - 不會自動執行，需呼叫                     | - 複雜邏輯可能影響效能                      |
+|                | - 若忘記呼叫，資料可能不同步               | - 難以除錯，隱藏在資料庫層                  |
++----------------+--------------------------------------------+--------------------------------------------+
+| 常見場景       | - 批次更新多筆資料                         | - 保證跨表欄位同步 (如 status)              |
+|                | - 匯入/匯出資料流程                        | - 自動紀錄更新時間或操作人                  |
+|                | - 定期維護或報表生成                       | - 防止非法操作 (如限制刪除)                 |
++----------------+--------------------------------------------+--------------------------------------------+
+| 適合情境       | - 一次性批次處理                           | - 即時自動同步                              |
+|                | - 可重複呼叫的邏輯                         | - 強制一致性                                |
++----------------+--------------------------------------------+--------------------------------------------+
+
+
+
+

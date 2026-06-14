@@ -70,13 +70,48 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_word') {
     <head>
         <meta charset="UTF-8">
         <style>
-            body { font-family: "Microsoft JhengHei", Arial, sans-serif; }
-            table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-            th, td { border: 1px solid #000; padding: 8px; vertical-align: middle; font-size: 14px; }
-            th { background: #f2f2f2; font-weight: bold; text-align: center; }
-            .form-title { text-align: center; font-size: 22px; font-weight: bold; }
-            .form-subtitle { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 20px; }
-            .top-info { margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+            body {
+                font-family: "Microsoft JhengHei", Arial, sans-serif;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                border: 2px solid #000;
+            }
+
+            th,
+            td {
+                border: 1px solid #000;
+                padding: 8px;
+                vertical-align: middle;
+                font-size: 14px;
+            }
+
+            th {
+                background: #f2f2f2;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .form-title {
+                text-align: center;
+                font-size: 22px;
+                font-weight: bold;
+            }
+
+            .form-subtitle {
+                text-align: center;
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 20px;
+            }
+
+            .top-info {
+                margin-bottom: 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
         </style>
     </head>
 
@@ -218,13 +253,44 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     <head>
         <meta charset="UTF-8">
         <style>
-            body { font-family: "Microsoft JhengHei", Arial, sans-serif; }
-            table { border-collapse: collapse; table-layout: fixed; }
-            th, td { border: 0.5pt solid #000000; padding: 6px; vertical-align: middle; font-size: 11pt; }
-            th { background: #f2f2f2; font-weight: bold; text-align: center; }
-            .form-title { text-align: center; font-size: 16pt; font-weight: bold; }
-            .form-subtitle { text-align: center; font-size: 13pt; font-weight: bold; }
-            .text-format { mso-number-format: "\@"; }
+            body {
+                font-family: "Microsoft JhengHei", Arial, sans-serif;
+            }
+
+            table {
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+
+            th,
+            td {
+                border: 0.5pt solid #000000;
+                padding: 6px;
+                vertical-align: middle;
+                font-size: 11pt;
+            }
+
+            th {
+                background: #f2f2f2;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .form-title {
+                text-align: center;
+                font-size: 16pt;
+                font-weight: bold;
+            }
+
+            .form-subtitle {
+                text-align: center;
+                font-size: 13pt;
+                font-weight: bold;
+            }
+
+            .text-format {
+                mso-number-format: "\@";
+            }
         </style>
     </head>
 
@@ -301,7 +367,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
             </tr>
             <tr>
                 <th>E-mail</th>
-                <td colspan="2"><input type="email" name="email" value="<?= htmlspecialchars($m['email'] ?? '') ?>"></td>
+                <td colspan="2"><?= htmlspecialchars($m['email'] ?? '') ?></td>
                 <th>介紹人</th>
                 <td><?= htmlspecialchars($m['introducer'] ?? '') ?></td>
             </tr>
@@ -324,17 +390,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     exit;
 }
 
-// 5. 【動作處理】表單修改更新 (分段式隔離 Transaction)
+// 5. 【動作處理】表單修改更新
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     unset($_POST['update']);
-
-    // 💡 關鍵修改點 1：先讀取前端傳過來的派下權狀態 (yes 轉為「有」, no 轉為「無」)，讀取完後再刪除不參與 UPDATE 串接
-    $post_has_right_val = ($_POST['has_right_option'] ?? 'no') === 'yes' ? '有' : '無';
     unset($_POST['has_right_option']);
-
-    // 抽出隱藏欄位 status 的值，不參與 members 表的萬能動態 UPDATE 串接
-    $status_val = $_POST['status'] ?? null;
-    unset($_POST['status']);
 
     $stmt_old = $pdo->prepare("SELECT * FROM `members` WHERE `new_member` = ?");
     $stmt_old->execute([$target_member_num]);
@@ -369,10 +428,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         'gender'            => '性別',
         'id_card_num'       => '身分證字號',
         'birthday'          => '出生日期',
-        'emperor_shizu'     => '遷台世祖',
+        'emperor_shizu'    => '遷台世祖',
         'generation'        => '居大甲代',
         'SendSubordinates'  => '派下員狀態',
-        // 'living_status'  => '生存狀態', // 💡 抽出來單獨在下面與「派下權」做聯動比對處理
+        'living_status'     => '生存狀態',
         'old_member'        => '前會員號',
         'placeOfBirth'      => '出生地或籍貫',
         'education'         => '學歷',
@@ -390,17 +449,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         $changed_fields[] = '大頭照';
     }
 
-    // 💡 關鍵修改點 2：計算「舊的派下權中文」以便比對有沒有被更改
-    $old_has_right_val = (($old_data['SendSubordinates'] ?? '') === '正常派下員' && ($old_data['living_status'] ?? '') === '存') ? '有' : '無';
-    $old_living_status = $old_data['living_status'] ?? '';
-    $new_living_status = $_POST['living_status'] ?? '';
-
-    // 如果「生存狀態」有變，或者「派下權」有變，就把兩者打包一起記錄進備註
-    if (trim((string)$old_living_status) !== trim((string)$new_living_status) || $old_has_right_val !== $post_has_right_val) {
-        $changed_fields[] = "生存狀態({$new_living_status})、派下權({$post_has_right_val})";
-    }
-
-    // 其他欄位的一般比對
     foreach ($field_names_zh as $col => $zh_name) {
         if (isset($_POST[$col])) {
             $old_val = $old_data[$col] ?? '';
@@ -421,10 +469,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         }
     }
 
-    if ($status_val !== null && trim((string)($old_data['status'] ?? '')) !== trim((string)$status_val)) {
-        $changed_fields[] = '狀態';
-    }
-
     $_POST['receive_date'] = $formatted_receive_date;
     $_POST['update_time'] = date('Y-m-d H:i:s');
     $_POST['last_updater'] = $login_user_info;
@@ -442,47 +486,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         $_POST['remarks'] = $new_remarks_input;
     }
 
-    // 準備萬能動態 SQL 語法
     $fields = array_keys($_POST);
     $set_sql = implode('=?, ', $fields) . '=?';
     $sql = "UPDATE `members` SET {$set_sql} WHERE `new_member` = ?";
 
-    // --- 【第一階段：更新 members 表】 ---
-    try {
-        $pdo->beginTransaction();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array_merge(array_values($_POST), [$target_member_num]));
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(array_merge(array_values($_POST), [$target_member_num]));
-
-        // 這裡立刻 commit 提交，把 PHP 的 Transaction 乾淨結案
-        $pdo->commit(); 
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        die("第一階段：更新 members 表失敗，原因: " . $e->getMessage());
-    }
-
-    // --- 【第二階段：單獨呼叫預存程序】 ---
-    try {
-        // 此時 PHP 端的事務已經關閉，呼叫 Procedure。
-        // Procedure 內部跑自己的 START TRANSACTION 和 COMMIT 就不會再與 PHP 撞車
-        $stmt_proc = $pdo->prepare("CALL sync_account_members(?, ?, ?, ?)");
-        $stmt_proc->execute([
-            $target_member_num,       // 舊編號 (WHERE 條件)
-            $_POST['new_member'],     // 新編號
-            $_POST['name'],           // 姓名
-            $status_val               // 狀態值 (0 或 1)
-        ]);
-        
-    } catch (Exception $e) {
-        // 這裡不需要 rollBack，因為預存程序內部出錯時，它自己內部的機制會處理並回滾
-        die("第二階段：預存程序連動同步失敗，原因: " . $e->getMessage());
-    }
-
-    // 更新成功後，如果編號有變，網址導向新的編號
-    $redirect_num = $_POST['new_member'] ?? $target_member_num;
-    header("Location: " . $_SERVER['PHP_SELF'] . "?new_member=" . $redirect_num);
+    header("Location: " . $_SERVER['PHP_SELF'] . (isset($_GET['new_member']) ? '?new_member=' . $_GET['new_member'] : ''));
     exit;
 }
 
@@ -504,9 +515,6 @@ if (is_dir('uploads')) {
 
 $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['living_status'] ?? '') === '存') ? 'yes' : 'no';
 
-// 預設當前資料庫撈出來的 status 值給隱藏欄位
-$current_status = $m['status'] ?? (($m['living_status'] ?? '') === '亡' ? '0' : (($m['living_status'] ?? '') === '存' ? '1' : ''));
-
 $web_display_updater = '無紀錄';
 $db_updater = $m['last_updater'] ?? '';
 if (!empty($db_updater)) {
@@ -523,44 +531,271 @@ if (!empty($db_updater)) {
     <meta charset="UTF-8">
     <title>台中市李武略派下李氏宗親會 - 會員入會申請表</title>
     <style>
-        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #fff; color: #000; }
-        .form-container { max-width: 800px; margin: 0 auto; padding: 25px; }
-        .form-title { text-align: center; font-size: 26px; font-weight: bold; margin-bottom: 5px; letter-spacing: 2px; }
-        .form-subtitle { text-align: center; font-size: 20px; font-weight: bold; margin-top: 0; margin-bottom: 25px; }
-        .top-info { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: bold; }
-        .top-info input { border: none; border-bottom: 1px solid #000; padding: 2px 5px; outline: none; font-size: 15px; }
-        .input-datetime { width: 240px; border: none; border-bottom: 1px solid #000; font-size: 15px; }
-        table { width: 100%; border-collapse: collapse; border: 2px solid #000; }
-        th, td { border: 1px solid #000; padding: 10px; vertical-align: middle; font-size: 15px; }
-        th { background: #f2f2f2; font-weight: bold; text-align: center; width: 14%; }
-        input[type="text"], input[type="email"], select, textarea { width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #999; font-size: 14px; background: #fff; }
-        .flex-row { display: flex; gap: 10px; align-items: center; }
-        .inline-input { border: none; border-bottom: 1px solid #000; text-align: center; font-size: 15px; outline: none; }
-        .photo-cell { text-align: center; width: 150px; background: #fafafa; }
-        .photo-container { width: 130px; height: 160px; border: 1px solid #666; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; cursor: pointer; position: relative; }
-        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-container:hover::after { content: "點擊更新照片"; position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 12px; padding: 3px 0; text-align: center; }
-        .no-photo { color: #666; font-size: 13px; text-align: center; padding: 10px; }
-        #photoInput { display: none; }
-        .btn-center { text-align: center; margin-top: 25px; }
-        .btn-submit { background: #1a5276; color: #fff; padding: 12px 40px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 2px; }
-        .btn-submit:hover { background: #113f5c; }
-        .remarks-time-header { font-size: 13px; color: #c0392b; font-weight: bold; margin-bottom: 5px; display: flex; gap: 20px; }
-        .action-box { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .action-btn { color: white; border: none; padding: 5px 0px; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-decoration: none; white-space: nowrap; }
-        .btn-print { background: #27ae60; }
-        .btn-print:hover { background: #1e8449; }
-        .btn-word { background: #2980b9; }
-        .btn-word:hover { background: #1f618d; }
-        .btn-excel { background: #e67e22; }
-        .btn-excel:hover { background: #d35400; }
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        .form-title {
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+
+        .form-subtitle {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        .top-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .top-info input {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 2px 5px;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .input-datetime {
+            width: 240px;
+            border: none;
+            border-bottom: 1px solid #000;
+            font-size: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 10px;
+            vertical-align: middle;
+            font-size: 15px;
+        }
+
+        th {
+            background: #f2f2f2;
+            font-weight: bold;
+            text-align: center;
+            width: 14%;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #999;
+            font-size: 14px;
+            background: #fff;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .inline-input {
+            border: none;
+            border-bottom: 1px solid #000;
+            text-align: center;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .photo-cell {
+            text-align: center;
+            width: 150px;
+            background: #fafafa;
+        }
+
+        .photo-container {
+            width: 130px;
+            height: 160px;
+            border: 1px solid #666;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-container:hover::after {
+            content: "點擊更新照片";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            font-size: 12px;
+            padding: 3px 0;
+            text-align: center;
+        }
+
+        .no-photo {
+            color: #666;
+            font-size: 13px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        #photoInput {
+            display: none;
+        }
+
+        .btn-center {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .btn-submit {
+            background: #1a5276;
+            color: #fff;
+            padding: 12px 40px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 2px;
+        }
+
+        .btn-submit:hover {
+            background: #113f5c;
+        }
+
+        .remarks-time-header {
+            font-size: 13px;
+            color: #c0392b;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .action-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-btn {
+            color: white;
+            border: none;
+            padding: 5px 0px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-print {
+            background: #27ae60;
+        }
+
+        .btn-print:hover {
+            background: #1e8449;
+        }
+
+        .btn-word {
+            background: #2980b9;
+        }
+
+        .btn-word:hover {
+            background: #1f618d;
+        }
+
+        .btn-excel {
+            background: #e67e22;
+        }
+
+        .btn-excel:hover {
+            background: #d35400;
+        }
+
         @media print {
-            @page { size: A4 portrait; margin: 0; }
-            html, body { margin: 0; padding: 0; }
-            body * { visibility: hidden; }
-            .form-container, .form-container * { visibility: visible; }
-            .form-container { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; padding: 2cm 1.5cm; border: none; box-sizing: border-box; }
-            .action-box, .btn-center { display: none !important; }
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            .form-container,
+            .form-container * {
+                visibility: visible;
+            }
+
+            .form-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 100%;
+                padding: 2cm 1.5cm;
+                border: none;
+                box-sizing: border-box;
+            }
+
+            .action-box,
+            .btn-center {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -634,9 +869,7 @@ if (!empty($db_updater)) {
                 <tr>
                     <th>生存狀態</th>
                     <td colspan="2">
-                        <input type="hidden" name="status" id="hiddenStatus" value="<?= htmlspecialchars($current_status) ?>">
-                        
-                        <select name="living_status" id="livingStatus" style="width: 100px;" onchange="updateHiddenStatus(this)">
+                        <select name="living_status" id="livingStatus" style="width: 100px;">
                             <option value="存" <?= ($m['living_status'] ?? '') === '存' ? 'selected' : '' ?>>存</option>
                             <option value="亡" <?= ($m['living_status'] ?? '') === '亡' ? 'selected' : '' ?>>亡</option>
                             <option value="未知" <?= ($m['living_status'] ?? '') === '未知' ? 'selected' : '' ?>>未知</option>
@@ -704,43 +937,40 @@ if (!empty($db_updater)) {
     </div>
 
     <script>
-        // 生存狀態與狀態值控制 JavaScript 聯動
-        // 當選到"亡"狀態改為 0，選到"存"狀態改為 1
-        function updateHiddenStatus(selectElement) {
-            const hiddenInput = document.getElementById('hiddenStatus');
-            if (selectElement.value === '亡') {
-                hiddenInput.value = '0';
-            } else if (selectElement.value === '存') {
-                hiddenInput.value = '1';
-            }
-        }
-
+        // 🔒 迴圈防止鎖：避免雙向聯動觸發導致無窮遞迴
         let isSyncing = false;
 
-        // 連動世祖與代數的計算
+        // 1. 輸入世祖 -> 自動帶出代數 (當世祖 >= 20，自動累加，30世祖以上亦同)
         function syncShizuToGeneration(shizuInput) {
             if (isSyncing) return;
             isSyncing = true;
+
             const shizuValue = parseInt(shizuInput.value.trim(), 10);
             const genInput = document.getElementById('generation');
+            
             if (!isNaN(shizuValue) && shizuValue >= 20) {
                 genInput.value = shizuValue - 19;
             } else {
-                genInput.value = '';
+                genInput.value = ''; // 世祖被清空或小於20時，清空代數
             }
+
             isSyncing = false;
         }
 
+        // 2. 輸入代數 -> 自動帶出世祖 (代數 >= 1 即可觸發對應，無限自動累加)
         function syncGenerationToShizu(genInput) {
             if (isSyncing) return;
             isSyncing = true;
+
             const genValue = parseInt(genInput.value.trim(), 10);
             const shizuInput = document.getElementById('emperor_shizu');
+            
             if (!isNaN(genValue) && genValue >= 1) {
                 shizuInput.value = genValue + 19;
             } else {
-                shizuInput.value = '';
+                shizuInput.value = ''; // 代數被清空或小於1時，清空世祖
             }
+
             isSyncing = false;
         }
 

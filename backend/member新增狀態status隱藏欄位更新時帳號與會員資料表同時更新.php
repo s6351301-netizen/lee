@@ -301,7 +301,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
             </tr>
             <tr>
                 <th>E-mail</th>
-                <td colspan="2"><input type="email" name="email" value="<?= htmlspecialchars($m['email'] ?? '') ?>"></td>
+                <td colspan="2"><?= htmlspecialchars($m['email'] ?? '') ?></td>
                 <th>介紹人</th>
                 <td><?= htmlspecialchars($m['introducer'] ?? '') ?></td>
             </tr>
@@ -324,15 +324,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     exit;
 }
 
-// 5. 【動作處理】表單修改更新 (分段式隔離 Transaction)
+// 5. 【動作處理】表單修改更新
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
     unset($_POST['update']);
-
-    // 💡 關鍵修改點 1：先讀取前端傳過來的派下權狀態 (yes 轉為「有」, no 轉為「無」)，讀取完後再刪除不參與 UPDATE 串接
-    $post_has_right_val = ($_POST['has_right_option'] ?? 'no') === 'yes' ? '有' : '無';
+    
+    // 💡 抽出派下權虛擬 Radio 欄位值用來做異動檢查，但不塞入真實 members 資料表
+    $has_right_option_val = $_POST['has_right_option'] ?? null;
     unset($_POST['has_right_option']);
 
-    // 抽出隱藏欄位 status 的值，不參與 members 表的萬能動態 UPDATE 串接
+    // 抽出隱藏欄位 status 的值，個別抽出來處理，不直接塞入萬能 UPDATE 陣列
     $status_val = $_POST['status'] ?? null;
     unset($_POST['status']);
 
@@ -369,10 +369,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         'gender'            => '性別',
         'id_card_num'       => '身分證字號',
         'birthday'          => '出生日期',
-        'emperor_shizu'     => '遷台世祖',
+        'emperor_shizu'    => '遷台世祖',
         'generation'        => '居大甲代',
         'SendSubordinates'  => '派下員狀態',
-        // 'living_status'  => '生存狀態', // 💡 抽出來單獨在下面與「派下權」做聯動比對處理
+        'living_status'     => '生存狀態',
         'old_member'        => '前會員號',
         'placeOfBirth'      => '出生地或籍貫',
         'education'         => '學歷',
@@ -390,17 +390,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         $changed_fields[] = '大頭照';
     }
 
-    // 💡 關鍵修改點 2：計算「舊的派下權中文」以便比對有沒有被更改
-    $old_has_right_val = (($old_data['SendSubordinates'] ?? '') === '正常派下員' && ($old_data['living_status'] ?? '') === '存') ? '有' : '無';
-    $old_living_status = $old_data['living_status'] ?? '';
-    $new_living_status = $_POST['living_status'] ?? '';
-
-    // 如果「生存狀態」有變，或者「派下權」有變，就把兩者打包一起記錄進備註
-    if (trim((string)$old_living_status) !== trim((string)$new_living_status) || $old_has_right_val !== $post_has_right_val) {
-        $changed_fields[] = "生存狀態({$new_living_status})、派下權({$post_has_right_val})";
-    }
-
-    // 其他欄位的一般比對
     foreach ($field_names_zh as $col => $zh_name) {
         if (isset($_POST[$col])) {
             $old_val = $old_data[$col] ?? '';
@@ -421,8 +410,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         }
     }
 
+    // 檢查 status 是否有異動
     if ($status_val !== null && trim((string)($old_data['status'] ?? '')) !== trim((string)$status_val)) {
         $changed_fields[] = '狀態';
+    }
+
+    // 💡 關鍵修正：手動計算舊資料的派下權判定，與提交的新 Radio 值做比對
+    $old_has_right = (($old_data['SendSubordinates'] ?? '') === '正常派下員' && ($old_data['living_status'] ?? '') === '存') ? 'yes' : 'no';
+    if ($has_right_option_val !== null && $old_has_right !== $has_right_option_val) {
+        $changed_fields[] = '派下權';
     }
 
     $_POST['receive_date'] = $formatted_receive_date;
@@ -442,47 +438,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
         $_POST['remarks'] = $new_remarks_input;
     }
 
-    // 準備萬能動態 SQL 語法
-    $fields = array_keys($_POST);
-    $set_sql = implode('=?, ', $fields) . '=?';
-    $sql = "UPDATE `members` SET {$set_sql} WHERE `new_member` = ?";
+    // 將 status 欄位加回更新陣列中，以利 members 更新
+    if ($status_val !== null) {
+        $_POST['status'] = $status_val;
+    }
 
-    // --- 【第一階段：更新 members 表】 ---
     try {
+        // 使用資料庫事務同時安全更新兩張資料表
         $pdo->beginTransaction();
 
+        // 1. 更新 members 表
+        $fields = array_keys($_POST);
+        $set_sql = implode('=?, ', $fields) . '=?';
+        $sql = "UPDATE `members` SET {$set_sql} WHERE `new_member` = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array_merge(array_values($_POST), [$target_member_num]));
 
-        // 這裡立刻 commit 提交，把 PHP 的 Transaction 乾淨結案
-        $pdo->commit(); 
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
+        // 2. 同步更新 account 表中的 status 欄位
+        if ($status_val !== null) {
+            $sql_account = "UPDATE `account` SET `status` = ? WHERE `new_member` = ?";
+            $stmt_account = $pdo->prepare($sql_account);
+            $stmt_account->execute([$status_val, $target_member_num]);
         }
-        die("第一階段：更新 members 表失敗，原因: " . $e->getMessage());
-    }
 
-    // --- 【第二階段：單獨呼叫預存程序】 ---
-    try {
-        // 此時 PHP 端的事務已經關閉，呼叫 Procedure。
-        // Procedure 內部跑自己的 START TRANSACTION 和 COMMIT 就不會再與 PHP 撞車
-        $stmt_proc = $pdo->prepare("CALL sync_account_members(?, ?, ?, ?)");
-        $stmt_proc->execute([
-            $target_member_num,       // 舊編號 (WHERE 條件)
-            $_POST['new_member'],     // 新編號
-            $_POST['name'],           // 姓名
-            $status_val               // 狀態值 (0 或 1)
-        ]);
-        
+        $pdo->commit();
     } catch (Exception $e) {
-        // 這裡不需要 rollBack，因為預存程序內部出錯時，它自己內部的機制會處理並回滾
-        die("第二階段：預存程序連動同步失敗，原因: " . $e->getMessage());
+        $pdo->rollBack();
+        die("更新失敗: " . $e->getMessage());
     }
 
-    // 更新成功後，如果編號有變，網址導向新的編號
-    $redirect_num = $_POST['new_member'] ?? $target_member_num;
-    header("Location: " . $_SERVER['PHP_SELF'] . "?new_member=" . $redirect_num);
+    header("Location: " . $_SERVER['PHP_SELF'] . (isset($_GET['new_member']) ? '?new_member=' . $_GET['new_member'] : ''));
     exit;
 }
 
@@ -504,7 +489,7 @@ if (is_dir('uploads')) {
 
 $has_right = (($m['SendSubordinates'] ?? '') === '正常派下員' && ($m['living_status'] ?? '') === '存') ? 'yes' : 'no';
 
-// 預設當前資料庫撈出來的 status 值給隱藏欄位
+// 預設當前資料庫撈出來的 status 值給隱藏欄位 (若無則先依生存狀態給預設)
 $current_status = $m['status'] ?? (($m['living_status'] ?? '') === '亡' ? '0' : (($m['living_status'] ?? '') === '存' ? '1' : ''));
 
 $web_display_updater = '無紀錄';
@@ -705,7 +690,6 @@ if (!empty($db_updater)) {
 
     <script>
         // 生存狀態與狀態值控制 JavaScript 聯動
-        // 當選到"亡"狀態改為 0，選到"存"狀態改為 1
         function updateHiddenStatus(selectElement) {
             const hiddenInput = document.getElementById('hiddenStatus');
             if (selectElement.value === '亡') {
@@ -717,30 +701,37 @@ if (!empty($db_updater)) {
 
         let isSyncing = false;
 
-        // 連動世祖與代數的計算
+        // 1. 輸入世祖 -> 自動帶出代數
         function syncShizuToGeneration(shizuInput) {
             if (isSyncing) return;
             isSyncing = true;
+
             const shizuValue = parseInt(shizuInput.value.trim(), 10);
             const genInput = document.getElementById('generation');
+            
             if (!isNaN(shizuValue) && shizuValue >= 20) {
                 genInput.value = shizuValue - 19;
             } else {
                 genInput.value = '';
             }
+
             isSyncing = false;
         }
 
+        // 2. 輸入代數 -> 自動帶出世祖
         function syncGenerationToShizu(genInput) {
             if (isSyncing) return;
             isSyncing = true;
+
             const genValue = parseInt(genInput.value.trim(), 10);
             const shizuInput = document.getElementById('emperor_shizu');
+            
             if (!isNaN(genValue) && genValue >= 1) {
                 shizuInput.value = genValue + 19;
             } else {
                 shizuInput.value = '';
             }
+
             isSyncing = false;
         }
 
