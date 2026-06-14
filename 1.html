@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺中市行政區地圖 - 區塊懸浮立體特效</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        /* 右上角動態資訊面板 */
+        .info-panel {
+            padding: 12px 20px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            border-left: 5px solid #2bc0e4;
+            min-width: 200px;
+        }
+        .info-panel h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .info-panel p {
+            margin: 0;
+            color: #666;
+        }
+        .highlight-text {
+            color: #ff4e50;
+            font-weight: bold;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. 初始化地圖：將中心點定位在臺中市中心，縮放層級設為 10
+        const map = L.map('map').setView([24.233, 120.941], 10);
+
+        // 2. 導入電子地圖底圖（使用適合台灣圖資的 CartoDB 淺色網頁地圖，能突顯懸浮色彩）
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+
+        let geojsonLayer;
+
+        // 3. 設定區塊的「常態基本樣式」
+        function defaultStyle(feature) {
+            return {
+                fillColor: '#4ca1af',  // 預設填滿顏色（質感藍綠色）
+                weight: 1.5,           // 邊線粗細
+                opacity: 1,            // 邊線透明度
+                color: '#ffffff',      // 邊線顏色（白色區界）
+                fillOpacity: 0.5       // 區塊填滿透明度
+            };
+        }
+
+        // 4. 當滑鼠移入（Hover）時的「浮起/高亮特效」
+        function highlightFeature(e) {
+            const layer = e.target;
+
+            // 改變樣式，製造立體與浮起的視覺焦點
+            layer.setStyle({
+                fillColor: '#ff4e50',   // 移入時轉為活力橘紅
+                weight: 4,              // 邊框加粗
+                color: '#333333',       // 邊框顏色變深
+                fillOpacity: 0.85       // 區塊顏色變濃郁
+            });
+
+            // 核心關鍵：將該區塊移到最上層，避免加粗的邊框被鄰近區塊蓋住
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+
+            // 更新右上角面板顯示的行政區名稱
+            info.update(layer.feature.properties);
+        }
+
+        // 5. 當滑鼠移出（Mouseout）時，還原回常態樣式
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+            info.update(); // 重置資訊面板
+        }
+
+        // 6. 點擊行政區時，地圖自動縮放到該區的邊界範圍
+        function zoomToFeature(e) {
+            map.fitBounds(e.target.getBounds());
+        }
+
+        // 7. 綁定事件監聽器到每一個行政區圖層上
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomToFeature
+            });
+
+            // 取得行政區名稱（相容 TOWNNAME 或 TNAME 欄位）
+            const districtName = feature.properties.TOWNNAME || feature.properties.TNAME || "未知行政區";
+
+            // 滑鼠點擊時會彈出提示泡泡
+            layer.bindPopup(`<strong>${districtName}</strong>`);
+        }
+
+        // 8. 建立右上角的動態資訊提示看板
+        const info = L.control({ position: 'topright' });
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info-panel');
+            this.update();
+            return this._div;
+        };
+        info.update = function (props) {
+            const name = props ? (props.TOWNNAME || props.TNAME) : null;
+            this._div.innerHTML = `<h4>臺中市行政區觀測</h4>` + 
+                (name ? `<p>目前滑鼠位置：<span class="highlight-text">${name}</span></p>` : `<p>請將滑鼠移至地圖各區</p>`);
+        };
+        info.addTo(map);
+
+        // 9. 串接您的臺中市政府官方實時 JSON 網址
+        const jsonUrl = 'https://newdatacenter.taichung.gov.tw/api/v1/no-auth/resource.download?rid=943fdd5e-00b9-4ee8-92f2-23d161e98273';
+
+        fetch(jsonUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('網路回應不成功');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 將載入的 JSON 資料代入 Leaflet
+                geojsonLayer = L.geoJSON(data, {
+                    style: defaultStyle,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                // 根據載入的圖資範圍，自動將地圖調整至完美視覺中心
+                map.fitBounds(geojsonLayer.getBounds());
+            })
+            .catch(error => {
+                console.error('圖資動態載入失敗：', error);
+                alert('無法從市府 API 獲取圖資，請確認網路連線或瀏覽器跨網域(CORS)限制。');
+            });
+    </script>
+</body>
+</html>
