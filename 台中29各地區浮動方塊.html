@@ -50,17 +50,16 @@
 
    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <script>
         // 定義 TWD97 (EPSG:3826) 與 WGS84 經緯度 (EPSG:4326) 的投影引數
         const twd97 = "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
         const wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
-        // 1. 初始化地圖，預設定位在大甲區附近
+        // 1. 初始化地圖，預設定位在大甲區附近，並將縮放層級提高到 13 以便看清街道名稱
         const map = L.map('map').setView([24.348, 120.623], 13);
 
-        // 2. 導入詳細中文地圖
+        // 2. 導入能清晰看到詳細中文街道名稱的電子地圖（OpenStreetMap 標準圖資）
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
@@ -70,11 +69,11 @@
         // 3. 設定區塊的「常態基本樣式」
         function defaultStyle(feature) {
             return {
-                fillColor: '#3a7bd5',  
-                weight: 2,             
-                opacity: 1,            
-                color: '#ffffff',      
-                fillOpacity: 0.35      
+                fillColor: '#3a7bd5',  // 預設質感藍色填充
+                weight: 2,             // 區界線粗細
+                opacity: 1,            // 線條透明度
+                color: '#ffffff',      // 白色區界線
+                fillOpacity: 0.35      // 稍微調低透明度，讓底圖的街道與路名更清晰
             };
         }
 
@@ -83,18 +82,18 @@
             const layer = e.target;
 
             layer.setStyle({
-                fillColor: '#48d1cc',   
-                weight: 4,              
-                color: '#4a4a4a',       
-                fillOpacity: 0.2        
+                fillColor: '#48d1cc',   // 移入時轉為亮眼桃紅
+                weight: 4,              // 邊框加粗（製造向上浮出感）
+                color: '#4a4a4a',       // 邊框變深色加強立體感
+                fillOpacity: 0.2        // 顏色加濃數字小透明度高
             });
 
+            // 核心關鍵：將該區塊移到圖層最上層，確保四周加粗的邊框不會被鄰近區塊遮住
             if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
                 layer.bringToFront();
             }
 
-            // 將當前圖層的屬性與自訂的選單索引傳入面板更新
-            info.update(layer.feature.properties, layer.feature._geoIndex);
+            info.update(layer.feature.properties);
         }
 
         // 5. 當滑鼠移出時，還原回原本樣式
@@ -108,14 +107,20 @@
             map.fitBounds(e.target.getBounds());
         }
 
-        // 7. 【終極修正核心】結合索引位置進行相對應名稱解析
-        function getDistrictName(props, geoIndex) {
-            // 優先攔截絕對陣列索引位置（防錯機制）
-            if (geoIndex === 25) return "梧棲區";
-            if (geoIndex === 27) return "臺中國際機場";
-
+        // 7. 自動偵測您 JSON 內隱含的行政區名稱欄位（並修正指定未知區域之名稱）
+        function getDistrictName(props) {
             if (!props) return "未知行政區";
-            return props.區名 || props.TOWNNAME || "未知區域";
+            let name = props.區名 || props.TOWNNAME || props.TNAME || "未知區域";
+            
+            // 針對該特徵圖資中的特定「未知區域」進行名稱修正
+            if (name === "未知區域") {
+                if (props.OBJECTID === 26) {
+                    return "梧棲區";
+                } else if (props.OBJECTID === 28) {
+                    return "臺中國際機場";
+                }
+            }
+            return name;
         }
 
         // 8. 綁定事件監聽器至每個行政區
@@ -126,8 +131,7 @@
                 click: zoomToFeature
             });
 
-            // 在圖層物件中綁定一個自訂索引，方便 mouseover 傳遞
-            const districtName = getDistrictName(feature.properties, feature._geoIndex);
+            const districtName = getDistrictName(feature.properties);
             layer.bindPopup(`<strong style="font-size:14px;">${districtName}</strong>`);
         }
 
@@ -138,10 +142,10 @@
             this.update();
             return this._div;
         };
-        info.update = function (props, geoIndex) {
-            const name = props || geoIndex !== undefined ? getDistrictName(props, geoIndex) : null;
+        info.update = function (props) {
+            const name = props ? getDistrictName(props) : null;
             this._div.innerHTML = `<h4>臺中市行政區觀測</h4>` + 
-                (name ? `<p>目前位置：<span class="highlight-text">${name}</span></p>` : `<p>請將滑鼠移至地圖各區</p>`);
+                (props ? `<p>目前位置：<span class="highlight-text">${name}</span></p>` : `<p>請將滑鼠移至地圖各區</p>`);
         };
         info.addTo(map);
 
@@ -159,7 +163,7 @@
             return coords;
         }
 
-        // 11. 遠端載入您的 GitHub 臺中市區界 JSON 網址
+        // 11. 遠端載入您指定的 GitHub 臺中市區界 JSON 網址
         const jsonUrl = 'https://s6351301-netizen.github.io/lee/json/TaichungCityBoundary_TWD97-1.json';
 
         fetch(jsonUrl)
@@ -170,32 +174,21 @@
                 return response.json();
             })
             .then(data => {
-                // 將所有特徵的 TWD97 平面座標轉為經緯度，並預先注入絕對索引編號
-                data.features.forEach((feature, index) => {
-                    // 將當前區塊的索引直接綁定在特徵上，確保後續渲染能精準抓到
-                    feature._geoIndex = index;
-
+                // 將所有特徵(Features)的 TWD97 平面座標，即時轉為 Leaflet 網頁專用的經緯度
+                data.features.forEach(feature => {
                     if (feature.geometry && feature.geometry.coordinates) {
                         feature.geometry.coordinates = convertCoords(feature.geometry.coordinates, feature.geometry.type);
                     }
-                    
-                    // 利用 Turf 確保幾何結構有效性（保留 Turf 分析架構）
-                    if (index === 25 && turf.getType(feature)) {
-                        if(!feature.properties) feature.properties = {};
-                        feature.properties.區名 = "梧棲區";
-                    }
-                    if (index === 27 && turf.getType(feature)) {
-                        if(!feature.properties) feature.properties = {};
-                        feature.properties.區名 = "臺中國際機場";
-                    }
                 });
 
-                // 將資料導入地圖層
+                // 將轉換完畢的資料導入地圖
                 geojsonLayer = L.geoJSON(data, {
                     style: defaultStyle,
                     onEachFeature: onEachFeature
                 }).addTo(map);
 
+                // 注意：這裡將原本結尾自動滿版縮放的 map.fitBounds 移除，
+                // 以確保網頁開啟時能穩定維持在上方步驟 1 設定的大甲區視覺中心與特定縮放比例。
             })
             .catch(error => {
                 console.error('圖資載入失敗：', error);
