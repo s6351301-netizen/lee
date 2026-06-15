@@ -236,7 +236,7 @@
         let currentObservationIndex = undefined;
         let currentObservationFeature = null;
 
-        // 【修正核心 1】：行政區篩選防禦機制，避免交叉污染
+        // 行政區篩選防禦機制，避免交叉污染
         function filterByDistrict(peopleList, districtName) {
             return peopleList.filter(p => {
                 if (!p.address) return false;
@@ -251,7 +251,6 @@
                     return cleanAddress.includes("中區") || cleanAddress.includes("台中市中") || cleanAddress.includes("臺中市中");
                 }
                 
-                // 額外防禦：如果這筆資料清洗後依然帶有大甲，且目前正在篩選西區或南區，直接剔除
                 if ((shortName === "西" || shortName === "南" || shortName === "北" || shortName === "東") && cleanAddress.includes("大甲")) {
                     return false;
                 }
@@ -324,6 +323,14 @@
             layer.bindPopup(`<strong style="font-size:14px;">${districtName}</strong>`);
         }
 
+        // 點擊人名觸發的核心函數（配合密碼學編碼，完美杜絕特殊字元破壞 HTML）
+        window.handleNameClick = function(encodedAddr, encodedName) {
+            const address = decodeURIComponent(encodedAddr);
+            const name = decodeURIComponent(encodedName);
+            lastClickedPerson = { name: name, address: address };
+            planRouteFromInputToPerson(address, name);
+        };
+
         // --- 右上角整合型觀測面板 ---
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
@@ -361,6 +368,23 @@
             this._div.style.padding = "15px";
             this._div.style.width = "340px";
 
+            // 預設未鎖定行政區時的輸入框渲染，防止 DOM 找不到而崩潰
+            const defaultNavHtml = `
+                <div class="nav-input-group">
+                    <div class="nav-row">
+                        <label>來源地址：</label>
+                        <input type="text" id="srcLocation" value="李武略宗祠">
+                    </div>
+                    <div class="nav-row">
+                        <label>目標景點：</label>
+                        <input type="text" id="targetLocation" placeholder="例如：台中火車站">
+                    </div>
+                    <div class="nav-btn-container">
+                        <button class="go-btn" onclick="planRouteFromPersonToTarget()">前往景點</button>
+                    </div>
+                </div>
+            `;
+
             if (!districtName || districtName === "未知區域") {
                 this._div.innerHTML = `
                     <div class="panel-controls">
@@ -368,6 +392,7 @@
                     </div>
                     <h4>臺中市宗親人員統計與線路導航</h4>
                     <p style="margin:5px 0 0 0; color:#e81123; font-weight:bold;">請「點擊」地圖各行政區查看宗親名單</p>
+                    ${defaultNavHtml}
                 `;
                 return;
             }
@@ -376,13 +401,13 @@
             const males = distPeople.filter(p => p.gender === '男' || p.gender === '男性');
             const females = distPeople.filter(p => p.gender === '女' || p.gender === '女性');
             
-            // 【修正核心 2】：動態生成純姓名 A 標籤，並將引號全面跳脫，阻斷 HTML 破壞
+            // 【安全升級點】：全面採用 URI 安全編碼，根除任何地址、符號對 HTML 的結構性干擾
             const generateNameLinks = (peopleArray) => {
                 if (peopleArray.length === 0) return '無';
                 return peopleArray.map(p => {
-                    const escapedAddr = p.address.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    const escapedName = p.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                    return `<span class="clickable-name" onclick="lastClickedPerson={name:'${escapedName}', address:'${escapedAddr}'}; planRouteFromInputToPerson('${escapedAddr}', '${escapedName}')">${p.name}</span>`;
+                    const encAddr = encodeURIComponent(p.address);
+                    const encName = encodeURIComponent(p.name);
+                    return `<span class="clickable-name" onclick="window.handleNameClick('${encAddr}', '${encName}')">${p.name}</span>`;
                 }).join('，');
             };
 
@@ -526,7 +551,7 @@
         totalStatsPanel.addTo(map);
 
         function getLatLngByAddress(address, callback) {
-            // 清理可能包夾在地址內的剩餘單引號與分號
+            if(!address) return;
             let cleanAddr = address.split("';")[0].split('";')[0].replace("台中市 ", "").replace("臺中市 ", "");
             
             if (cleanAddr.trim() === "李武略宗祠") {
@@ -573,7 +598,8 @@
         }
 
         function planRouteFromInputToPerson(personAddress, personName) {
-            const srcInput = document.getElementById("srcLocation").value;
+            const srcEl = document.getElementById("srcLocation");
+            const srcInput = srcEl ? srcEl.value : "李武略宗祠";
             if (!srcInput) {
                 alert("請填寫來源地址！");
                 return;
@@ -590,7 +616,8 @@
                 alert("請先在名單中點擊任一宗親的名字作為出發起點！");
                 return;
             }
-            const targetInput = document.getElementById("targetLocation").value;
+            const targetEl = document.getElementById("targetLocation");
+            const targetInput = targetEl ? targetEl.value : "";
             if (!targetInput) {
                 alert("請輸入目標景點名稱！");
                 return;
@@ -616,22 +643,18 @@
         fetch(dataUrl)
             .then(res => res.json())
             .then(database => {
-                // 【修正核心 3】：萬能強力清洗過濾器（Data Sanitizer）
                 taichungPeopleData = database.map(item => {
                     let rawName = item.name || "未知";
                     let rawAddr = item.address || "";
 
-                    // A. 清洗姓名：如果姓名內黏著路名、行政區或程式碼，利用正則表達式強制只抓取前2~4個純中文
                     if (rawName.includes("區") || rawName.includes("路") || rawName.includes("'") || rawName.includes(" planRoute")) {
                         const match = rawName.match(/[\u4e00-\u9fa5]{2,4}/);
                         rawName = match ? match[0] : "未知";
                     }
 
-                    // B. 清洗地址：把地址中不小心黏住的程式後綴（如 '; planRoute...）一刀切斷，只留正常地址
                     if (rawAddr.includes("';") || rawAddr.includes("\";") || rawAddr.includes("}")) {
                         rawAddr = rawAddr.split("';")[0].split('";')[0].split('}')[0];
                     }
-                    // 過濾任何殘留的 HTML 標籤
                     rawAddr = rawAddr.replace(/<[^>]*>/g, "");
 
                     return {
