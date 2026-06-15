@@ -246,6 +246,7 @@
         
         let currentObservationProps = null;
         let currentObservationIndex = undefined;
+        let currentObservationFeature = null; // 新增：追蹤當前點擊的 feature 結構
 
         function filterByDistrict(peopleList, districtName) {
             return peopleList.filter(p => {
@@ -291,14 +292,31 @@
 
         function onFeatureClick(e) {
             map.fitBounds(e.target.getBounds());
-            info.update(e.target.feature.properties, e.target.feature._geoIndex);
+            info.update(e.target.feature.properties, e.target.feature._geoIndex, e.target.feature);
         }
 
-        function getDistrictName(props, geoIndex) {
-            if (geoIndex === 25) return "梧棲區";
-            if (geoIndex === 27) return "臺中國際機場";
-            if (!props) return "未知行政區";
-            return props.區名 || props.TOWNNAME || "未知區域";
+        // 核心修改：加入空間分析地理過濾，精準將山區錯標的梧棲修正為新社
+        function getDistrictName(props, geoIndex, feature) {
+            let name = "未知區域";
+            if (props) {
+                name = props.區名 || props.TOWNNAME || "未知區域";
+            }
+            if (geoIndex === 25) name = "梧棲區";
+            if (geoIndex === 27) name = "臺中國際機場";
+
+            // 空間分析防錯：利用 Turf.js 計算區塊質心的經度。若該區塊在東側（經度 > 120.75）卻被標為梧棲，強制修正為新社區
+            if (feature && turf.getType(feature)) {
+                try {
+                    const centroid = turf.centroid(feature);
+                    const lng = centroid.geometry.coordinates[0];
+                    if (name === "梧棲區" && lng > 120.75) {
+                        return "新社區";
+                    }
+                } catch (err) {
+                    console.error("空間質心計算錯誤: ", err);
+                }
+            }
+            return name;
         }
 
         function onEachFeature(feature, layer) {
@@ -308,7 +326,7 @@
                 click: onFeatureClick
             });
 
-            const districtName = getDistrictName(feature.properties, feature._geoIndex);
+            const districtName = getDistrictName(feature.properties, feature._geoIndex, feature);
             layer.bindPopup(`<strong style="font-size:14px;">${districtName}</strong>`);
         }
 
@@ -323,16 +341,17 @@
         
         info.toggleMinimize = function() {
             isObservationPanelMinimized = !isObservationPanelMinimized;
-            this.update(currentObservationProps, currentObservationIndex);
+            this.update(currentObservationProps, currentObservationIndex, currentObservationFeature);
         };
 
-        info.update = function (props, geoIndex) {
-            if(props !== undefined || geoIndex !== undefined) {
+        info.update = function (props, geoIndex, feature) {
+            if(props !== undefined || geoIndex !== undefined || feature !== undefined) {
                 currentObservationProps = props;
                 currentObservationIndex = geoIndex;
+                currentObservationFeature = feature;
             }
 
-            const districtName = currentObservationProps || currentObservationIndex !== undefined ? getDistrictName(currentObservationProps, currentObservationIndex) : null;
+            const districtName = currentObservationProps || currentObservationIndex !== undefined ? getDistrictName(currentObservationProps, currentObservationIndex, currentObservationFeature) : null;
             
             const controlsHtml = `
                 <div class="panel-controls" style="position: static; display: flex; justify-content: flex-end; gap: 12px;">
@@ -453,7 +472,6 @@
         };
 
         totalStatsPanel.update = function () {
-            // 生成縮小與打叉的通用控制項
             const controlsHtml = `
                 <div class="panel-controls" style="position: static; display: flex; justify-content: flex-end; gap: 12px;">
                     <span class="panel-btn toggle-btn" onclick="totalStatsPanel.toggleMinimize()">${isTotalStatsPanelMinimized ? '➕' : '➖'}</span>
@@ -461,7 +479,6 @@
                 </div>
             `;
 
-            // 如果左上角總表處於最小化狀態，【只留下縮小與打叉符號】，寬度變為自動
             if (isTotalStatsPanelMinimized) {
                 this._div.innerHTML = controlsHtml;
                 this._div.style.padding = "6px 10px";
@@ -471,7 +488,6 @@
                 return;
             }
 
-            // 展開時恢復原本樣式
             this._div.style.padding = "12px";
             this._div.style.width = "320px";
             this._div.style.borderTop = "5px solid #6f42c1";
