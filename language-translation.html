@@ -8,6 +8,8 @@
         :root {
             --primary-color: #1a73e8;
             --primary-hover: #1557b0;
+            --video-color: #0f9d58;
+            --video-hover: #0b8043;
             --bg-color: #f8f9fa;
             --card-bg: #ffffff;
             --text-color: #3c4043;
@@ -98,6 +100,18 @@
             box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
         }
 
+        .textarea-wrapper.recording-video {
+            border-color: var(--video-color);
+            box-shadow: 0 0 0 2px rgba(15,157,88,0.2);
+        }
+
+        /* 讓輸入框容器內部可以容納影片與文字 */
+        .input-content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         textarea {
             width: 100%;
             height: 110px;
@@ -106,6 +120,16 @@
             outline: none;
             font-size: 16px;
             color: var(--text-color);
+            background: transparent;
+        }
+
+        /* 即時預覽鏡頭與錄完呈現的影片樣式 */
+        video {
+            width: 100%;
+            max-height: 240px;
+            border-radius: 8px;
+            background: #000;
+            display: none; /* 預設隱藏，有影像才顯示 */
         }
 
         .action-bar {
@@ -124,13 +148,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            transition: background 0.2s, transform 0.1s;
             width: 40px;
             height: 40px;
         }
 
         .btn:hover {
             background-color: #f1f3f4;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
         }
 
         .btn-mic {
@@ -143,6 +171,20 @@
         }
 
         .btn-mic.recording {
+            background-color: #ea4335;
+            animation: pulse 1.5s infinite;
+        }
+
+        .btn-video {
+            background-color: var(--video-color);
+            color: white;
+        }
+
+        .btn-video:hover {
+            background-color: var(--video-hover);
+        }
+
+        .btn-video.recording {
             background-color: #ea4335;
             animation: pulse 1.5s infinite;
         }
@@ -190,9 +232,15 @@
 
     <div class="translation-box">
         <div class="textarea-wrapper" id="inputWrapper">
-            <textarea id="inputText" placeholder="點擊麥克風開始說話，或在此輸入文字..."></textarea>
+            <div class="input-content-area">
+                <textarea id="inputText" placeholder="點擊麥克風或攝影機開始，或在此輸入文字..."></textarea>
+                <video id="videoPreview" controls playsinline></video>
+            </div>
             <div class="action-bar">
-                <button class="btn btn-mic" id="micBtn" title="語音輸入">
+                <button class="btn btn-video" id="videoBtn" title="錄影翻譯 (限5分鐘)">
+                    <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/></svg>
+                </button>
+                <button class="btn btn-mic" id="micBtn" title="純語音輸入">
                     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.42 2.72 6.2 6 6.6V21h2v-3.4c3.28-.4 6-3.18 6-6.6h-1.7z"/></svg>
                 </button>
                 <button class="btn" id="speakSrcBtn" title="播放原文" style="color:#5f6368;">
@@ -218,7 +266,6 @@
 </div>
 
 <script>
-    // 檢查瀏覽器支援度
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const synth = window.speechSynthesis;
 
@@ -226,13 +273,15 @@
         alert("您的瀏覽器不支援語音辨識功能，請使用 Google Chrome、Edge 或 Safari 瀏覽器。");
     }
 
-    // 取得 DOM 元素
+    // DOM 元素
     const srcLangSelect = document.getElementById('srcLang');
     const targetLangSelect = document.getElementById('targetLang');
     const swapLangBtn = document.getElementById('swapLang');
     const inputText = document.getElementById('inputText');
     const outputText = document.getElementById('outputText');
     const micBtn = document.getElementById('micBtn');
+    const videoBtn = document.getElementById('videoBtn');
+    const videoPreview = document.getElementById('videoPreview');
     const speakSrcBtn = document.getElementById('speakSrcBtn');
     const speakTargetBtn = document.getElementById('speakTargetBtn');
     const copyBtn = document.getElementById('copyBtn');
@@ -240,53 +289,180 @@
     const inputWrapper = document.getElementById('inputWrapper');
 
     let recognition;
-    let isRecording = false;
+    let isRecordingMic = false;
+    
+    // 錄影相關變數
+    let isRecordingVideo = false;
+    let mediaRecorder;
+    let recordedChunks = [];
+    let streamTracks = null;
+    let videoTimeout;
+    let videoSpeechResult = ""; 
 
+    // 初始化語音辨識
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.continuous = false; // 說完一句自動結束
-        recognition.interimResults = false; // 不顯示過渡結果
+        recognition.continuous = true; // 錄影可能較長，開啟連續辨識
+        recognition.interimResults = false;
 
-        recognition.onstart = () => {
-            isRecording = true;
-            micBtn.classList.add('recording');
-            inputWrapper.classList.add('active');
-            statusText.innerText = "聆聽中，請說話...";
-        };
-
-        recognition.onend = () => {
-            isRecording = false;
-            micBtn.classList.remove('recording');
-            inputWrapper.classList.remove('active');
-            statusText.innerText = "辨識結束";
+        recognition.onresult = (event) => {
+            let currentResult = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    currentResult += event.results[i][0].transcript;
+                }
+            }
+            
+            if (isRecordingVideo) {
+                // 錄影模式：先暫存文字，最後一起呈現
+                videoSpeechResult += currentResult;
+            } else {
+                // 純麥克風模式：即時呈現並翻譯
+                inputText.value = currentResult;
+                translateText(currentResult);
+            }
         };
 
         recognition.onerror = (event) => {
-            statusText.innerText = "語音辨識出錯: " + event.error;
-            isRecording = false;
-            micBtn.classList.remove('recording');
-        };
-
-        recognition.onresult = (event) => {
-            const resultText = event.results[0][0].transcript;
-            inputText.value = resultText;
-            statusText.innerText = "辨識成功，正在翻譯...";
-            translateText(resultText);
+            console.error("辨識錯誤:", event.error);
+            if (event.error !== 'no-speech') {
+                statusText.innerText = "語音辨識出錯: " + event.error;
+            }
         };
     }
 
-    // 麥克風點擊事件
+    /* ==========================================
+       純語音麥克風功能
+       ========================================== */
     micBtn.addEventListener('click', () => {
         if (!SpeechRecognition) return;
-        if (isRecording) {
+        if (isRecordingVideo) {
+            alert("請先停止錄影再使用純語音輸入。");
+            return;
+        }
+
+        if (isRecordingMic) {
             recognition.stop();
+            isRecordingMic = false;
+            micBtn.classList.remove('recording');
+            inputWrapper.classList.remove('active');
+            statusText.innerText = "辨識結束";
         } else {
+            inputText.value = "";
+            videoPreview.style.display = "none";
             recognition.lang = srcLangSelect.value;
+            recognition.continuous = false; // 純語音說完單句即結束
             recognition.start();
+            
+            isRecordingMic = true;
+            micBtn.classList.add('recording');
+            inputWrapper.classList.add('active');
+            statusText.innerText = "聆聽中，請說話...";
         }
     });
 
-    // 雙向切換語言與文字
+    /* ==========================================
+       新功能：視訊鏡頭錄影功能 (限制5分鐘)
+       ========================================== */
+    videoBtn.addEventListener('click', async () => {
+        if (!SpeechRecognition) return;
+        if (isRecordingMic) {
+            alert("請先停止純語音輸入再開啟錄影。");
+            return;
+        }
+
+        if (isRecordingVideo) {
+            // 手動停止錄影
+            stopVideoRecording();
+        } else {
+            // 跳出警告提示
+            const confirmProceed = confirm("【隱私安全提示】\n本功能錄製的影片「不會」做任何檔案儲存或伺服器上傳，僅作當下即時文字解析與語言翻譯使用。是否開啟相機？");
+            if (!confirmProceed) return;
+
+            try {
+                // 請求同時開啟視訊與音訊
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                streamTracks = stream;
+                
+                // 設定即時預覽
+                videoPreview.srcObject = stream;
+                videoPreview.muted = true; // 預覽時靜音避免回音
+                videoPreview.style.display = "block";
+                videoPreview.play();
+
+                // 初始化錄影
+                recordedChunks = [];
+                videoSpeechResult = "";
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    // 錄影停止後，將錄好的影片轉成 URL 放進 video 標籤
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    videoPreview.srcObject = null;
+                    videoPreview.src = URL.createObjectURL(blob);
+                    videoPreview.muted = false; // 回放時開啟聲音
+                    
+                    // 呈現文字：先文字，換行後顯示影片（影片已在下方）
+                    inputText.value = videoSpeechResult || "(未偵測到語音文字)";
+                    
+                    // 觸發翻譯
+                    if(videoSpeechResult) translateText(videoSpeechResult);
+                    statusText.innerText = "錄影結束，已產生解析文字與影片";
+                };
+
+                // 同步啟動語音辨識
+                recognition.lang = srcLangSelect.value;
+                recognition.continuous = true;
+                recognition.start();
+
+                // 開始錄影
+                mediaRecorder.start();
+                isRecordingVideo = true;
+                videoBtn.classList.add('recording');
+                inputWrapper.classList.add('recording-video');
+                statusText.innerText = "正在錄影與解析語音 (限時 5 分鐘)...";
+
+                // 設定 5 分鐘 (300,000 毫秒) 自動停止限制
+                videoTimeout = setTimeout(() => {
+                    statusText.innerText = "已達 5 分鐘錄影上限，自動停止...";
+                    stopVideoRecording();
+                }, 300000);
+
+            } catch (err) {
+                console.error("無法開啟相機:", err);
+                alert("無法存取相機或麥克風，請檢查瀏覽器權限設定。");
+            }
+        }
+    });
+
+    function stopVideoRecording() {
+        if (!isRecordingVideo) return;
+        clearTimeout(videoTimeout);
+
+        // 停止錄影機
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        // 停止語音辨識
+        recognition.stop();
+        
+        // 關閉相機鏡頭串流
+        if (streamTracks) {
+            streamTracks.getTracks().forEach(track => track.stop());
+        }
+
+        isRecordingVideo = false;
+        videoBtn.classList.remove('recording');
+        inputWrapper.classList.remove('recording-video');
+    }
+
+    /* ==========================================
+       翻譯與基礎控制邏輯
+       ========================================== */
     swapLangBtn.addEventListener('click', () => {
         const tempLang = srcLangSelect.value;
         srcLangSelect.value = targetLangSelect.value;
@@ -298,7 +474,6 @@
         statusText.innerText = "語言已切換";
     });
 
-    // 免費翻譯功能 (利用 MyMemory 免費公開 API)
     function translateText(text) {
         if (!text.trim()) return;
         
@@ -306,7 +481,6 @@
         const to = targetLangSelect.value === 'zh-TW' ? 'zh-TW' : targetLangSelect.value.split('-')[0];
 
         statusText.innerText = "翻譯中...";
-        
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
 
         fetch(url)
@@ -315,8 +489,7 @@
                 if (data.responseData) {
                     let translated = data.responseData.translatedText;
                     outputText.value = translated;
-                    statusText.innerText = "翻譯完成，準備朗讀...";
-                    // 自動語音播放翻譯後的文字
+                    statusText.innerText = "翻譯完成，自動朗讀...";
                     speak(translated, targetLangSelect.value);
                 } else {
                     statusText.innerText = "翻譯失敗";
@@ -328,7 +501,6 @@
             });
     }
 
-    // 手動文字輸入後敲 Enter 鍵也能觸發翻譯
     inputText.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -336,40 +508,24 @@
         }
     });
 
-    // 語音合成播放 (TTS)
     function speak(text, lang) {
         if (!synth || !text.trim()) return;
-        
-        // 如果正在播放，先取消上一則
         synth.cancel();
-
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = lang;
-        utterance.rate = 1.0; // 語速：1.0 為正常速度
-
-        utterance.onend = () => {
-            statusText.innerText = "播放完畢";
-        };
-
+        utterance.rate = 1.0;
+        utterance.onend = () => { statusText.innerText = "播放完畢"; };
         synth.speak(utterance);
     }
 
-    // 點擊按鈕手動播放原文
-    speakSrcBtn.addEventListener('click', () => {
-        speak(inputText.value, srcLangSelect.value);
-    });
-
-    // 點擊按鈕手動播放譯文
-    speakTargetBtn.addEventListener('click', () => {
-        speak(outputText.value, targetLangSelect.value);
-    });
-
-    // 複製譯文按鈕
+    speakSrcBtn.addEventListener('click', () => speak(inputText.value, srcLangSelect.value));
+    speakTargetBtn.addEventListener('click', () => speak(outputText.value, targetLangSelect.value));
+    
     copyBtn.addEventListener('click', () => {
         if (!outputText.value) return;
         navigator.clipboard.writeText(outputText.value).then(() => {
             const originalText = statusText.innerText;
-            statusText.innerText = "已複製譯文到剪貼簿！";
+            statusText.innerText = "已複製譯文！";
             setTimeout(() => statusText.innerText = originalText, 2000);
         });
     });
