@@ -41,7 +41,7 @@
             padding-bottom: 5px;
         }
         
-        /* 控制鈕樣式 */
+        /* 控制鈕與最小化文字樣式 */
         .panel-controls {
             position: absolute;
             top: 12px;
@@ -59,6 +59,29 @@
         }
         .panel-btn:hover {
             color: #e81123;
+        }
+        
+        /* 最小化後的文字與符號一體化樣式 */
+        .minimized-text {
+            cursor: pointer;
+            font-weight: bold;
+            color: #333;
+            font-size: 13px;
+            padding: 2px 4px;
+            user-select: none;
+        }
+        .minimized-text:hover {
+            color: #1a73e8;
+        }
+        /* 讓最小化後的 + 號與 ➖ 減號完美一體化 */
+        .minimized-plus {
+            font-size: 14px;
+            font-weight: bold;
+            color: #aaa;
+            margin-left: 3px;
+        }
+        .minimized-text:hover .minimized-plus {
+            color: #1a73e8;
         }
 
         .info-panel p {
@@ -304,7 +327,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
         }
 
-        /* 💡 全新實作：內嵌燈箱式高質感智慧查詢選單樣式 */
+        /* 燈箱外觀樣式 */
         .custom-modal-backdrop {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -458,7 +481,7 @@
         let currentObservationIndex = undefined;
         let currentObservationFeature = null;
 
-        // 暫存數據
+        // 暫存數據 (修復：將預設值重新牢牢鎖定為李武略宗祠)
         let savedSrcLocation = "";
         let savedTargetLocation = "李武略宗祠";
         let savedExchangeSrc = "";
@@ -554,6 +577,7 @@
             const srcInput = document.getElementById("srcLocation");
             if (srcInput) srcInput.value = savedSrcLocation;
 
+            // 核心修復：精確抓取當下目標欄位數值，若無則完美代入預設的李武略宗祠
             const targetInputVal = document.getElementById("targetLocation") ? document.getElementById("targetLocation").value : savedTargetLocation;
             
             getLatLngByAddress(address, function(srcLat, srcLng) {
@@ -590,17 +614,14 @@
             if (targetInput) targetInput.value = savedTargetLocation;
         };
 
-        // 💡 全新實作：點擊查詢時，彈出高質感的網頁內嵌式多功能勾選視窗
+        // 點擊查詢按鈕時跳出燈箱
         window.queryPersonByDistrictPopup = function(inputId) {
-            // 建立 Modal 的背景與容器
             const backdrop = document.createElement('div');
             backdrop.className = 'custom-modal-backdrop';
             backdrop.id = 'customModal';
 
-            // 挑選出資料庫中有資料的區別
             let activeDistricts = taichungDistricts.filter(d => filterByDistrict(taichungPeopleData, d).length > 0);
 
-            // 生成行政區勾選核取方塊 (單選 Radio 形式最符合滑鼠點擊行為)
             let districtsHtml = activeDistricts.map(dist => `
                 <label class="modal-spot-item">
                     <input type="radio" name="modalDist" value="${dist}" onclick="window.loadModalPeopleList('${dist}')">
@@ -631,7 +652,6 @@
             document.body.appendChild(backdrop);
         };
 
-        // 智慧選單核心：當勾選行政區時，即時在下方帶出對應的大甲區等姓名
         window.loadModalPeopleList = function(districtName) {
             const grid = document.getElementById('modalPeopleGrid');
             if (!grid) return;
@@ -650,7 +670,6 @@
             `).join('');
         };
 
-        // 智慧選單核心：按下確認按鈕後，才把這個人姓名(行政區)整個代到文字欄位
         window.confirmModalSelection = function(inputId) {
             const selectedPersonRadio = document.querySelector('input[name="modalPerson"]:checked');
             if (!selectedPersonRadio) {
@@ -668,7 +687,6 @@
                 window.saveInputValue(inputId, finalValue);
             }
 
-            // 關閉燈箱視窗
             document.getElementById('customModal').remove();
         };
 
@@ -710,10 +728,11 @@
 
             const districtName = currentObservationProps || currentObservationIndex !== undefined ? getDistrictName(currentObservationProps, currentObservationIndex, currentObservationFeature) : null;
             
+            // 最小化：右側面板顯示「線路導航+」
             if (isObservationPanelMinimized) {
-                this._div.innerHTML = `<div class="panel-controls" style="position: static;"><span class="panel-btn" onclick="info.toggleMinimize()">➕</span></div>`;
-                this._div.style.padding = "6px 10px";
-                this._div.style.width = "fit-content";
+                this._div.innerHTML = `<div class="minimized-text" onclick="info.toggleMinimize()">線路導航<span class="minimized-plus">+</span></div>`;
+                this._div.style.padding = "6px 12px";
+                this._div.style.width = "auto";
                 return;
             }
 
@@ -727,7 +746,7 @@
                         <input type="text" id="srcLocation" value="${savedSrcLocation}" oninput="window.saveInputValue('srcLocation', this.value)" placeholder="點擊人名自動帶入">
                     </div>
                     <div class="nav-row">
-                        <label style="font-size:11px; letter-spacing:-0.5px;">目標地址：</label>
+                        <label>目標地址：</label>
                         <input type="text" id="targetLocation" value="${savedTargetLocation}" oninput="window.saveInputValue('targetLocation', this.value)">
                     </div>
                     <div class="recommended-spots">
@@ -830,10 +849,11 @@
         };
 
         totalStatsPanel.update = function () {
+            // 最小化：左側面板顯示「統計表+」
             if (isTotalStatsPanelMinimized) {
-                this._div.innerHTML = `<div class="panel-controls" style="position: static;"><span class="panel-btn" onclick="totalStatsPanel.toggleMinimize()">➕</span></div>`;
-                this._div.style.padding = "6px 10px";
-                this._div.style.width = "fit-content";
+                this._div.innerHTML = `<div class="minimized-text" onclick="totalStatsPanel.toggleMinimize()">統計表<span class="minimized-plus">+</span></div>`;
+                this._div.style.padding = "6px 12px";
+                this._div.style.width = "auto";
                 return;
             }
 
@@ -934,7 +954,6 @@
             }).addTo(map);
         }
 
-        // 頂部常規送出
         window.planRouteFromPersonToTarget = function() {
             let startAddress = savedSrcLocation;
             if (startAddress.includes("(")) {
@@ -959,7 +978,6 @@
             });
         };
 
-        // 底部「宗親與宗親交流」送出導航
         window.planExchangeRoute = function() {
             let srcName = savedExchangeSrc.replace(/\(.*?\)/g, "").trim();
             let targetName = savedExchangeTarget.replace(/\(.*?\)/g, "").trim();
