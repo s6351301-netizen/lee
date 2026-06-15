@@ -246,7 +246,7 @@
         
         let currentObservationProps = null;
         let currentObservationIndex = undefined;
-        let currentObservationFeature = null; // 新增：追蹤當前點擊的 feature 結構
+        let currentObservationFeature = null; 
 
         function filterByDistrict(peopleList, districtName) {
             return peopleList.filter(p => {
@@ -295,7 +295,7 @@
             info.update(e.target.feature.properties, e.target.feature._geoIndex, e.target.feature);
         }
 
-        // 核心修改：加入空間分析地理過濾，精準將山區錯標的梧棲修正為新社
+        // 核心修改：結合 Turf 幾何分析，精準修復「新社錯標成梧棲」與「龍井錯標成機場」的 Bug
         function getDistrictName(props, geoIndex, feature) {
             let name = "未知區域";
             if (props) {
@@ -304,13 +304,21 @@
             if (geoIndex === 25) name = "梧棲區";
             if (geoIndex === 27) name = "臺中國際機場";
 
-            // 空間分析防錯：利用 Turf.js 計算區塊質心的經度。若該區塊在東側（經度 > 120.75）卻被標為梧棲，強制修正為新社區
+            // 空間分析地理過濾機制
             if (feature && turf.getType(feature)) {
                 try {
                     const centroid = turf.centroid(feature);
                     const lng = centroid.geometry.coordinates[0];
+                    const lat = centroid.geometry.coordinates[1];
+                    
+                    // 1. 修復新社：若在東側山區（經度 > 120.75）卻顯示為梧棲，強制修正為新社區
                     if (name === "梧棲區" && lng > 120.75) {
                         return "新社區";
+                    }
+                    
+                    // 2. 修復龍井：若中心點位於西南側海線（經度 < 120.60 且 緯度 < 24.22），強制正名為龍井區
+                    if (lng < 120.60 && lat < 24.22) {
+                        return "龍井區";
                     }
                 } catch (err) {
                     console.error("空間質心計算錯誤: ", err);
@@ -457,7 +465,7 @@
         info.addTo(map);
 
 
-        // --- 左上角總統計面板（已同步加入縮小寬度自動化機制） ---
+        // --- 左上角總統計面板 ---
         const totalStatsPanel = L.control({ position: 'topleft' });
         totalStatsPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'total-stats-panel');
@@ -700,13 +708,14 @@
                         feature.geometry.coordinates = convertCoords(feature.geometry.coordinates, feature.geometry.type);
                     }
                     
+                    // 資料預先清洗與覆蓋：避免舊 index 補救策略殘留影響屬性欄位
                     if (index === 25 && turf.getType(feature)) {
                         if(!feature.properties) feature.properties = {};
                         feature.properties.區名 = "梧棲區";
                     }
                     if (index === 27 && turf.getType(feature)) {
                         if(!feature.properties) feature.properties = {};
-                        feature.properties.區名 = "臺中國際機場";
+                        feature.properties.區名 = "龍井區"; // 初始化時即修正為正確區名
                     }
                 });
 
