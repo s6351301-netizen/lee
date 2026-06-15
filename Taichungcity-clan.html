@@ -221,11 +221,32 @@
             margin-left: 2px;
         }
 
+        /* 自訂滑鼠移過去時區塊內顯示的文字樣式 */
+        .custom-tooltip {
+            background-color: rgba(0, 0, 0, 0.75) !important;
+            border: none !important;
+            border-radius: 4px !important;
+            color: #fff !important;
+            font-weight: bold !important;
+            font-size: 13px !important;
+            padding: 4px 8px !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+        }
+
         /* 隱藏 Leaflet 原生導航文字說明 */
         .leaflet-routing-container, 
         .leaflet-routing-error,
         .leaflet-routing-alt {
             display: none !important;
+        }
+
+        /* 行動裝置極簡化微調防禦樣式 */
+        @media (max-width: 767px) {
+            .total-stats-panel {
+                max-height: 200px;
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
         }
     </style>
 </head>
@@ -266,6 +287,9 @@
         let currentObservationProps = null;
         let currentObservationIndex = undefined;
         let currentObservationFeature = null;
+
+        // 偵測是否為手機/行動裝置
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
         // 行政區篩選防禦機制，避免交叉污染
         function filterByDistrict(peopleList, districtName) {
@@ -348,12 +372,24 @@
         }
 
         function onEachFeature(feature, layer) {
+            const districtName = getDistrictName(feature.properties, feature._geoIndex, feature);
+            
+            // 綁定 Tooltip，讓滑鼠移過去時區塊內直接顯示該行政區文字
+            layer.bindTooltip(districtName, {
+                sticky: true,           // 讓文字標籤跟著滑鼠游標移動
+                direction: 'auto',      // 自動判斷顯示方向
+                className: 'custom-tooltip' // 使用上方自訂的 CSS 樣式
+            });
+
             layer.on({
-                mouseover: highlightFeature,
+                mouseover: function(e) {
+                    highlightFeature(e);
+                    // 同時更新右側臺中市宗親人員統計面板
+                    info.update(e.target.feature.properties, e.target.feature._geoIndex, e.target.feature);
+                },
                 mouseout: resetHighlight,
                 click: onFeatureClick
             });
-            const districtName = getDistrictName(feature.properties, feature._geoIndex, feature);
             layer.bindPopup(`<strong style="font-size:14px;">${districtName}</strong>`);
         }
 
@@ -365,7 +401,7 @@
             planRouteFromInputToPerson(address, name);
         };
 
-        // --- 新功能：左上角「靈感來源」浮動視窗 (完全透明融合版) ---
+        // --- 左上角「靈感來源」浮動視窗 (完全透明融合版) ---
         const inspirationPanel = L.control({ position: 'topleft' });
         inspirationPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'inspiration-panel');
@@ -379,7 +415,6 @@
                     <span class="hint-text">點擊PDF圖片看文章</span>
                 </p>
             `;
-            // 防止點擊透傳到地圖上
             L.DomEvent.disableClickPropagation(this._div);
             return this._div;
         };
@@ -445,7 +480,7 @@
                         <span class="panel-btn" onclick="info.toggleMinimize()">➖</span>
                     </div>
                     <h4>臺中市宗親人員統計與線路導航</h4>
-                    <p style="margin:5px 0 0 0; color:#e81123; font-weight:bold;">請「點擊」地圖各行政區查看宗親名單</p>
+                    <p style="margin:5px 0 0 0; color:#e81123; font-weight:bold;">請將滑鼠移至地圖各區查看宗親名單</p>
                     ${defaultNavHtml}
                 `;
                 return;
@@ -518,8 +553,8 @@
         };
         info.addTo(map);
 
-        // --- 左上角總統計面板 ---
-        const totalStatsPanel = L.control({ position: 'topleft' });
+        // --- 左上角總統計面板 (新增手機偵測：若是手機則放到左下角 bottomleft) ---
+        const totalStatsPanel = L.control({ position: isMobile ? 'bottomleft' : 'topleft' });
         totalStatsPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'total-stats-panel');
             this._div.id = 'total-stats-window';
@@ -602,6 +637,11 @@
             L.DomEvent.disableScrollPropagation(this._div);
         };
         totalStatsPanel.addTo(map);
+
+        // 如果偵測到是手機，預設直接將總統計表面板最小化（摺疊狀態）
+        if (isMobile) {
+            totalStatsPanel.toggleMinimize();
+        }
 
         function getLatLngByAddress(address, callback) {
             if(!address) return;
