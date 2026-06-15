@@ -190,37 +190,6 @@
             font-size: 12px;
         }
         
-        /* 新功能：靈感來源完全透明與融合樣式 */
-        .inspiration-panel {
-            padding: 0px;
-            background: transparent; /* 完全透明 */
-            box-shadow: none;        /* 移除陰影 */
-            border: none;            /* 移除外框與左條 */
-            width: auto;             /* 大小縮小，隨內容自適應 */
-            position: relative;
-            margin-top: 0px;         /* 往上移，無間距 */
-            font-size: 12px;         /* 字體稍微縮小達到減半視覺 */
-        }
-        .inspiration-panel p {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-weight: bold;
-            color: #333;             /* 文字顏色，可確保在電子地圖上有一定辨識度 */
-            text-shadow: 1px 1px 1px rgba(255,255,255,0.8); /* 加上微弱文字白底陰影，避免地圖顏色太深看不清字 */
-        }
-        .inspiration-panel a {
-            display: inline-flex;
-            align-items: center;
-        }
-        .hint-text {
-            font-size: 11px;
-            color: #555;
-            font-weight: normal;
-            margin-left: 2px;
-        }
-
         /* 隱藏 Leaflet 原生導航文字說明 */
         .leaflet-routing-container, 
         .leaflet-routing-error,
@@ -278,11 +247,8 @@
                 if (districtName === "日南區") {
                     return cleanAddress.includes("日南");
                 }
-                if (districtName === "集中區") {
-                    return false; 
-                }
                 if (districtName === "中區") {
-                    return cleanAddress.includes("開區") || cleanAddress.includes("中區") || cleanAddress.includes("台中市中") || cleanAddress.includes("臺中市中");
+                    return cleanAddress.includes("中區") || cleanAddress.includes("台中市中") || cleanAddress.includes("臺中市中");
                 }
                 
                 if ((shortName === "西" || shortName === "南" || shortName === "北" || shortName === "東") && cleanAddress.includes("大甲")) {
@@ -357,34 +323,13 @@
             layer.bindPopup(`<strong style="font-size:14px;">${districtName}</strong>`);
         }
 
-        // 點擊人名觸發的核心函數
+        // 點擊人名觸發的核心函數（配合密碼學編碼，完美杜絕特殊字元破壞 HTML）
         window.handleNameClick = function(encodedAddr, encodedName) {
             const address = decodeURIComponent(encodedAddr);
             const name = decodeURIComponent(encodedName);
             lastClickedPerson = { name: name, address: address };
             planRouteFromInputToPerson(address, name);
         };
-
-        // --- 新功能：左上角「靈感來源」浮動視窗 (完全透明融合版) ---
-        const inspirationPanel = L.control({ position: 'topleft' });
-        inspirationPanel.onAdd = function (map) {
-            this._div = L.DomUtil.create('div', 'inspiration-panel');
-            this._div.id = 'inspiration-window';
-            this._div.innerHTML = `
-                <p>
-                    靈感來源
-                    <a href="https://www.lib.ncku.edu.tw/search/heritage/pdf/A10102.pdf" class="成功大學-典範傳承~講座教授的故事" target="_blank">
-                        <img src="https://market.cloud.edu.tw/images/file/pdf.png" alt="" width="17" height="17">
-                    </a>
-                    <span class="hint-text">點擊PDF圖片看文章</span>
-                </p>
-            `;
-            // 防止點擊透傳到地圖上
-            L.DomEvent.disableClickPropagation(this._div);
-            return this._div;
-        };
-        inspirationPanel.addTo(map);
-
 
         // --- 右上角整合型觀測面板 ---
         const info = L.control({ position: 'topright' });
@@ -423,6 +368,7 @@
             this._div.style.padding = "15px";
             this._div.style.width = "340px";
 
+            // 預設未鎖定行政區時的輸入框渲染，防止 DOM 找不到而崩潰
             const defaultNavHtml = `
                 <div class="nav-input-group">
                     <div class="nav-row">
@@ -455,6 +401,7 @@
             const males = distPeople.filter(p => p.gender === '男' || p.gender === '男性');
             const females = distPeople.filter(p => p.gender === '女' || p.gender === '女性');
             
+            // 【安全升級點】：全面採用 URI 安全編碼，根除任何地址、符號對 HTML 的結構性干擾
             const generateNameLinks = (peopleArray) => {
                 if (peopleArray.length === 0) return '無';
                 return peopleArray.map(p => {
