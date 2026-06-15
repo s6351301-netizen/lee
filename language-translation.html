@@ -105,7 +105,6 @@
             box-shadow: 0 0 0 2px rgba(15,157,88,0.2);
         }
 
-        /* 讓輸入框容器內部可以容納影片與文字 */
         .input-content-area {
             display: flex;
             flex-direction: column;
@@ -114,29 +113,47 @@
 
         textarea {
             width: 100%;
-            height: 110px;
+            height: 120px;
             border: none;
             resize: none;
             outline: none;
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-color);
             background: transparent;
+            line-height: 1.5;
         }
 
-        /* 即時預覽鏡頭與錄完呈現的影片樣式 */
         video {
             width: 100%;
             max-height: 240px;
             border-radius: 8px;
             background: #000;
-            display: none; /* 預設隱藏，有影像才顯示 */
+            display: none;
         }
 
         .action-bar {
             display: flex;
             justify-content: flex-end;
+            align-items: center;
             gap: 12px;
             margin-top: 8px;
+        }
+
+        .btn-translate {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-right: auto;
+        }
+
+        .btn-translate:hover {
+            background-color: var(--primary-hover);
         }
 
         .btn {
@@ -233,10 +250,12 @@
     <div class="translation-box">
         <div class="textarea-wrapper" id="inputWrapper">
             <div class="input-content-area">
-                <textarea id="inputText" placeholder="點擊麥克風或攝影機開始，或在此輸入文字..."></textarea>
+                <textarea id="inputText" placeholder="PC版：點擊麥克風或攝影機,讓聲音變成文字輸出後,再按翻譯按鈕.&#10;手機版：點擊語音輸入讓聲音變成文字輸出後,再按翻譯按鈕."></textarea>
                 <video id="videoPreview" controls playsinline></video>
             </div>
             <div class="action-bar">
+                <button class="btn-translate" id="translateBtn">翻譯</button>
+                
                 <button class="btn btn-video" id="videoBtn" title="錄影翻譯 (限5分鐘)">
                     <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/></svg>
                 </button>
@@ -279,6 +298,7 @@
     const swapLangBtn = document.getElementById('swapLang');
     const inputText = document.getElementById('inputText');
     const outputText = document.getElementById('outputText');
+    const translateBtn = document.getElementById('translateBtn');
     const micBtn = document.getElementById('micBtn');
     const videoBtn = document.getElementById('videoBtn');
     const videoPreview = document.getElementById('videoPreview');
@@ -290,8 +310,6 @@
 
     let recognition;
     let isRecordingMic = false;
-    
-    // 錄影相關變數
     let isRecordingVideo = false;
     let mediaRecorder;
     let recordedChunks = [];
@@ -299,10 +317,9 @@
     let videoTimeout;
     let videoSpeechResult = ""; 
 
-    // 初始化語音辨識
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
-        recognition.continuous = true; // 錄影可能較長，開啟連續辨識
+        recognition.continuous = true; 
         recognition.interimResults = false;
 
         recognition.onresult = (event) => {
@@ -314,12 +331,10 @@
             }
             
             if (isRecordingVideo) {
-                // 錄影模式：先暫存文字，最後一起呈現
                 videoSpeechResult += currentResult;
             } else {
-                // 純麥克風模式：即時呈現並翻譯
                 inputText.value = currentResult;
-                translateText(currentResult);
+                translateText(currentResult); 
             }
         };
 
@@ -330,6 +345,17 @@
             }
         };
     }
+
+    /* ==========================================
+       手動翻譯按鈕點擊事件
+       ========================================== */
+    translateBtn.addEventListener('click', () => {
+        if (!inputText.value.trim()) {
+            statusText.innerText = "請先輸入或錄製文字再進行翻譯！";
+            return;
+        }
+        translateText(inputText.value);
+    });
 
     /* ==========================================
        純語音麥克風功能
@@ -351,7 +377,7 @@
             inputText.value = "";
             videoPreview.style.display = "none";
             recognition.lang = srcLangSelect.value;
-            recognition.continuous = false; // 純語音說完單句即結束
+            recognition.continuous = false; 
             recognition.start();
             
             isRecordingMic = true;
@@ -362,7 +388,7 @@
     });
 
     /* ==========================================
-       新功能：視訊鏡頭錄影功能 (限制5分鐘)
+       視訊鏡頭錄影功能 (限制5分鐘)
        ========================================== */
     videoBtn.addEventListener('click', async () => {
         if (!SpeechRecognition) return;
@@ -372,25 +398,20 @@
         }
 
         if (isRecordingVideo) {
-            // 手動停止錄影
             stopVideoRecording();
         } else {
-            // 跳出警告提示
             const confirmProceed = confirm("【隱私安全提示】\n本功能錄製的影片「不會」做任何檔案儲存或伺服器上傳，僅作當下即時文字解析與語言翻譯使用。是否開啟相機？");
             if (!confirmProceed) return;
 
             try {
-                // 請求同時開啟視訊與音訊
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 streamTracks = stream;
                 
-                // 設定即時預覽
                 videoPreview.srcObject = stream;
-                videoPreview.muted = true; // 預覽時靜音避免回音
+                videoPreview.muted = true; 
                 videoPreview.style.display = "block";
                 videoPreview.play();
 
-                // 初始化錄影
                 recordedChunks = [];
                 videoSpeechResult = "";
                 mediaRecorder = new MediaRecorder(stream);
@@ -400,33 +421,27 @@
                 };
 
                 mediaRecorder.onstop = () => {
-                    // 錄影停止後，將錄好的影片轉成 URL 放進 video 標籤
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
                     videoPreview.srcObject = null;
                     videoPreview.src = URL.createObjectURL(blob);
-                    videoPreview.muted = false; // 回放時開啟聲音
+                    videoPreview.muted = false; 
                     
-                    // 呈現文字：先文字，換行後顯示影片（影片已在下方）
                     inputText.value = videoSpeechResult || "(未偵測到語音文字)";
                     
-                    // 觸發翻譯
                     if(videoSpeechResult) translateText(videoSpeechResult);
                     statusText.innerText = "錄影結束，已產生解析文字與影片";
                 };
 
-                // 同步啟動語音辨識
                 recognition.lang = srcLangSelect.value;
                 recognition.continuous = true;
                 recognition.start();
 
-                // 開始錄影
                 mediaRecorder.start();
                 isRecordingVideo = true;
                 videoBtn.classList.add('recording');
                 inputWrapper.classList.add('recording-video');
                 statusText.innerText = "正在錄影與解析語音 (限時 5 分鐘)...";
 
-                // 設定 5 分鐘 (300,000 毫秒) 自動停止限制
                 videoTimeout = setTimeout(() => {
                     statusText.innerText = "已達 5 分鐘錄影上限，自動停止...";
                     stopVideoRecording();
@@ -443,14 +458,11 @@
         if (!isRecordingVideo) return;
         clearTimeout(videoTimeout);
 
-        // 停止錄影機
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
         }
-        // 停止語音辨識
         recognition.stop();
         
-        // 關閉相機鏡頭串流
         if (streamTracks) {
             streamTracks.getTracks().forEach(track => track.stop());
         }
@@ -461,7 +473,7 @@
     }
 
     /* ==========================================
-       翻譯與基礎控制邏輯
+       核心翻譯與發音控制邏輯
        ========================================== */
     swapLangBtn.addEventListener('click', () => {
         const tempLang = srcLangSelect.value;
@@ -490,7 +502,7 @@
                     let translated = data.responseData.translatedText;
                     outputText.value = translated;
                     statusText.innerText = "翻譯完成，自動朗讀...";
-                    speak(translated, targetLangSelect.value);
+                    speak(translated, targetLangSelect.value); 
                 } else {
                     statusText.innerText = "翻譯失敗";
                 }
