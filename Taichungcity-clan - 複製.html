@@ -201,16 +201,16 @@
             font-size: 12px;
         }
         
-        /* 靈感來源完全透明與融合樣式 */
+        /* 新功能：靈感來源完全透明與融合樣式 */
         .inspiration-panel {
             padding: 0px;
-            background: transparent;
-            box-shadow: none;
-            border: none;
-            width: auto;
+            background: transparent; /* 完全透明 */
+            box-shadow: none;        /* 移除陰影 */
+            border: none;            /* 移除外框與左條 */
+            width: auto;             /* 大小縮小，隨內容自適應 */
             position: relative;
-            margin-top: 0px;
-            font-size: 12px;
+            margin-top: 0px;         /* 往上移，無間距 */
+            font-size: 12px;         /* 字體稍微縮小達到減半視覺 */
         }
         .inspiration-panel p {
             margin: 0;
@@ -218,8 +218,8 @@
             align-items: center;
             gap: 4px;
             font-weight: bold;
-            color: #333;
-            text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
+            color: #333;             /* 文字顏色，可確保在電子地圖上有一定辨識度 */
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.8); /* 加上微弱文字白底陰影，避免地圖顏色太深看不清字 */
         }
         .inspiration-panel a {
             display: inline-flex;
@@ -232,7 +232,7 @@
             margin-left: 2px;
         }
 
-        /* 滑鼠移過去或連動點擊時，行政區內顯示的區名文字樣式 */
+        /* 自訂滑鼠移過去時區塊內顯示的文字樣式 */
         .custom-tooltip {
             background-color: rgba(0, 0, 0, 0.75) !important;
             border: none !important;
@@ -385,16 +385,17 @@
         function onEachFeature(feature, layer) {
             const districtName = getDistrictName(feature.properties, feature._geoIndex, feature);
             
-            // 綁定 Tooltip，讓滑鼠移過去或開啟時區塊內直接顯示該行政區文字
+            // 綁定 Tooltip，讓滑鼠移過去時區塊內直接顯示該行政區文字
             layer.bindTooltip(districtName, {
-                sticky: true,           // 讓文字標籤跟著滑鼠游標移動 (滑鼠移上去時)
-                direction: 'auto',      
-                className: 'custom-tooltip' 
+                sticky: true,           // 讓文字標籤跟著滑鼠游標移動
+                direction: 'auto',      // 自動判斷顯示方向
+                className: 'custom-tooltip' // 使用上方自訂的 CSS 樣式
             });
 
             layer.on({
                 mouseover: function(e) {
                     highlightFeature(e);
+                    // 同時更新右側臺中市宗親人員統計面板
                     info.update(e.target.feature.properties, e.target.feature._geoIndex, e.target.feature);
                 },
                 mouseout: resetHighlight,
@@ -411,17 +412,13 @@
             planRouteFromInputToPerson(address, name);
         };
 
-        // 核心進化功能：點擊表格中的區名文字超連結，不只移動右側，也同時在地圖上將該區框出來並寫出該區文字
+        // 核心新功能：點擊總統計表中的行政區文字，等同於點擊地圖上的該區域
         window.handleDistrictClick = function(districtName) {
             if (!geojsonLayer) return;
             
             let targetLayer = null;
-            
-            // 重置原本所有區域的高亮樣式並關閉原有的 Tooltip 開啟狀態
+            // 遍歷地圖圖層尋找名稱相符的行政區
             geojsonLayer.eachLayer(function(layer) {
-                geojsonLayer.resetStyle(layer);
-                layer.closeTooltip(); // 關閉其它可能已被開啟的固定區名文字
-                
                 const name = getDistrictName(layer.feature.properties, layer.feature._geoIndex, layer.feature);
                 if (name === districtName) {
                     targetLayer = layer;
@@ -429,29 +426,13 @@
             });
 
             if (targetLayer) {
-                // 1. 自動移至並放大地圖至該區域
+                // 自動縮放移動至該區域，並觸發與點擊地圖一模一樣的面板更新程序
                 map.fitBounds(targetLayer.getBounds());
-                
-                // 2. 更新右側「觀測與導航面板」資料
                 info.update(targetLayer.feature.properties, targetLayer.feature._geoIndex, targetLayer.feature);
-                
-                // 3. 【全新功能】在地圖上將這一區框出來 (套用高亮線條外框與填充)
-                targetLayer.setStyle({
-                    fillColor: '#48d1cc',   
-                    weight: 4,              
-                    color: '#4a4a4a',       
-                    fillOpacity: 0.2        
-                });
-                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                    targetLayer.bringToFront();
-                }
-
-                // 4. 【全新功能】在地圖正中央固定強制寫出（顯示）那一區的文字標籤
-                targetLayer.openTooltip(targetLayer.getBounds().getCenter());
             }
         };
 
-        // --- 左上角「靈感來源」浮動視窗 ---
+        // --- 左上角「靈感來源」浮動視窗 (完全透明融合版) ---
         const inspirationPanel = L.control({ position: 'topleft' });
         inspirationPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'inspiration-panel');
@@ -603,7 +584,7 @@
         };
         info.addTo(map);
 
-        // --- 左上角總統計面板 (含手機位置偵測) ---
+        // --- 左上角總統計面板 (包含手機偵測配置) ---
         const totalStatsPanel = L.control({ position: isMobile ? 'bottomleft' : 'topleft' });
         totalStatsPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'total-stats-panel');
@@ -649,7 +630,7 @@
                 const dTotal = distPeople.length;
                 const percentage = totalCount > 0 ? ((dTotal / totalCount) * 100).toFixed(2) : "0.00";
                 
-                // 點擊此名稱將會連動框出地圖、放大、並在地圖正中央固定寫出那一區的名稱
+                // 新增功能：將行政區名稱加上 clickable-district 樣式與 onclick 觸發連動
                 districtRowsHtml += `
                     <tr>
                         <td><span class="clickable-district" onclick="window.handleDistrictClick('${dist}')">${dist}</span></td>
@@ -689,6 +670,7 @@
         };
         totalStatsPanel.addTo(map);
 
+        // 如果偵測到是手機，預設直接將總統計表面板最小化（摺疊狀態）
         if (isMobile) {
             totalStatsPanel.toggleMinimize();
         }
