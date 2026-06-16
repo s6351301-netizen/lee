@@ -73,7 +73,7 @@
             width: 100%; height: 100%; object-fit: cover;
         }
         
-        /* 🎯 畫面核對框：滿版覆蓋，僅將中央挖空做對齊 */
+        /* 🎯 滿版核對觀景窗：疊加指定的核對照片 */
         #comparison-frame {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -83,13 +83,13 @@
             justify-content: space-between;
             box-sizing: border-box;
         }
-        /* 上下左右的半透明對照照片牆，中間夾出一個透明核對窗 */
         .frame-blind {
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
             text-align: center;
             padding: 15px;
             font-size: 16px;
+            font-weight: bold;
         }
         .center-row {
             display: flex;
@@ -97,26 +97,20 @@
             justify-content: space-between;
         }
         .side-blind {
-            background: rgba(0, 0, 0, 0.75);
-            width: 10%;
+            background: rgba(0, 0, 0, 0.8);
+            width: 8%;
         }
-        /* 嚴格的黃色實景比對窗（玩家必須讓實景完全契合此框） */
+        /* 🎯 實景比對窗：內嵌您提供的指定核對圖片 */
         .clear-window {
             border: 4px solid #ffeb3b;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* 使用遮罩製造出對照大門的陰影輪廓 */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); 
             flex-grow: 1;
             border-radius: 12px;
-            margin: 20px 0;
+            margin: 15px 0;
             position: relative;
-        }
-        /* 在核對窗內浮現先前的目標提示圖形輪廓 */
-        .clear-window::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://image-gen.fineshare.com/1-1f9e9f90f6ff9e9a3f1249b6574f85e3.png') no-repeat center;
-            background-size: contain;
-            opacity: 0.35; /* 輕微線條輪廓供現場人眼核對 */
+            background: url('https://www.google.com/maps/@25.0435125,121.4192113,3a,30y,16.35h,95.89t/data=!3m7!1e1!3m5!1swQ7mUOqq4kx9NiaWz1w_dA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D-5.889912739543121%26panoid%3DwQ7mUOqq4kx9NiaWz1w_dA%26yaw%3D16.34802174891851!7i13312!8i6656?hl=zh-TW&entry=ttu&g_ep=EgoyMDI2MDYxMC4wIKXMDSoASAFQAw%3D%3D') no-repeat center;
+            background-size: cover;
+            opacity: 0.5; /* 50% 半透明，若現場畫面與此照片不同，玩家一眼就能看出無法對齊 */
         }
         
         /* 下方操作提示台 */
@@ -169,7 +163,7 @@
                 <div class="clear-window"></div>
                 <div class="side-blind"></div>
             </div>
-            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 畫面外觀若與照片不符則不計分</div>
+            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 請將鏡頭實景與半透明提示照片完全重疊</div>
         </div>
         
         <div class="ar-control-panel">
@@ -180,17 +174,17 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. 設定目標點：泰山職訓中心
+        // 1. 設定目標點：泰山職訓中心最新精準經緯度
         const targetSpot = {
             name: "泰山職訓中心",
-            lat: 25.0487, 
-            lng: 121.4173,
+            lat: 25.0435125, 
+            lng: 121.4192113,
             score: 0,
             hasScored: false
         };
 
         // 2. 初始化電子地圖
-        const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
+        const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 18);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
@@ -204,7 +198,7 @@
             color: 'red',
             fillColor: '#f03',
             fillOpacity: 0.1,
-            radius: 1 // 🎯 依照要求：嚴格限制 1 公尺半徑
+            radius: 1 // 嚴格限制 1 公尺半徑
         }).addTo(map);
 
         let userMarker = null;
@@ -242,12 +236,11 @@
         // 6. 監聽手機實時 GPS
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(function(position) {
-                // 真實環境定位：
                 const uLat = position.coords.latitude;
                 const uLng = position.coords.longitude;
 
                 // 【現場模擬測試開關】：如果在室內測試，可解開下方兩行直接視為進入 1 公尺範圍
-                // const uLat = targetSpot.lat + 0.000005;
+                // const uLat = targetSpot.lat + 0.000002;
                 // const uLng = targetSpot.lng;
 
                 if (!userMarker) {
@@ -259,7 +252,7 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
-                // 🎯 判定：必須小於等於 1 公尺
+                // 判定：必須小於等於 1 公尺
                 if (distance <= 1) {
                     if (!targetSpot.hasScored) {
                         info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 1 米核心區！請啟動鏡頭。</span>");
@@ -291,7 +284,7 @@
 
         // 7. 彈出任務提示與照片核對規範
         function showPhotoPrompt() {
-            alert("【⚠️ 畫面嚴格核對提示】\n\n您已進入泰山職訓中心 1 公尺內！\n請將鏡頭對準實景大門建築。畫面上設有對焦提示輪廓，如果現場景象、角度與對照照片不一樣，將無法通過核對取得分數！");
+            alert("【⚠️ 畫面嚴格核對提示】\n\n您已進入泰山職訓中心 1 公尺內！\n請將鏡頭對準實景，並與畫面上半透明的指定照片進行重疊核對。如果現場景象、角度與照片不一樣，將無法通過核對取得分數！");
             openCamera();
         }
 
@@ -311,11 +304,11 @@
                 });
         }
 
-        // 9. 按下核對並捕捉（設定得分）
+        // 9. 按下核對並捕捉（設定得分防線）
         function verifyAndScore() {
             if (targetSpot.hasScored) return;
 
-            // 最終防線：確認按下按鈕時，GPS 依然在 1 公尺範圍內。若不一樣或跑遠了就拒絕得分。
+            // 最終防線：確認按下確認鈕時，GPS 依然在 1 公尺範圍核心圈內。
             const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
             const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
 
