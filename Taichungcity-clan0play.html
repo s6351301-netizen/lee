@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺中市行政區 AR 冒險 - 相機模式</title>
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* 防止滾動 */
+        }
+        /* AR 戰情面板（覆蓋在相機畫面上） */
+        #ar-info-panel {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px;
+            background: rgba(22, 36, 71, 0.9);
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+            border-radius: 12px;
+            border: 2px solid #00f2fe;
+            color: #fff;
+            min-width: 280px;
+            text-align: center;
+            z-index: 1000; /* 確保在相機之上 */
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        #ar-info-panel h4 {
+            margin: 0 0 10px 0;
+            color: #00f2fe;
+            font-size: 18px;
+        }
+        #ar-info-panel p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .highlight {
+            color: #ffde7d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ar-info-panel">
+        <h4>臺中市 AR 冒險</h4>
+        <p>目前狀態：<span id="ar-status">正在啟動相機與 GPS...</span></p>
+        <p>收集積分：<span class="highlight">0 Pts</span></p>
+        <p id="nearest-chest" style="display:none;">最近的寶箱：<span id="nearest-dist">---</span> 米</p>
+    </div>
+
+    <a-scene
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+        vr-mode-ui="enabled: false">
+
+        <a-box
+            id="chest-1"
+            class="collectable"
+            gps-entity-place="latitude: 24.17935; longitude: 120.6457;"
+            material="color: gold; opacity: 0.8; metalness: 1.0; roughness: 0.0;"
+            geometry="primitive: box"
+            scale="5 5 5"
+            position="0 0 0"
+            animation="property: rotation; to: 0 360 0; dur: 5000; easing: linear; loop: true">
+            <a-text
+                value="黃金寶箱 (逢甲)"
+                scale="10 10 10"
+                position="0 10 0"
+                color="white"
+                align="center">
+            </a-text>
+        </a-box>
+
+        <a-box
+            id="chest-2"
+            class="collectable"
+            gps-entity-place="latitude: 24.137; longitude: 120.686;"
+            material="color: silver; opacity: 0.8;"
+            scale="5 5 5"
+            animation="property: rotation; to: 360 0 0; dur: 5000; easing: linear; loop: true">
+            <a-text value="時光寶箱 (中區)" scale="10 10 10" position="0 10 0" color="white" align="center"></a-text>
+        </a-box>
+
+        <a-camera gps-camera rotation-reader></a-camera>
+    </a-scene>
+
+    <script>
+        // 核心遊戲邏輯（使用 Web Storage 儲存積分）
+        let arGameState = JSON.parse(localStorage.getItem('taichung_ar_save')) || {
+            score: 0,
+            chestsFound: []
+        };
+
+        const scoreElement = document.querySelector('.highlight');
+        scoreElement.textContent = arGameState.score + ' Pts';
+
+        // 監聽收集事件 (A-Frame 中的 click 事件與 Leaflet 的 click 不同)
+        // 為了簡單起見，我們這裡使用地理圍籬判定（當玩家足夠接近時自動收集）
+        window.addEventListener('gps-camera-update-position', (e) => {
+            document.getElementById('ar-status').textContent = 'GPS 已定位';
+            
+            const distancePanel = document.getElementById('nearest-chest');
+            const distanceDist = document.getElementById('nearest-dist');
+            const chests = document.querySelectorAll('.collectable');
+            
+            let minDistance = Infinity;
+
+            chests.forEach(chest => {
+                const distance = chest.components['gps-entity-place'].distanceFromCamera;
+                const chestId = chest.getAttribute('id');
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                }
+
+                // 收集邏輯：當玩家距離寶箱小於 10 公尺，且尚未收集
+                if (distance < 10 && !arGameState.chestsFound.includes(chestId)) {
+                    // 將寶箱隱藏
+                    chest.setAttribute('visible', 'false');
+                    
+                    // 加分與儲存
+                    const bonusScore = Math.floor(Math.random() * 500) + 500; // 500~1000 分
+                    arGameState.score += bonusScore;
+                    arGameState.chestsFound.push(chestId);
+                    saveArGame();
+                    
+                    // 更新 UI
+                    scoreElement.textContent = arGameState.score + ' Pts';
+                    alert(`💰 尋寶成功！\n你在現場收集了【${chest.querySelector('a-text').getAttribute('value')}】！\n積分 +${bonusScore} Pts！`);
+                }
+            });
+
+            if (minDistance !== Infinity) {
+                distancePanel.style.display = 'block';
+                distanceDist.textContent = Math.round(minDistance);
+            }
+        });
+
+        function saveArGame() {
+            localStorage.setItem('taichung_ar_save', JSON.stringify(arGameState));
+        }
+    </script>
+</body>
+</html>
