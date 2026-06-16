@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>臺中市行政區地圖 - 智能視覺置中文字版</title>
+    <title>新北市泰山職訓打卡地圖-寶可夢</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body {
@@ -11,48 +11,97 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            font-family: "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            overflow: hidden;
         }
         #map {
             width: 100%;
             height: 100%;
-            background-color: #e5e5e5; /* 純幾何地圖專用淺灰底色 */
         }
         /* 右上角動態資訊面板 */
         .info-panel {
-            padding: 12px 20px;
-            font-size: 16px;
+            padding: 12px 15px;
+            font-size: 14px;
             background: rgba(255, 255, 255, 0.95);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
             border-radius: 8px;
             border-left: 5px solid #1a73e8;
-            min-width: 220px;
+            min-width: 200px;
         }
-        .info-panel h4 {
-            margin: 0 0 8px 0;
-            color: #333;
-            font-size: 18px;
-        }
-        .info-panel p {
-            margin: 0;
-            color: #666;
-        }
-        .highlight-text {
-            color: #e81123;
-            font-weight: bold;
-            font-size: 22px;
-        }
-        /* 地圖內嵌區區域名稱的文字樣式 */
-        .district-label {
-            background: none !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #ffffff;
-            font-weight: bold;
-            text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222, 0 0 4px #000;
-            white-space: nowrap;
+        .info-panel h4 { margin: 0 0 5px 0; color: #333; font-size: 16px; }
+        .info-panel p { margin: 3px 0; color: #666; }
+        .highlight { color: #e81123; font-weight: bold; font-size: 18px; }
+        
+        /* 底部相機與打卡控制區 */
+        #action-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
             text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        /* 手機鏡頭與對照畫面遮罩 */
+        #camera-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+        }
+        #video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        /* 對照圖片遮罩 - 半透明疊加在相機畫面上 */
+        #comparison-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%; /* 依需求微調對照圖的大小 */
+            height: auto;
+            opacity: 0.5; /* 半透明效果供玩家對照 */
+            pointer-events: none; /* 讓點擊事件穿透到相機畫面 */
+            border: 4px solid yellow; /* 醒目的邊框 */
+        }
+        .ar-overlay {
+            position: absolute;
+            bottom: 15%; left: 50%;
+            transform: translateX(-50%);
+            color: #00FF00;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 0 8px #000;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: rgba(255,255,255,0.7);
+            border: none; padding: 10px 20px; border-radius: 5px;
+            font-size: 16px; font-weight: bold;
         }
     </style>
 </head>
@@ -60,231 +109,172 @@
 
     <div id="map"></div>
 
+    <div id="action-container">
+        <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（鎖定中）</button>
+    </div>
+
+    <div id="camera-view">
+        <video id="video" autoplay playsinline></video>
+        <img id="comparison-overlay" src="https://image-gen.fineshare.com/1-1f9e9f90f6ff9e9a3f1249b6574f85e3.png" alt="對照用景點照片">
+        <div class="ar-overlay">
+            🧩 拿起來核對畫面！<br>
+            <span style="font-size:16px;">[對齊後點擊畫面任意處捕捉得分]</span>
+        </div>
+        <button class="close-btn" onclick="closeCamera()">關閉鏡頭</button>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
-
     <script>
-        const twd97 = "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
-        const wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+        // 1. 設定目標點：泰山職訓中心
+        const targetSpot = {
+            name: "泰山職訓中心",
+            lat: 25.0487, 
+            lng: 121.4173,
+            score: 0,
+            hasScored: false // 防止重複得分
+        };
 
-        // 1. 初始化地圖
-        const map = L.map('map', {
-            renderer: L.svg()
-        }).setView([24.220, 120.780], 10); 
+        // 2. 初始化地圖（OpenStreetMap 電子街景地圖）
+        const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
-        let geojsonLayer;
+        // 3. 在地圖上標記目標點與判判定圈
+        const targetMarker = L.marker([targetSpot.lat, targetSpot.lng]).addTo(map)
+            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢景點打卡點`).openPopup();
 
-        // 2. 設定區塊的基本外觀樣式
-        function defaultStyle(feature) {
-            return {
-                fillColor: '#3a7bd5',
-                weight: 2,
-                opacity: 1,
-                color: '#ffffff',
-                fillOpacity: 0.8
-            };
-        }
+        const detectionCircle = L.circle([targetSpot.lat, targetSpot.lng], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.15,
+            radius: 3 // 得分範圍：3 公尺內
+        }).addTo(map);
 
-        // 3. 滑鼠移入高亮特效
-        function highlightFeature(e) {
-            const layer = e.target;
-            layer.setStyle({
-                fillColor: '#48d1cc',
-                weight: 4,
-                color: '#4a4a4a',
-                fillOpacity: 0.95
-            });
+        // 當前使用者的 GPS 定位標記
+        let userMarker = null;
 
-            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                layer.bringToFront();
-            }
-            
-            const districtName = getDistrictName(layer.feature.properties);
-            if (districtName) {
-                info.update(districtName);
-            }
-        }
-
-        // 4. 滑鼠移出還原基本樣式
-        function resetHighlight(e) {
-            geojsonLayer.resetStyle(e.target);
-            info.update(); 
-        }
-
-        // 5. 點擊行政區自動縮放適配
-        function zoomToFeature(e) {
-            map.fitBounds(e.target.getBounds());
-        }
-
-        // 6. 行政區名稱解析 (加入地理座標條件判定，精準排除錯誤的重複區名)
-        function getDistrictName(props, centerLat, centerLng) {
-            if (!props) return null;
-            
-            let name = props.區名 || props.TOWNNAME || props.TNAME || props.T_Name || props.townname;
-            
-            // 關鍵防錯：如果中心點經度大於 120.75 且在東勢附近，絕對不可能是海線的「梧棲」，強制修正為「新社區」
-            if (centerLat && centerLng) {
-                if (name === "梧棲區" && centerLng > 120.75) {
-                    return "新社區";
-                }
-            }
-            
-            return (name && name !== "未知區域") ? name : null;
-        }
-
-        // 7. 依規定決定文字為簡稱或完整呈現
-        function formatLabelText(fullName) {
-            if (!fullName) return "";
-            const keepFullList = ["中區", "東區", "南區", "西區", "北區", "西屯區", "南屯區", "北屯區", "臺中國際機場"];
-            if (keepFullList.includes(fullName)) {
-                return fullName;
-            }
-            return fullName.replace('區', '');
-        }
-
-        // 8. 綁定事件監聽
-        function onEachFeature(feature, layer) {
-            layer.on({
-                mouseover: highlightFeature,
-                mouseout: resetHighlight,
-                click: zoomToFeature
-            });
-        }
-
-        // 9. 右上角資訊觀測面板
+        // 4. 右上角狀態資訊面板
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
-            this.update();
+            this.update(null, "定位中...");
             return this._div;
         };
-        info.update = function (name) {
-            this._div.innerHTML = `<h4>臺中市行政區觀測</h4>` + 
-                (name ? `<p>目前位置：<span class="highlight-text">${name}</span></p>` : `<p>請將滑鼠移至地圖各區</p>`);
+        info.update = function (distance, scoreText) {
+            let distStr = distance !== null ? `${distance.toFixed(1)} 公尺` : "未知";
+            this._div.innerHTML = `
+                <h4>訓練家打卡系統</h4>
+                <p>目前得分：<span class="highlight" style="color:green;">${targetSpot.score} 分</span></p>
+                <p>目標景點：<b>${targetSpot.name}</b></p>
+                <p>與目標距離：<span class="highlight">${distStr}</span></p>
+                <p>狀態：${scoreText}</p>
+            `;
         };
         info.addTo(map);
 
-        // 10. TWD97 平面座標轉 WGS84 網頁經緯度
-        function convertCoords(coords, type) {
-            if (type === "Point") {
-                return proj4(twd97, wgs84, coords);
-            } else if (type === "LineString" || type === "MultiPoint") {
-                return coords.map(p => proj4(twd97, wgs84, p));
-            } else if (type === "Polygon" || type === "MultiLineString") {
-                return coords.map(ring => ring.map(p => proj4(twd97, wgs84, p)));
-            } else if (type === "MultiPolygon") {
-                return coords.map(poly => poly.map(ring => ring.map(p => proj4(twd97, wgs84, p))));
-            }
-            return coords;
+        // 5. 計算兩個經緯度之間的距離 (單位：公尺)
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
         }
 
-        // 11. 遠端獲取圖資並進行渲染
-        const jsonUrl = 'https://s6351301-netizen.github.io/lee/json/NewTaipeiCity.json';
+        // 6. 追蹤手機實時 GPS 定位
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(function(position) {
+                const uLat = position.coords.latitude;
+                const uLng = position.coords.longitude;
 
-        fetch(jsonUrl)
-            .then(response => {
-                if (!response.ok) throw new Error('無法讀取網址圖資');
-                return response.json();
-            })
-            .then(data => {
-                data.features.forEach((feature, index) => {
-                    // 先進行經緯度座標轉換
-                    if (feature.geometry && feature.geometry.coordinates) {
-                        feature.geometry.coordinates = convertCoords(feature.geometry.coordinates, feature.geometry.type);
-                    }
-
-                    // 動態計算區塊暫時的中心點來做圖資清洗
-                    if (feature.geometry && feature.geometry.type.includes("Polygon")) {
-                        const lats = feature.geometry.coordinates.flat(Infinity).filter((v, i) => i % 2 === 1);
-                        const lngs = feature.geometry.coordinates.flat(Infinity).filter((v, i) => i % 2 === 0);
-                        const maxLat = Math.max(...lats);
-                        const minLat = Math.min(...lats);
-                        const maxLng = Math.max(...lngs);
-                        const minLng = Math.min(...lngs);
-                        
-                        const latSpan = maxLat - minLat;
-                        const avgLng = (maxLng + minLng) / 2;
-
-                        // 歷史 Bug 清洗
-                        if (latSpan > 0.2) {
-                            if(!feature.properties) feature.properties = {};
-                            feature.properties.區名 = "和平區";
-                        } else if (avgLng > 120.75 && (feature.properties.TOWNNAME === "梧棲區" || feature.properties.TNAME === "梧棲區")) {
-                            // 經度在右側山區卻叫梧棲的，強制正名為新社區
-                            if(!feature.properties) feature.properties = {};
-                            feature.properties.區名 = "新社區";
-                        }
-                    }
-                });
-
-                // 渲染幾何行政區純形狀
-                geojsonLayer = L.geoJSON(data, {
-                    style: defaultStyle,
-                    onEachFeature: onEachFeature
-                }).addTo(map);
-
-                // 自動置中滿版看見整個台中市形狀
-                if (geojsonLayer) {
-                    map.fitBounds(geojsonLayer.getBounds());
+                // 更新地圖上的玩家位置
+                if (!userMarker) {
+                    userMarker = L.circleMarker([uLat, uLng], { radius: 8, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 1 }).addTo(map);
+                } else {
+                    userMarker.setLatLng([uLat, uLng]);
                 }
 
-                // 確保圖形完全渲染後，進行位置微調與偏移機制
-                setTimeout(() => {
-                    geojsonLayer.eachLayer(function (layer) {
-                        let center = layer.getBounds().getCenter();
-                        
-                        // 帶入中心點座標進行精準名稱解析
-                        const rawName = getDistrictName(layer.feature.properties, center.lat, center.lng);
-                        
-                        // 全面過濾無名、或未知區域
-                        if (!rawName || rawName === "未知區域") return;
+                // 計算與目標點的距離
+                const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
+                const arBtn = document.getElementById('ar-btn');
 
-                        const formattedName = formatLabelText(rawName);
+                // 判斷是否在 3 公尺得分範圍內
+                if (distance <= 3) {
+                    info.update(distance, "<span style='color:green; font-weight:bold;'>GPS 定位已確認，可進行畫面核對！</span>");
+                    arBtn.disabled = false;
+                    arBtn.style.backgroundColor = "#4CAF50";
+                    arBtn.innerText = "開啟鏡頭核對畫面";
+                } else {
+                    info.update(distance, "請靠近目標 3 公尺內");
+                    arBtn.disabled = true;
+                    arBtn.style.backgroundColor = "#cccccc";
+                    arBtn.innerText = "距離太遠（GPS 鎖定中）";
+                }
 
-                        // 計算寬高跨距決定字體大小
-                        const bounds = layer.getBounds();
-                        const latDiff = Math.abs(bounds.getNorth() - bounds.getSouth());
-                        const lngDiff = Math.abs(bounds.getEast() - bounds.getWest());
-                        const maxSpan = Math.max(latDiff, lngDiff);
-
-                        let fontSize = 13;
-                        if (rawName === "和平區") { fontSize = 24; } 
-                        else if (maxSpan > 0.12) { fontSize = 16; } 
-                        else if (maxSpan > 0.04) { fontSize = 13; } 
-                        else { fontSize = 10; }                     
-
-                        // 嚴格依據區名進行微調清單
-                        if (rawName === "烏日區") {
-                            center = [center.lat + 0.015, center.lng + 0.015]; // 右上 30px
-                        } else if (rawName === "東勢區") {
-                            center = [center.lat + 0.015, center.lng + 0.015]; // 右上 30px
-                        } else if (rawName === "和平區") {
-                            center = [24.210 + 0.025, 121.135 - 0.025];       // 左上 50px
-                        } else if (rawName === "后里區") {
-                            center = [center.lat - 0.015, center.lng + 0.015]; // 右下 30px
-                        } else if (rawName === "北屯區") {
-                            center = [center.lat - 0.005, center.lng];       // 往下 10px
-                        } else if (rawName === "臺中國際機場") {
-                            center = [center.lat - 0.005, center.lng];
-                        }
-
-                        // 渲染置中文字標籤
-                        L.marker(center, {
-                            icon: L.divIcon({
-                                className: 'district-label',
-                                html: `<div style="font-size: ${fontSize}px;">${formattedName}</div>`,
-                                iconSize: [120, 30],
-                                iconAnchor: [60, 15]
-                            }),
-                            interactive: false
-                        }).addTo(map);
-                    });
-                }, 200); 
-            })
-            .catch(error => {
-                console.error('圖資載入失敗：', error);
-                alert('載入臺中市區界圖資失敗。');
+            }, function(error) {
+                console.error("GPS 定位失敗", error);
+                info.update(null, "<span style='color:red;'>請開啟手機 GPS 並允許定位權限</span>");
+            }, {
+                enableHighAccuracy: true, // 開啟高精度模式
+                maximumAge: 1000,
+                timeout: 5000
             });
+        } else {
+            alert("您的瀏覽器不支援網路定位功能。");
+        }
+
+        // 7. AR 手機鏡頭與對照控制邏輯
+        const video = document.getElementById('video');
+        const cameraView = document.getElementById('camera-view');
+
+        function openCameraWithComparison() {
+            cameraView.style.display = 'block';
+            // 請求開啟手機後置鏡頭
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    alert("無法啟動相機鏡頭。請確認網址為 HTTPS 安全連線，並已允許瀏覽器開啟相機。");
+                    console.error(err);
+                    closeCamera();
+                });
+        }
+
+        // 當鏡頭核對無誤後，玩家點擊畫面捕捉得分
+        cameraView.addEventListener('click', function(e) {
+            // 如果點擊的是關閉按鈕，則不執行得分邏輯
+            if(e.target.className === 'close-btn') return;
+            
+            // 防止重複得分，且需要 GPS 在範圍內
+            if (!targetSpot.hasScored && parseFloat(document.querySelector(".highlight:last-of-type").innerText) <= 3) {
+                targetSpot.score += 100; // 得分
+                targetSpot.hasScored = true;
+                alert("畫面核對無誤，捕捉成功！獲得 100 分！");
+                closeCamera();
+                // 更新計分面板
+                const currentDist =parseFloat(document.querySelector(".highlight:last-of-type").innerText);
+                info.update(currentDist, "已完成打卡！已獲得分數。");
+            } else if (targetSpot.hasScored) {
+                alert("您已經完成此景點的打卡囉。");
+                closeCamera();
+            } else {
+                alert("GPS 定位好像跳走了，請回此景點 3 公尺內。");
+                closeCamera();
+            }
+        });
+
+        function closeCamera() {
+            cameraView.style.display = 'none';
+            if (video.srcObject) {
+                // 關閉相機硬體省電
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        }
     </script>
 </body>
 </html>
