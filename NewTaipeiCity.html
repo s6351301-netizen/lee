@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺中市行政區地圖 - 智能視覺置中文字版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #e5e5e5; /* 純幾何地圖專用淺灰底色 */
+        }
+        /* 右上角動態資訊面板 */
+        .info-panel {
+            padding: 12px 20px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            border-left: 5px solid #1a73e8;
+            min-width: 220px;
+        }
+        .info-panel h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .info-panel p {
+            margin: 0;
+            color: #666;
+        }
+        .highlight-text {
+            color: #e81123;
+            font-weight: bold;
+            font-size: 22px;
+        }
+        /* 地圖內嵌區區域名稱的文字樣式 */
+        .district-label {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #ffffff;
+            font-weight: bold;
+            text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222, 0 0 4px #000;
+            white-space: nowrap;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+
+    <script>
+        const twd97 = "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
+        const wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+
+        // 1. 初始化地圖
+        const map = L.map('map', {
+            renderer: L.svg()
+        }).setView([24.220, 120.780], 10); 
+
+        let geojsonLayer;
+
+        // 2. 設定區塊的基本外觀樣式
+        function defaultStyle(feature) {
+            return {
+                fillColor: '#3a7bd5',
+                weight: 2,
+                opacity: 1,
+                color: '#ffffff',
+                fillOpacity: 0.8
+            };
+        }
+
+        // 3. 滑鼠移入高亮特效
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                fillColor: '#48d1cc',
+                weight: 4,
+                color: '#4a4a4a',
+                fillOpacity: 0.95
+            });
+
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+            
+            const districtName = getDistrictName(layer.feature.properties);
+            if (districtName) {
+                info.update(districtName);
+            }
+        }
+
+        // 4. 滑鼠移出還原基本樣式
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+            info.update(); 
+        }
+
+        // 5. 點擊行政區自動縮放適配
+        function zoomToFeature(e) {
+            map.fitBounds(e.target.getBounds());
+        }
+
+        // 6. 行政區名稱解析 (加入地理座標條件判定，精準排除錯誤的重複區名)
+        function getDistrictName(props, centerLat, centerLng) {
+            if (!props) return null;
+            
+            let name = props.區名 || props.TOWNNAME || props.TNAME || props.T_Name || props.townname;
+            
+            // 關鍵防錯：如果中心點經度大於 120.75 且在東勢附近，絕對不可能是海線的「梧棲」，強制修正為「新社區」
+            if (centerLat && centerLng) {
+                if (name === "梧棲區" && centerLng > 120.75) {
+                    return "新社區";
+                }
+            }
+            
+            return (name && name !== "未知區域") ? name : null;
+        }
+
+        // 7. 依規定決定文字為簡稱或完整呈現
+        function formatLabelText(fullName) {
+            if (!fullName) return "";
+            const keepFullList = ["中區", "東區", "南區", "西區", "北區", "西屯區", "南屯區", "北屯區", "臺中國際機場"];
+            if (keepFullList.includes(fullName)) {
+                return fullName;
+            }
+            return fullName.replace('區', '');
+        }
+
+        // 8. 綁定事件監聽
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomToFeature
+            });
+        }
+
+        // 9. 右上角資訊觀測面板
+        const info = L.control({ position: 'topright' });
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info-panel');
+            this.update();
+            return this._div;
+        };
+        info.update = function (name) {
+            this._div.innerHTML = `<h4>臺中市行政區觀測</h4>` + 
+                (name ? `<p>目前位置：<span class="highlight-text">${name}</span></p>` : `<p>請將滑鼠移至地圖各區</p>`);
+        };
+        info.addTo(map);
+
+        // 10. TWD97 平面座標轉 WGS84 網頁經緯度
+        function convertCoords(coords, type) {
+            if (type === "Point") {
+                return proj4(twd97, wgs84, coords);
+            } else if (type === "LineString" || type === "MultiPoint") {
+                return coords.map(p => proj4(twd97, wgs84, p));
+            } else if (type === "Polygon" || type === "MultiLineString") {
+                return coords.map(ring => ring.map(p => proj4(twd97, wgs84, p)));
+            } else if (type === "MultiPolygon") {
+                return coords.map(poly => poly.map(ring => ring.map(p => proj4(twd97, wgs84, p))));
+            }
+            return coords;
+        }
+
+        // 11. 遠端獲取圖資並進行渲染
+        const jsonUrl = 'https://s6351301-netizen.github.io/lee/json/NewTaipeiCity.json';
+
+        fetch(jsonUrl)
+            .then(response => {
+                if (!response.ok) throw new Error('無法讀取網址圖資');
+                return response.json();
+            })
+            .then(data => {
+                data.features.forEach((feature, index) => {
+                    // 先進行經緯度座標轉換
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        feature.geometry.coordinates = convertCoords(feature.geometry.coordinates, feature.geometry.type);
+                    }
+
+                    // 動態計算區塊暫時的中心點來做圖資清洗
+                    if (feature.geometry && feature.geometry.type.includes("Polygon")) {
+                        const lats = feature.geometry.coordinates.flat(Infinity).filter((v, i) => i % 2 === 1);
+                        const lngs = feature.geometry.coordinates.flat(Infinity).filter((v, i) => i % 2 === 0);
+                        const maxLat = Math.max(...lats);
+                        const minLat = Math.min(...lats);
+                        const maxLng = Math.max(...lngs);
+                        const minLng = Math.min(...lngs);
+                        
+                        const latSpan = maxLat - minLat;
+                        const avgLng = (maxLng + minLng) / 2;
+
+                        // 歷史 Bug 清洗
+                        if (latSpan > 0.2) {
+                            if(!feature.properties) feature.properties = {};
+                            feature.properties.區名 = "和平區";
+                        } else if (avgLng > 120.75 && (feature.properties.TOWNNAME === "梧棲區" || feature.properties.TNAME === "梧棲區")) {
+                            // 經度在右側山區卻叫梧棲的，強制正名為新社區
+                            if(!feature.properties) feature.properties = {};
+                            feature.properties.區名 = "新社區";
+                        }
+                    }
+                });
+
+                // 渲染幾何行政區純形狀
+                geojsonLayer = L.geoJSON(data, {
+                    style: defaultStyle,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                // 自動置中滿版看見整個台中市形狀
+                if (geojsonLayer) {
+                    map.fitBounds(geojsonLayer.getBounds());
+                }
+
+                // 確保圖形完全渲染後，進行位置微調與偏移機制
+                setTimeout(() => {
+                    geojsonLayer.eachLayer(function (layer) {
+                        let center = layer.getBounds().getCenter();
+                        
+                        // 帶入中心點座標進行精準名稱解析
+                        const rawName = getDistrictName(layer.feature.properties, center.lat, center.lng);
+                        
+                        // 全面過濾無名、或未知區域
+                        if (!rawName || rawName === "未知區域") return;
+
+                        const formattedName = formatLabelText(rawName);
+
+                        // 計算寬高跨距決定字體大小
+                        const bounds = layer.getBounds();
+                        const latDiff = Math.abs(bounds.getNorth() - bounds.getSouth());
+                        const lngDiff = Math.abs(bounds.getEast() - bounds.getWest());
+                        const maxSpan = Math.max(latDiff, lngDiff);
+
+                        let fontSize = 13;
+                        if (rawName === "和平區") { fontSize = 24; } 
+                        else if (maxSpan > 0.12) { fontSize = 16; } 
+                        else if (maxSpan > 0.04) { fontSize = 13; } 
+                        else { fontSize = 10; }                     
+
+                        // 嚴格依據區名進行微調清單
+                        if (rawName === "烏日區") {
+                            center = [center.lat + 0.015, center.lng + 0.015]; // 右上 30px
+                        } else if (rawName === "東勢區") {
+                            center = [center.lat + 0.015, center.lng + 0.015]; // 右上 30px
+                        } else if (rawName === "和平區") {
+                            center = [24.210 + 0.025, 121.135 - 0.025];       // 左上 50px
+                        } else if (rawName === "后里區") {
+                            center = [center.lat - 0.015, center.lng + 0.015]; // 右下 30px
+                        } else if (rawName === "北屯區") {
+                            center = [center.lat - 0.005, center.lng];       // 往下 10px
+                        } else if (rawName === "臺中國際機場") {
+                            center = [center.lat - 0.005, center.lng];
+                        }
+
+                        // 渲染置中文字標籤
+                        L.marker(center, {
+                            icon: L.divIcon({
+                                className: 'district-label',
+                                html: `<div style="font-size: ${fontSize}px;">${formattedName}</div>`,
+                                iconSize: [120, 30],
+                                iconAnchor: [60, 15]
+                            }),
+                            interactive: false
+                        }).addTo(map);
+                    });
+                }, 200); 
+            })
+            .catch(error => {
+                console.error('圖資載入失敗：', error);
+                alert('載入臺中市區界圖資失敗。');
+            });
+    </script>
+</body>
+</html>
