@@ -32,7 +32,7 @@
         .info-panel p { margin: 3px 0; color: #666; }
         .highlight { color: #e81123; font-weight: bold; font-size: 18px; }
         
-        /* 底部相機與打卡控制區 */
+        /* 底部操作控制區 */
         #action-container {
             position: absolute;
             bottom: 20px;
@@ -61,34 +61,65 @@
             cursor: not-allowed;
         }
         
-        /* 手機鏡頭與對照畫面遮罩 */
+        /* 手機鏡頭畫面遮罩層 - 完全乾淨 */
         #camera-view {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: #000;
             z-index: 2000;
         }
         #video {
             width: 100%; height: 100%; object-fit: cover;
         }
         
-        /* 對照圖片遮罩 - 完美疊加在相機畫面上方供現場核對 */
-        #comparison-overlay {
+        /* 🎯 畫面核對框：滿版覆蓋，僅將中央挖空做對齊 */
+        #comparison-frame {
             position: absolute;
-            top: 45%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85%;
-            max-width: 360px;
-            height: auto;
-            opacity: 0.55; /* 半透明設定，讓玩家能一邊看鏡頭實景一邊比對大門 */
+            top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
-            border: 4px dashed #ffeb3b; /* 醒目的黃色虛線對焦框 */
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+        /* 上下左右的半透明對照照片牆，中間夾出一個透明核對窗 */
+        .frame-blind {
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 16px;
+        }
+        .center-row {
+            display: flex;
+            flex-grow: 1;
+            justify-content: space-between;
+        }
+        .side-blind {
+            background: rgba(0, 0, 0, 0.75);
+            width: 10%;
+        }
+        /* 嚴格的黃色實景比對窗（玩家必須讓實景完全契合此框） */
+        .clear-window {
+            border: 4px solid #ffeb3b;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* 使用遮罩製造出對照大門的陰影輪廓 */
+            flex-grow: 1;
+            border-radius: 12px;
+            margin: 20px 0;
+            position: relative;
+        }
+        /* 在核對窗內浮現先前的目標提示圖形輪廓 */
+        .clear-window::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://image-gen.fineshare.com/1-1f9e9f90f6ff9e9a3f1249b6574f85e3.png') no-repeat center;
+            background-size: contain;
+            opacity: 0.35; /* 輕微線條輪廓供現場人眼核對 */
         }
         
-        /* AR 畫面下方的操作與提示控制台 */
+        /* 下方操作提示台 */
         .ar-control-panel {
             position: absolute;
             bottom: 5%;
@@ -99,26 +130,16 @@
             text-align: center;
             z-index: 2100;
         }
-        .ar-tip-text {
-            color: #00FF00;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 0 0 8px #000, 0 0 3px #000;
-            background: rgba(0,0,0,0.6);
-            padding: 8px 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
         .capture-btn {
             background-color: #ff3b30;
             color: white;
-            border: 3px solid white;
-            padding: 12px 25px;
+            border: 2px solid white;
+            padding: 14px 25px;
             font-size: 18px;
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
             width: 100%;
         }
         .close-btn {
@@ -135,27 +156,31 @@
     <div id="map"></div>
 
     <div id="action-container">
-        <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
+        <button id="ar-btn" class="btn" disabled onclick="showPhotoPrompt()">距離太遠（GPS 鎖定中）</button>
     </div>
 
     <div id="camera-view">
         <video id="video" autoplay playsinline></video>
         
-        <img id="comparison-overlay" src="https://images.unsplash.com/photo-1576086213369-97a306d36557?w=500" alt="泰山職訓中心對照圖">
-        
-        <div class="ar-control-panel">
-            <div class="ar-tip-text">
-                🎯 請移動手機，將實景大門<br>與中央半透明對照圖重疊疊合！
+        <div id="comparison-frame">
+            <div class="frame-blind">📷 實景照片核對模式</div>
+            <div class="center-row">
+                <div class="side-blind"></div>
+                <div class="clear-window"></div>
+                <div class="side-blind"></div>
             </div>
-            <button class="capture-btn" onclick="verifyAndScore()">[ 核對畫面並捕捉 ]</button>
+            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 畫面外觀若與照片不符則不計分</div>
         </div>
         
+        <div class="ar-control-panel">
+            <button class="capture-btn" onclick="verifyAndScore()">[ 鏡頭畫面已對齊，確認打卡 ]</button>
+        </div>
         <button class="close-btn" onclick="closeCamera()">關閉鏡頭</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 1. 設定目標點：泰山職訓中心精確座標
+        // 1. 設定目標點：泰山職訓中心
         const targetSpot = {
             name: "泰山職訓中心",
             lat: 25.0487, 
@@ -164,47 +189,46 @@
             hasScored: false
         };
 
-        // 2. 初始化電子地圖 (OpenStreetMap 具備完整道路、地名街景)
+        // 2. 初始化電子地圖
         const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // 3. 在電子地圖上架設寶可夢景點地標
+        // 3. 在地圖上設定標記與「嚴格 1 公尺」得分圈
         const targetMarker = L.marker([targetSpot.lat, targetSpot.lng]).addTo(map)
-            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢重要據點！<br>請步行至紅圈內進行核對打卡。`).openPopup();
+            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢據點`).openPopup();
 
-        // 建立 3 公尺嚴格打卡得分圈
         const detectionCircle = L.circle([targetSpot.lat, targetSpot.lng], {
-            color: '#ff3b30',
-            fillColor: '#ff3b30',
-            fillOpacity: 0.15,
-            radius: 3 
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.1,
+            radius: 1 // 🎯 依照要求：嚴格限制 1 公尺半徑
         }).addTo(map);
 
         let userMarker = null;
 
-        // 4. 右上角動態數據面板
+        // 4. 右上角狀態面板
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
-            this.update(null, "正在搜尋衛星 GPS 訊號...");
+            this.update(null, "GPS 定位中...");
             return this._div;
         };
-        info.update = function (distance, statusText) {
-            let distStr = distance !== null ? `${distance.toFixed(1)} 公尺` : "計算中...";
+        info.update = function (distance, scoreText) {
+            let distStr = distance !== null ? `${distance.toFixed(1)} 公尺` : "未知";
             this._div.innerHTML = `
-                <h4>寶可夢打卡追蹤系統</h4>
-                <p>當前得分：<span class="highlight" style="color:#4CAF50;">${targetSpot.score} PTS</span></p>
+                <h4>訓練家打卡系統</h4>
+                <p>目前得分：<span class="highlight" style="color:green;">${targetSpot.score} 分</span></p>
                 <p>目標景點：<b>${targetSpot.name}</b></p>
-                <p>GPS 距離：<span class="highlight">${distStr}</span></p>
-                <p>任務狀態：${statusText}</p>
+                <p>與目標距離：<span class="highlight">${distStr}</span></p>
+                <p>狀態：${scoreText}</p>
             `;
         };
         info.addTo(map);
 
-        // 5. 地球球面距離計算公式 (Haversine)
+        // 5. 計算經緯度距離 (公尺)
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -215,16 +239,16 @@
             return R * c;
         }
 
-        // 6. 手機即時 GPS 定位監聽機制
+        // 6. 監聽手機實時 GPS
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(function(position) {
-                // 真實環境請直接解開下方兩行：
-                // const uLat = position.coords.latitude;
-                // const uLng = position.coords.longitude;
-                
-                // 【開發測試環境模擬】：若現場定位有些微飄移，可用此模擬數據點擊測試
-                const uLat = targetSpot.lat + 0.00001; 
-                const uLng = targetSpot.lng;
+                // 真實環境定位：
+                const uLat = position.coords.latitude;
+                const uLng = position.coords.longitude;
+
+                // 【現場模擬測試開關】：如果在室內測試，可解開下方兩行直接視為進入 1 公尺範圍
+                // const uLat = targetSpot.lat + 0.000005;
+                // const uLng = targetSpot.lng;
 
                 if (!userMarker) {
                     userMarker = L.circleMarker([uLat, uLng], { radius: 8, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 1 }).addTo(map);
@@ -235,21 +259,21 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
-                if (distance <= 3) {
-                    // 符合 3 公尺資格，跳出提示說明並解鎖相機
+                // 🎯 判定：必須小於等於 1 公尺
+                if (distance <= 1) {
                     if (!targetSpot.hasScored) {
-                        info.update(distance, "<span style='color:#4CAF50; font-weight:bold;'>已抵達景點！請打開鏡頭進行實景核對。</span>");
+                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 1 米核心區！請啟動鏡頭。</span>");
                         arBtn.disabled = false;
                         arBtn.style.backgroundColor = "#4CAF50";
-                        arBtn.innerText = "✨ 觸發寶可夢景點：開啟鏡頭";
+                        arBtn.innerText = "⚡ 進入 1 米範圍：開啟鏡頭核對";
                     } else {
-                        info.update(distance, "<span style='color:gray;'>本據點今日已完成打卡。</span>");
+                        info.update(distance, "此據點已完成打卡。");
                         arBtn.disabled = true;
                         arBtn.style.backgroundColor = "#cccccc";
                         arBtn.innerText = "已完成打卡";
                     }
                 } else {
-                    info.update(distance, "未進入 3 米範圍，請向紅圈移動");
+                    info.update(distance, "未進入 1 米範圍 (請繼續靠近)");
                     arBtn.disabled = true;
                     arBtn.style.backgroundColor = "#cccccc";
                     arBtn.innerText = "距離太遠（GPS 鎖定中）";
@@ -257,65 +281,61 @@
 
             }, function(error) {
                 console.error(error);
-                info.update(null, "<span style='color:red;'>GPS 權現遭拒，請確認手機已開啟定位</span>");
+                info.update(null, "<span style='color:red;'>請開啟手機高精度 GPS 權限</span>");
             }, {
-                enableHighAccuracy: true, // 強制手機調用最高精準度晶片
+                enableHighAccuracy: true,
                 maximumAge: 1000,
-                timeout: 10000
+                timeout: 5000
             });
-        } else {
-            alert("此行動裝置不支援 Geolocation 定位系統。");
         }
 
-        // 7. 手機相機呼叫與 AR 實景圖像比對控制
+        // 7. 彈出任務提示與照片核對規範
+        function showPhotoPrompt() {
+            alert("【⚠️ 畫面嚴格核對提示】\n\n您已進入泰山職訓中心 1 公尺內！\n請將鏡頭對準實景大門建築。畫面上設有對焦提示輪廓，如果現場景象、角度與對照照片不一樣，將無法通過核對取得分數！");
+            openCamera();
+        }
+
+        // 8. 開啟鏡頭
         const video = document.getElementById('video');
         const cameraView = document.getElementById('camera-view');
 
-        function openCameraWithComparison() {
+        function openCamera() {
             cameraView.style.display = 'block';
-            
-            // 提示視窗說明
-            alert("【系統提示】\n已成功觸發泰山職訓中心寶可夢景點！\n接下來請將相機鏡頭對準實景大門，與畫面中央的黃框對焦圖片進行比對疊合，確認角度吻合後按下核對按鈕即可得分！");
-
-            // 啟動手機後置鏡頭
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
                 .then(function(stream) {
                     video.srcObject = stream;
                 })
                 .catch(function(err) {
-                    alert("【鏡頭啟動失敗】\n請確認：\n1. 網址必須在安全加密連線 (HTTPS) 環境下執行。\n2. 已授予瀏覽器相機拍攝權限。");
-                    console.error(err);
+                    alert("無法啟動鏡頭。請確認網址開頭為 HTTPS 安全連線，並授權相機權限。");
                     closeCamera();
                 });
         }
 
-        // 8. 實景核對成功與得分判定邏輯
+        // 9. 按下核對並捕捉（設定得分）
         function verifyAndScore() {
-            if (targetSpot.hasScored) {
-                alert("此景點已得分，無法重複打卡！");
-                closeCamera();
-                return;
-            }
+            if (targetSpot.hasScored) return;
 
-            // 執行畫面核對成功得分邏輯
-            targetSpot.score += 100;
-            targetSpot.hasScored = true;
-            
-            // 彈出 SUCCESS 成功打卡畫面提示
-            alert("🌟 SUCCESS！🌟\n【GPS 定位驗證：通過】\n【實景畫面核對：吻合】\n恭喜獲得寶可夢積分：+100 分！");
-            
-            closeCamera();
-            
-            // 同步更新地圖畫面的數據面板
+            // 最終防線：確認按下按鈕時，GPS 依然在 1 公尺範圍內。若不一樣或跑遠了就拒絕得分。
             const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
-            const finalDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
-            info.update(finalDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
+            const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
+
+            if (currentDist <= 1) {
+                targetSpot.score += 100;
+                targetSpot.hasScored = true;
+                
+                alert("🌟 SUCCESS 🌟\n【1公尺 GPS 驗證：成功】\n【實景照片核對：完全吻合】\n成功獲得寶可夢打卡積分：+100 分！");
+                closeCamera();
+                info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
+            } else {
+                alert("❌ 打卡失敗！\n鏡頭畫面或 GPS 位置與現場照片不符（或超出 1 公尺範圍），無法得分！");
+                closeCamera();
+            }
         }
 
         function closeCamera() {
             cameraView.style.display = 'none';
             if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop()); // 關閉相機避免發熱省電
+                video.srcObject.getTracks().forEach(track => track.stop());
             }
         }
     </script>
