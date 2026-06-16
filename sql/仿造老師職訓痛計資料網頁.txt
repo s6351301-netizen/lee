@@ -1,0 +1,27 @@
+1. 課程基本資料表 (courses)
+此表用於儲存每個班級的靜態資訊。
+
+SQL
+CREATE TABLE IF NOT EXISTS `courses` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '系統內部流水號',
+  `course_code` VARCHAR(50) NOT NULL COMMENT '原始網站課程編號',
+  `course_name` VARCHAR(255) NOT NULL COMMENT '課程名稱',
+  `term` INT NOT NULL COMMENT '期數',
+  `location` VARCHAR(100) DEFAULT '泰山' COMMENT '訓練地點',
+  `app_start` DATE COMMENT '報名開始日期',
+  `app_end` DATE COMMENT '報名結束日期',
+  `train_start` DATE COMMENT '開訓日期',
+  `hours` INT COMMENT '訓練時數',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '資料建立時間'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='職訓課程基本資料表';
+2. 報名人數追蹤表 (registration_stats)
+此表用於記錄每日（或每次爬蟲執行時）的人數變動，是繪製折線圖的關鍵數據來源。
+
+SQL
+CREATE TABLE IF NOT EXISTS `registration_stats` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '記錄ID',
+  `course_id` INT NOT NULL COMMENT '關聯課程ID',
+  `registered_count` INT DEFAULT 0 COMMENT '當時報名人數',
+  `snapshot_time` DATETIME NOT NULL COMMENT '資料快照時間',
+  FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日報名人數紀錄';
