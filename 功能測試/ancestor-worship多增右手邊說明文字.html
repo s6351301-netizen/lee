@@ -13,6 +13,9 @@
             flex-direction: column;
             align-items: flex-start;
             /* 靠左對齊 */
+            justify-content: center;
+            /* 垂直置中 */
+            min-height: 50vh;
             margin: 0;
             padding-left: 1%;
             /* 往右偏移 30% */
@@ -29,13 +32,12 @@
 
         /* 雙面並排容器 */
         .postcard-twin-container {
-            display: inline-flex;
+            display: flex;
             flex-direction: row;
             gap: 10px;
             justify-content: center;
-            align-items: flex-start;
-            flex-wrap: nowrap;
-            white-space: normal;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         /* 【核心修正】明信片單面外框：鎖定迷你明信片標準尺寸（寬 288px * 高 480px，符合 3x5 英吋比例） */
@@ -174,12 +176,12 @@
             letter-spacing: 0.5px;
         }
 
-        /* [內容在下] 寄件者地址（靠左邊，自郵票下方高度 100px 起算往下寫，高度微調避免向下溢出撐出卷軸） */
+        /* [內容在下] 寄件者地址（靠左邊，自郵票下方高度 100px 起算往下寫） */
         .sender-address {
             position: absolute;
             left: 25px;
             top: 100px;
-            height: 360px;
+            height: 480px;
             font-size: 14px;
             color: #000000;
             line-height: 25px;
@@ -491,7 +493,7 @@
         <table class="transparent-table">
             <tr>
                 <td>
-                    <div class="postcard-face" style="margin-top: 5px; margin-right: 5px;">
+                    <div class="postcard-face" style="margin-top: 30px; margin-right: 5px;">
                         <div class="back-content-spec vertical-text-mode">
                             <div class="form-title">報名單</div>
                             <div class="main-text">
@@ -513,7 +515,7 @@
                 </td>
                 
                 <td>
-                    <div class="postcard-face" style="margin-top: 5px; margin-left: 5px;">
+                    <div class="postcard-face" style="margin-top: 30px; margin-left: 5px;">
                         <div class="recipient-zip zip-code-zone">
                             <div class="zip-container">
                                 <div class="zip-box">1</div>
@@ -565,12 +567,14 @@
             </tr>
         </table>
 
-        <table class="instruction-table" style="margin-top: 5px;">
+        <table class="instruction-table" style="margin-top: 30px;">
             <tr>
                 <td>
                     <div class="instruction-box">
-                        <h2>祭祖活動出席統計<br>(3x5 英吋迷你尺寸明信片)</h2>                        
-                        <h3 style="margin-top: 15px;">系統操作說明</h3>                        
+                        <h2>祭祖活動出席統計<br>(3x5 英吋迷你尺寸明信片)</h2>
+                        
+                        <h3 style="margin-top: 15px;">系統操作說明</h3>
+                        
                         <div class="instruction-item" style="margin-top: 10px;">
                             <strong>A. 收件者願意參與活動：</strong><br>
                             1.先確認資訊是否有錯誤。<br>
