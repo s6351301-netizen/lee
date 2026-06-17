@@ -73,7 +73,6 @@
         .minimized-text:hover {
             color: #1a73e8;
         }
-        /* 讓最小化後的 + 號與 ➖ 減號完美一體化 */
         .minimized-plus {
             font-size: 14px;
             font-weight: bold;
@@ -433,12 +432,20 @@
             display: none !important;
         }
 
-        /* 行動裝置防禦樣式 */
+        /* 📱 行動裝置 RWD 微調排版（修正新需求的關鍵） */
         @media (max-width: 767px) {
+            /* 1. 全市總統計表面板在手機上直接隱藏不呈現 */
             .total-stats-panel {
-                max-height: 200px;
-                margin-top: 5px;
-                margin-bottom: 5px;
+                display: none !important;
+            }
+            /* 2. 右側資訊導航面板樣式在手機優化調整，改放右下方 */
+            .info-panel {
+                width: calc(100% - 30px);
+                max-height: 280px;
+                font-size: 13px;
+            }
+            .nav-row label {
+                width: 80px;
             }
         }
     </style>
@@ -481,13 +488,26 @@
         let currentObservationIndex = undefined;
         let currentObservationFeature = null;
 
-        // 暫存數據 (修復：將預設值重新牢牢鎖定為李武略宗祠)
         let savedSrcLocation = "";
         let savedTargetLocation = "李武略宗祠";
         let savedExchangeSrc = "";
         let savedExchangeTarget = "";
 
+        // 精準判斷是否為手機版
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+        // 核心跳轉攔截函數：檢查是否需要呼叫外部瀏覽器
+        function checkAndRedirectInLine() {
+            var hasParam = window.location.search.indexOf('openExternalBrowser=1') !== -1;
+            // 只有「是手機」且「網址還沒有參數（仍在LINE內部）」時，才進行強迫重載跳轉
+            if (isMobile && !hasParam) {
+                var currentUrl = window.location.href;
+                var separator = currentUrl.indexOf('?') !== -1 ? '&' : '?';
+                window.location.href = currentUrl + separator + "openExternalBrowser=1";
+                return true; 
+            }
+            return false; 
+        }
 
         function detectDistrictFromAddress(address) {
             if (!address) return "未知區";
@@ -567,6 +587,11 @@
         };
 
         window.handleNameClick = function(encodedAddr, encodedName) {
+            // 新需求：點擊姓名導向李武略宗祠時，觸發外部瀏覽器開啟攔截
+            if (checkAndRedirectInLine()) {
+                return;
+            }
+
             const address = decodeURIComponent(encodedAddr);
             const name = decodeURIComponent(encodedName);
             lastClickedPerson = { name: name, address: address };
@@ -577,7 +602,6 @@
             const srcInput = document.getElementById("srcLocation");
             if (srcInput) srcInput.value = savedSrcLocation;
 
-            // 核心修復：精確抓取當下目標欄位數值，若無則完美代入預設的李武略宗祠
             const targetInputVal = document.getElementById("targetLocation") ? document.getElementById("targetLocation").value : savedTargetLocation;
             
             getLatLngByAddress(address, function(srcLat, srcLng) {
@@ -614,7 +638,6 @@
             if (targetInput) targetInput.value = savedTargetLocation;
         };
 
-        // 點擊查詢按鈕時跳出燈箱
         window.queryPersonByDistrictPopup = function(inputId) {
             const backdrop = document.createElement('div');
             backdrop.className = 'custom-modal-backdrop';
@@ -705,7 +728,7 @@
         };
         inspirationPanel.addTo(map);
 
-        // --- 右上角觀測面板 ---
+        // --- 右上角觀測與導航面板 ---
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
@@ -728,7 +751,6 @@
 
             const districtName = currentObservationProps || currentObservationIndex !== undefined ? getDistrictName(currentObservationProps, currentObservationIndex, currentObservationFeature) : null;
             
-            // 最小化：右側面板顯示「線路導航+」
             if (isObservationPanelMinimized) {
                 this._div.innerHTML = `<div class="minimized-text" onclick="info.toggleMinimize()">線路導航<span class="minimized-plus">+</span></div>`;
                 this._div.style.padding = "6px 12px";
@@ -736,8 +758,11 @@
                 return;
             }
 
-            this._div.style.padding = "15px";
-            this._div.style.width = "350px";
+            // 電腦版維持固定寬度，手機版交給 CSS 媒體查詢 % 控制
+            if (!isMobile) {
+                this._div.style.padding = "15px";
+                this._div.style.width = "350px";
+            }
 
             const defaultNavHtml = `
                 <div class="nav-input-group">
@@ -784,11 +809,12 @@
                 </div>
             `;
 
+            // 初始狀態或未點擊區域
             if (!districtName || districtName === "未知區域") {
                 this._div.innerHTML = `
                     <div class="panel-controls"><span class="panel-btn" onclick="info.toggleMinimize()">➖</span></div>
                     <h4>臺中市宗親人員統計與線路導航</h4>
-                    <p style="margin:5px 0 0 0; color:#e81123; font-weight:bold;">請點擊地圖各區或總統計表查看宗親名單</p>
+                    <p style="margin:5px 0 0 0; color:#e81123; font-weight:bold;">請點擊地圖各區查看宗親名單</p>
                     ${defaultNavHtml}
                 `;
                 return;
@@ -807,16 +833,24 @@
                 }).join('，');
             };
 
+            // 手機版表格不呈現的需求修改
+            let tableHtml = '';
+            if (!isMobile) {
+                tableHtml = `
+                    <table class="stats-table">
+                        <thead><tr><th>男性</th><th>女性</th><th>合計</th></tr></thead>
+                        <tbody><tr><td>${males.length} 人</td><td>${females.length} 人</td><td style="font-weight:bold; color:#e81123;">${distPeople.length} 人</td></tr></tbody>
+                    </table>
+                `;
+            }
+
             this._div.innerHTML = `
                 <div class="panel-controls"><span class="panel-btn" onclick="info.toggleMinimize()">➖</span></div>
                 <h4>臺中市宗親人員統計與線路導航</h4>
                 <p>目前鎖定：<span class="highlight-text">${districtName}</span></p>
                 <p style="font-size:12px; color:#1a73e8; margin-top:-5px;">💡 提示：點擊藍色人名，即可啟動路徑導航</p>
                 
-                <table class="stats-table">
-                    <thead><tr><th>男性</th><th>女性</th><th>合計</th></tr></thead>
-                    <tbody><tr><td>${males.length} 人</td><td>${females.length} 人</td><td style="font-weight:bold; color:#e81123;">${distPeople.length} 人</td></tr></tbody>
-                </table>
+                ${tableHtml}
                 
                 <div class="name-list-section">
                     <div class="gender-title male-color">👨 男性名單 (${males.length}人)：</div>
@@ -835,7 +869,7 @@
         info.addTo(map);
 
         // --- 左上角總統計面板 ---
-        const totalStatsPanel = L.control({ position: isMobile ? 'bottomleft' : 'topleft' });
+        const totalStatsPanel = L.control({ position: 'topleft' });
         totalStatsPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'total-stats-panel');
             this._div.id = 'total-stats-window';
@@ -849,7 +883,12 @@
         };
 
         totalStatsPanel.update = function () {
-            // 最小化：左側面板顯示「統計表+」
+            // 如果是手機，直接不回傳任何 HTML 內容（不呈現）
+            if (isMobile) {
+                this._div.style.display = "none";
+                return;
+            }
+
             if (isTotalStatsPanelMinimized) {
                 this._div.innerHTML = `<div class="minimized-text" onclick="totalStatsPanel.toggleMinimize()">統計表<span class="minimized-plus">+</span></div>`;
                 this._div.style.padding = "6px 12px";
@@ -908,8 +947,6 @@
         };
         totalStatsPanel.addTo(map);
 
-        if (isMobile) totalStatsPanel.toggleMinimize();
-
         function getLatLngByAddress(address, callback) {
             if(!address) return;
             let cleanAddr = address.replace("台中市", "").replace("臺中市", "").trim();
@@ -955,6 +992,11 @@
         }
 
         window.planRouteFromPersonToTarget = function() {
+            // 新需求：按下「送出」按鈕時，觸發外部瀏覽器開啟攔截
+            if (checkAndRedirectInLine()) {
+                return;
+            }
+
             let startAddress = savedSrcLocation;
             if (startAddress.includes("(")) {
                 const pureName = startAddress.replace(/\(.*?\)/g, "").trim();
@@ -979,6 +1021,11 @@
         };
 
         window.planExchangeRoute = function() {
+            // 新需求：按下交流按鈕「送出」時，觸發外部瀏覽器開啟攔截
+            if (checkAndRedirectInLine()) {
+                return;
+            }
+
             let srcName = savedExchangeSrc.replace(/\(.*?\)/g, "").trim();
             let targetName = savedExchangeTarget.replace(/\(.*?\)/g, "").trim();
 
