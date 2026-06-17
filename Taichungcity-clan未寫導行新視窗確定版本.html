@@ -456,10 +456,6 @@
         const twd97 = "+proj=tmerc +lat_0=0 +lon_0=121 +k=0.9999 +x_0=250000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs";
         const wgs84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
-        // 核心設定：畫面上顯示「李武略宗祠」，但底層對應此實體固定地址
-        const targetTextName = "李武略宗祠";
-        const targetFixedAddress = "臺中市大甲區義和里中山路一段484巷45號";
-
         const taichungDistricts = [
             "大甲區", "外埔區", "大安區", "日南區", "清水區", "沙鹿區", "梧棲區", "龍井區", 
             "太平區", "大里區", "霧峰區", "烏日區", "豐原區", "後里區", "石岡區", 
@@ -470,7 +466,7 @@
         const map = L.map('map').setView([24.182, 120.713], 11);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
         let geojsonLayer;
@@ -485,9 +481,9 @@
         let currentObservationIndex = undefined;
         let currentObservationFeature = null;
 
-        // 暫存數據
+        // 暫存數據 (修復：將預設值重新牢牢鎖定為李武略宗祠)
         let savedSrcLocation = "";
-        let savedTargetLocation = targetTextName; // 畫面上內建維持顯示 "李武略宗祠" 
+        let savedTargetLocation = "李武略宗祠";
         let savedExchangeSrc = "";
         let savedExchangeTarget = "";
 
@@ -570,23 +566,6 @@
             if (id === 'exchangeTarget') savedExchangeTarget = val;
         };
 
-        // --- 🚀 Google 地圖外連導航跳轉處理 🚀 ---
-        function openGoogleMapsWindow(originAddr, destAddr) {
-            let cleanOrigin = originAddr.replace(/\(.*?\)/g, "").trim();
-            let cleanDest = destAddr.replace(/\(.*?\)/g, "").trim();
-            
-            // 【核心修正】：如果目的地文字是內建的 "李武略宗祠"，底層傳送給 Google 地圖時替換成固定地址
-            if (cleanDest === targetTextName) {
-                cleanDest = targetFixedAddress;
-            }
-            if (cleanOrigin === targetTextName) {
-                cleanOrigin = targetFixedAddress;
-            }
-            
-            const googleNavUrl = `https://www.google.com.tw/maps/dir/${encodeURIComponent(cleanOrigin)}/${encodeURIComponent(cleanDest)}`;
-            window.open(googleNavUrl, "_blank", "width=1000,height=750,toolbar=yes,location=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes");
-        }
-
         window.handleNameClick = function(encodedAddr, encodedName) {
             const address = decodeURIComponent(encodedAddr);
             const name = decodeURIComponent(encodedName);
@@ -598,7 +577,7 @@
             const srcInput = document.getElementById("srcLocation");
             if (srcInput) srcInput.value = savedSrcLocation;
 
-            // 保持畫面上目的地文字不變
+            // 核心修復：精確抓取當下目標欄位數值，若無則完美代入預設的李武略宗祠
             const targetInputVal = document.getElementById("targetLocation") ? document.getElementById("targetLocation").value : savedTargetLocation;
             
             getLatLngByAddress(address, function(srcLat, srcLng) {
@@ -606,9 +585,6 @@
                     drawCleanRoute(srcLat, srcLng, destLat, destLng);
                 });
             });
-
-            // 點擊姓名，啟動導航至「李武略宗祠」（底層會自動代入實體固定地址）
-            openGoogleMapsWindow(address, targetTextName);
         };
 
         window.handleDistrictClick = function(districtName) {
@@ -634,10 +610,11 @@
             const checkedBoxes = document.querySelectorAll('.spot-checkbox:checked');
             const targetInput = document.getElementById('targetLocation');
             const selectedSpots = Array.from(checkedBoxes).map(cb => cb.value);
-            savedTargetLocation = selectedSpots.length > 0 ? selectedSpots.join('，') : targetTextName;
+            savedTargetLocation = selectedSpots.length > 0 ? selectedSpots.join('，') : "李武略宗祠";
             if (targetInput) targetInput.value = savedTargetLocation;
         };
 
+        // 點擊查詢按鈕時跳出燈箱
         window.queryPersonByDistrictPopup = function(inputId) {
             const backdrop = document.createElement('div');
             backdrop.className = 'custom-modal-backdrop';
@@ -713,6 +690,7 @@
             document.getElementById('customModal').remove();
         };
 
+        // --- 靈感來源 ---
         const inspirationPanel = L.control({ position: 'topleft' });
         inspirationPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'inspiration-panel');
@@ -727,6 +705,7 @@
         };
         inspirationPanel.addTo(map);
 
+        // --- 右上角觀測面板 ---
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
@@ -749,6 +728,7 @@
 
             const districtName = currentObservationProps || currentObservationIndex !== undefined ? getDistrictName(currentObservationProps, currentObservationIndex, currentObservationFeature) : null;
             
+            // 最小化：右側面板顯示「線路導航+」
             if (isObservationPanelMinimized) {
                 this._div.innerHTML = `<div class="minimized-text" onclick="info.toggleMinimize()">線路導航<span class="minimized-plus">+</span></div>`;
                 this._div.style.padding = "6px 12px";
@@ -854,6 +834,7 @@
         };
         info.addTo(map);
 
+        // --- 左上角總統計面板 ---
         const totalStatsPanel = L.control({ position: isMobile ? 'bottomleft' : 'topleft' });
         totalStatsPanel.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'total-stats-panel');
@@ -868,6 +849,7 @@
         };
 
         totalStatsPanel.update = function () {
+            // 最小化：左側面板顯示「統計表+」
             if (isTotalStatsPanelMinimized) {
                 this._div.innerHTML = `<div class="minimized-text" onclick="totalStatsPanel.toggleMinimize()">統計表<span class="minimized-plus">+</span></div>`;
                 this._div.style.padding = "6px 12px";
@@ -932,8 +914,7 @@
             if(!address) return;
             let cleanAddr = address.replace("台中市", "").replace("臺中市", "").trim();
             
-            // 【底層解析連動】：只要輸入框文字包含「李武略宗祠」，一律靜態對應固定實體坐標
-            if (cleanAddr.includes(targetTextName) || cleanAddr === targetFixedAddress) {
+            if (cleanAddr === "李武略宗祠") {
                 callback(24.33774, 120.61888);
                 return;
             }
@@ -975,15 +956,10 @@
 
         window.planRouteFromPersonToTarget = function() {
             let startAddress = savedSrcLocation;
-            let finalGoogleOrigin = savedSrcLocation; 
-
             if (startAddress.includes("(")) {
                 const pureName = startAddress.replace(/\(.*?\)/g, "").trim();
                 const matched = taichungPeopleData.find(p => p.name === pureName);
-                if (matched) {
-                    startAddress = matched.address;
-                    finalGoogleOrigin = matched.address; 
-                }
+                if (matched) startAddress = matched.address;
             }
 
             if (!startAddress) {
@@ -1000,9 +976,6 @@
                     drawCleanRoute(srcLat, srcLng, destLat, destLng);
                 });
             });
-
-            // 送出導航（openGoogleMapsWindow 底層會把 "李武略宗祠" 悄悄轉成實體地址傳給 Google）
-            openGoogleMapsWindow(finalGoogleOrigin, savedTargetLocation);
         };
 
         window.planExchangeRoute = function() {
@@ -1027,8 +1000,6 @@
                     drawCleanRoute(srcLat, srcLng, destLat, destLng);
                 });
             });
-
-            openGoogleMapsWindow(pStart.address, pEnd.address);
         };
 
         function convertCoords(coords, type) {
