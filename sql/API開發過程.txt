@@ -13,6 +13,33 @@ foreach($list as $row) {
 $results = searchDataFromView($conn, 'name', '陳');
 // 顯示所有姓陳的宗親資料
 
+
+
+
+
+
+
+
+
+寫dev_tracking開發網頁進度追蹤的php網頁
+css配色與模板主題要符合宗親會或祭祀公業,乾淨清爽為主.
+dev_note開發筆記 指定用以下原始語法裡的
+"🌿 祈願話語進階編輯 (可批次上傳多個、不限格式檔案)"
+
+已有只要在網頁的最上方加入這一行：
+<?php require_once 'api_account-members.php'; ?>
+和預存程序sync_account_members	資料類型PROCEDURE.
+這兩個也引用到php網頁內,請注意這是登入後的網頁,登入時會將以下資料傳到後台所有頁面去接收.
+// 💡 關鍵修正：將登入成功的所有關鍵 ID 與對應值全部導入 Session 中
+                    $_SESSION['new_member'] = $row['new_member']; // 會員編號/登入ID
+                    $_SESSION['name']       = $row['name'];       // 會員姓名
+                    $_SESSION['email']      = $email;             // 登入Email
+                    $_SESSION['status']     = $row['status'];     // 帳號狀態
+
+
+
+
+
 account_id5  帳號-序號 
 member_id 會員-序號
 account_email 登入帳號

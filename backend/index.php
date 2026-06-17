@@ -325,6 +325,7 @@ $conn->close();
             { id: 3, name: "<span style='font-size: 16px;'>1-1.緣起與歷史沿革</span>", url: "history.html", parentId: 2 },
             { id: 4, name: "<span style='font-size: 16px;'>1-2.組織章程與組織編制</span>", url: "charter.html", parentId: 2 },
             { id: 4, name: "<span style='font-size: 16px;'>0-0.測試API會員PHP</span>", url: "test_view.php", parentId: 2 },
+            { id: 4, name: "<span style='font-size: 16px;'>0-0.開發進度維護PHP</span>", url: "dev_tracking.php", parentId: 2 },            
             { id: 5, name: "<span style='font-family: DFKai-SB, BiauKai, sans-serif; font-weight: bold;color: #000080;font-size: 18px;'>02 始祖與開台源流</span>", url: "null", parentId: 0 },
             { id: 6, name: "<span style='font-size:16px;'>2-1.隴西堂號由來</span>", url: "bohai.html", parentId: 5 },
             { id: 7, name: "<span style='font-size:16px;'>2-2.歷代昭穆字輩表</span>", url: "genealogy.html", parentId: 5 },
