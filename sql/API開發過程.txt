@@ -1,0 +1,183 @@
+如何在您的網頁中靈活使用？
+只要在網頁的最上方加入這一行：
+<?php require_once 'api_account-members.php'; ?>
+
+之後您就可以隨意呼叫函數，不需要再寫任何資料庫連線代碼：
+若要顯示所有清單：
+$list = getAllDataFromView($conn);
+foreach($list as $row) {
+    echo $row['name'] . " - " . $row['message_of_blessing'];
+}
+
+若要進行搜尋（例如依據姓名）：
+$results = searchDataFromView($conn, 'name', '陳');
+// 顯示所有姓陳的宗親資料
+
+
+
+
+
+
+
+
+
+
+
+系統架構
+1.所有資料表都會由"members"與"account"連結出來的表格,依照需求寫入個種類型資料表內.
+2.登入時,要把帳號(MAIL當帳號)在"members"對應的"name姓名"和"new_member現在會員編號"鎖對應的ID傳到登入後的網頁.
+3.每一個已登入後的網頁,有需要的會直接顯示出"name姓名"和"new_member現在會員編號"值.
+甚至會用"members"的number_of_houses房數emperor_shizu世祖(台灣算起)generation世代(大甲算起)去真實核對人物,
+避免同一房同一代甚至連姓名都一樣的人,只差new_member現在會員編號不一樣,被錯誤的導入系統寫入資料庫.
+4.使用"預存程序"名稱"sync_account_members"類型"PROCEDURE"去讓PHP網頁做會員資料編輯後,同時將"members"與"account"關聯的欄位全部一致性.
+5.等待全部功能完成後,寫"觸發器"名稱"trigger_account_members"讓所有資料表從"members"與"account"所引用而寫入各資料表的會員資料做資料同部,
+避免有各資料部一致性產生.
+6.為避免以後在寫各種功能時,還會再新增"members"與"account"資料表的欄位.不直接引用這兩個資料表,
+而是採用account_members_view檢視表去做API連接資料庫的連結.
+只要未來此2個資料表欄位更動時,重新再拉一次account_members_view檢視表即可.
+
+以下提供登入網頁,與已經完成許願卡的原始碼.
+提供在登入後,寫出各網頁共同都要使用要被被引用的API的PHP網頁.
+
+DELIMITER $$
+--
+-- 程序
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sync_account_members` (IN `p_id` INT, IN `p_name` VARCHAR(50), IN `p_new_member` VARCHAR(50), IN `p_status` VARCHAR(20))   BEGIN
+    -- 安全機制：發生任何 SQL 錯誤就整筆取消（Rollback），保證資料不會改一半
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+    END;
+
+    -- 開始事務
+    START TRANSACTION;
+
+    -- 更新 account 表 (status 欄位是 varchar)
+    UPDATE account
+    SET name = p_name,
+        new_member = p_new_member,
+        status = p_status,
+        updated_at = NOW()
+    WHERE id = p_id;
+
+    -- 更新 members 表 (status 欄位是 tinyint，MySQL 會自動轉換)
+    UPDATE members
+    SET name = p_name,
+        new_member = p_new_member,
+        status = CAST(p_status AS SIGNED),
+        update_time = NOW()
+    WHERE id = p_id;
+
+    -- 確認無誤，提交存檔
+    COMMIT;
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `account`
+--
+
+CREATE TABLE `account` (
+  `id` int(11) NOT NULL COMMENT '流水號',
+  `new_member` varchar(50) DEFAULT NULL COMMENT '現在會員號',
+  `old_member` varchar(50) NOT NULL COMMENT '前會員號',
+  `name` varchar(50) NOT NULL COMMENT '姓名',
+  `gender` varchar(10) NOT NULL COMMENT '性別',
+  `email` varchar(255) NOT NULL COMMENT '電子信箱',
+  `password` varchar(255) NOT NULL COMMENT '密碼',
+  `role` enum('admin','user','clan') DEFAULT 'user' COMMENT '權限(管理者/派下員/宗親)',
+  `join_date` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '註冊日期',
+  `status` varchar(20) DEFAULT '1' COMMENT '帳號停用或使用中(1:使用中, 0:停用)',
+  `discontinued_date` date DEFAULT NULL COMMENT '停用日期',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '備註',
+  `menu_id` varchar(10) NOT NULL COMMENT '選單項目 ID：對應網頁中 clanMenuData 陣列的 id（例如：3 代表 1-1、7.1 代表 2-3 json 選單）。',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '權限建立時間',
+  `updated_at` datetime DEFAULT NULL COMMENT '權限更新時間'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='帳號資料表';
+
+-- 替換檢視表以便查看 `account_members_view`
+-- (請參考以下實際畫面)
+--
+CREATE TABLE `account_members_view` (
+`account_id` int(11)
+,`account_new_member` varchar(50)
+,`account_old_member` varchar(50)
+,`account_name` varchar(50)
+,`account_gender` varchar(10)
+,`account_email` varchar(255)
+,`password` varchar(255)
+,`role` enum('admin','user','clan')
+,`join_date` timestamp
+,`account_status` varchar(20)
+,`discontinued_date` date
+,`account_remarks` varchar(255)
+,`menu_id` varchar(10)
+,`created_at` datetime
+,`updated_at` datetime
+,`member_id` int(11)
+,`receive_date` date
+,`member_old_member` varchar(50)
+,`member_new_member` varchar(50)
+,`generation` int(11)
+,`emperor_shizu` int(11)
+,`number_of_houses` int(11)
+,`member_name` varchar(50)
+,`member_gender` varchar(10)
+,`id_card_num` varchar(20)
+,`birthday` date
+,`placeOfBirth` varchar(100)
+,`education` varchar(100)
+,`experience` text
+,`address` varchar(255)
+,`zip_code` text
+,`mobile_phone` varchar(20)
+,`home_phone` varchar(20)
+,`company_phone` varchar(20)
+,`member_email` varchar(100)
+,`introducer` varchar(50)
+,`SendSubordinates` text
+,`living_status` enum('存','亡','未知')
+,`member_status` tinyint(1)
+,`member_remarks` text
+,`update_time` datetime
+,`last_updater` varchar(50)
+);
+
+
+-- 資料表結構 `members`
+--
+
+CREATE TABLE `members` (
+  `id` int(11) NOT NULL COMMENT '流水號',
+  `receive_date` date DEFAULT NULL COMMENT '收件日期',
+  `old_member` varchar(50) DEFAULT NULL COMMENT '前會員號',
+  `new_member` varchar(50) DEFAULT NULL COMMENT '現在會員號',
+  `generation` int(11) NOT NULL COMMENT '世代(大甲算起)',
+  `emperor_shizu` int(11) NOT NULL COMMENT '世祖(台灣算起)',
+  `number_of_houses` int(11) NOT NULL COMMENT '房數',
+  `name` varchar(50) NOT NULL COMMENT '姓名',
+  `gender` varchar(10) DEFAULT NULL COMMENT '性別',
+  `id_card_num` varchar(20) DEFAULT NULL COMMENT '身分證字號',
+  `birthday` date DEFAULT NULL COMMENT '生日',
+  `placeOfBirth` varchar(100) DEFAULT NULL COMMENT '出生地或籍貫(祖籍地)',
+  `education` varchar(100) DEFAULT NULL COMMENT '學歷',
+  `experience` text DEFAULT NULL COMMENT '現職/經歷',
+  `address` varchar(255) DEFAULT NULL COMMENT '地址',
+  `zip_code` text NOT NULL COMMENT '郵遞區號6碼',
+  `mobile_phone` varchar(20) DEFAULT NULL COMMENT '行動電話',
+  `home_phone` varchar(20) DEFAULT NULL COMMENT '住家電話',
+  `company_phone` varchar(20) DEFAULT NULL COMMENT '公司電話',
+  `email` varchar(100) DEFAULT NULL COMMENT 'E-mail',
+  `introducer` varchar(50) DEFAULT NULL COMMENT '介紹人',
+  `SendSubordinates` text DEFAULT NULL COMMENT '派下員狀態說明',
+  `living_status` enum('存','亡','未知') NOT NULL DEFAULT '未知' COMMENT '生存狀態(存/亡/未知)',
+  `status` tinyint(1) DEFAULT 1 COMMENT '帳號停用或使用中(1:使用中, 0:停用)',
+  `remarks` text DEFAULT NULL COMMENT '備註',
+  `update_time` datetime DEFAULT NULL COMMENT '最後更新時間',
+  `last_updater` varchar(50) DEFAULT NULL COMMENT '最後更新者'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
