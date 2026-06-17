@@ -13,7 +13,17 @@ foreach($list as $row) {
 $results = searchDataFromView($conn, 'name', '陳');
 // 顯示所有姓陳的宗親資料
 
-
+account_id5  帳號-序號 
+member_id 會員-序號
+account_email 登入帳號
+account_new_member 編號	
+account_name 姓名	
+account_gender 性別
+number_of_houses 大房
+emperor_shizu 世祖
+generation 世代
+living_status 存/亡/未知
+account_status 狀態	
 
 
 

@@ -1,68 +1,117 @@
 <?php
-// 1. 資料庫連線設定 (直接整合，確保連線變數存在)
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "lee";
+// 引用您定義好的 API
+require_once 'api_account-members.php';
 
-$conn = new mysqli($servername, $username, $password, $dbname);
-if ($conn->connect_error) {
-    die("資料庫連線失敗: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
-
-// 2. 撈取 account_members_view 資料
-$sql = "SELECT * FROM account_members_view";
-$result = $conn->query($sql);
-$data_list = [];
-if ($result) {
-    $data_list = $result->fetch_all(MYSQLI_ASSOC);
-} else {
-    echo "SQL 錯誤: " . $conn->error;
-}
+// 取得資料
+$data_list = getAllMemberData($conn);
 ?>
 
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
-    <title>會員基本資料</title>
+    <title>會員資料清單</title>
     <style>
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
-        th { background: #143622; color: white; }
+        body {
+            font-family: sans-serif;
+            padding: 1px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-container {            
+            overflow: auto;   /* 產生捲軸 */         
+            /*flex-grow: 1;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #143622;
+            color: white;
+            padding: 10px;
+            font-size: 13px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        button {
+            cursor: pointer;
+            /*padding: 5px 10px;*/
+        }
     </style>
 </head>
-<body>
-    <h1>宗親會員基本資料 (檢視表)</h1>
-    <?php if (count($data_list) > 0): ?>
-        <table>
-            <thead>
-                <tr>
-                    <th>帳號ID</th><th>現在會員號</th><th>姓名</th><th>世代</th><th>房號</th>
-                    <th>世祖</th><th>手機</th><th>地址</th><th>生存狀態</th><th>備註</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($data_list as $row): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($row['account_id'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['account_new_member'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['account_name'] ?? $row['member_name'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['generation'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['number_of_houses'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['emperor_shizu'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['mobile_phone'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['address'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['living_status'] ?? ''); ?></td>
-                    <td><?php echo htmlspecialchars($row['member_remarks'] ?? ''); ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php else: ?>
-        <p>目前資料庫中沒有資料，或檢視表名稱錯誤。</p>
-        <p>請檢查您的 phpMyAdmin 中，檢視表是否真的叫 `account_members_view`</p>
-    <?php endif; ?>
+
+<body>   
+
+    <div class="table-container"><P>宗親會員資料清單</P>
+        <?php if (!empty($data_list)): ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>account_id<br>(帳號-序號)</th>
+                        <th>member_id<br>(會員-序號)</th>
+                        <th>account_email<br>(登入帳號)</th>
+                        <th>account_new_member<br>(編號)</th>
+                        <th>account_name<br>(姓名)</th>
+                        <th>account_gender<br>(性別)</th>
+                        <th>number_of_houses<br>(大房)</th>
+                        <th>emperor_shizu<br>(世祖)</th>
+                        <th>generation<br>(世代)</th>
+                        <th>living_status<br>(存/亡/未知)</th>
+                        <th>account_status<br>(狀態)</th>
+                        <th>操作<br>(Action)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($data_list as $row): ?>
+                        <tr>
+                            <td><?php echo $row['account_id'] ?? ''; ?></td>
+                            <td><?php echo $row['member_id'] ?? ''; ?></td>
+                            <td><?php echo $row['account_email'] ?? ''; ?></td>
+                            <td><?php echo $row['account_new_member'] ?? ''; ?></td>
+                            <td><?php echo $row['account_name'] ?? $row['member_name'] ?? ''; ?></td>
+                            <td><?php echo $row['account_gender'] ?? ''; ?></td>
+                            <td><?php echo $row['number_of_houses'] ?? ''; ?></td>
+                            <td><?php echo $row['emperor_shizu'] ?? ''; ?></td>
+                            <td><?php echo $row['generation'] ?? ''; ?></td>
+                            <td><?php echo $row['living_status'] ?? ''; ?></td>
+                            <td><?php echo $row['account_status'] ?? ''; ?></td>
+                            <td>
+                                <button onclick="window.open('member_details.php?id=<?php echo (int)$row['account_id']; ?>', '_blank', 'width=800,height=600')">
+                                    詳情
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p>目前查無資料。</p>
+        <?php endif; ?>
+    </div>
 </body>
+
 </html>
