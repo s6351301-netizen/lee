@@ -960,8 +960,8 @@
 
         // 🛡️ 核心修正：偵測到手機版時，預設將「統計表」與「線路導航」都最小化
         if (isMobile) {
-            totalStatsPanel.toggleMinimize();
-            info.toggleMinimize();
+            //totalStatsPanel.toggleMinimize();  //統計表格,手機版,第一次打開網頁時,要將路導航表格最大化.
+            info.toggleMinimize();  //線路導航表格,手機版第一次打開網頁時,要將路導航表格最大化.
         }
 
         function getLatLngByAddress(address, callback) {
