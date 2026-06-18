@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (!isset($_SESSION['new_member'])) { header("Location: login.php"); exit; }
 require_once 'api_account-members.php';
 
-// AJAX 請求處理：獲取該欄位歷史不重複值
+// AJAX 請求處理
 if (isset($_GET['action']) && $_GET['action'] == 'get_history') {
     $field = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['field']);
     $stmt = $conn->prepare("SELECT DISTINCT $field FROM dev_tracking WHERE $field IS NOT NULL AND $field != '' LIMIT 20");
@@ -14,7 +14,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_history') {
     echo json_encode($data); exit;
 }
 
-// 處理新增、修改、刪除任務
+// 處理新增、修改、刪除
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     if ($_POST['action'] == 'add_task') {
         $stmt = $conn->prepare("INSERT INTO dev_tracking (creator_member_id, ai_url, `references`, dev_note, dev_note1, dev_note2, dev_note3, dev_note4, dev_note5, dev_note6, dev_note7, dev_note8, dev_note9, dev_note10, project_name_zh, project_name_en, status, dev_start_at, dev_end_at, course_name_zh, skill_category, technology_name, teacher_name, skill_practiced) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
@@ -92,7 +92,16 @@ while($row_edit = $res_edit->fetch_assoc()) { $edit_data[$row_edit['id']] = $row
         <button type="submit" form="trackingForm" class="fixed-submit-btn">儲存紀錄</button>
 
         <table>
-            <tr><th>修改與刪除</th><th>名稱(中)</th><th>AI網址</th><th>技能點</th><th>參考文獻</th><th>開發筆記</th></tr>
+            <tr>
+                <th>修改與刪除</th>
+                <th>名稱(中)2</th>
+                <th>檔名(中/英)2</th>
+                <th>課程名稱</th>
+                <th>AI開發網址</th>
+                <th>練習技能點</th>
+                <th>參考文獻</th>
+                <th>開發筆記</th>
+            </tr>
             <?php while ($row = $result->fetch_assoc()): ?>
             <tr>
                 <td>
@@ -103,6 +112,8 @@ while($row_edit = $res_edit->fetch_assoc()) { $edit_data[$row_edit['id']] = $row
                     </form>
                 </td>
                 <td><?php echo htmlspecialchars($row['project_name_zh']); ?></td>
+                <td><?php echo htmlspecialchars($row['project_name_en']); ?></td>
+                <td><?php echo htmlspecialchars($row['course_name_zh']); ?></td>
                 <td><button onclick="showContentInWindow('AI 開發網址', `<?php echo addslashes(str_replace('`', '\`', $row['ai_url'])); ?>`)">檢視</button></td>
                 <td><button onclick="showContentInWindow('練習技能點', `<?php echo addslashes(str_replace('`', '\`', $row['skill_practiced'])); ?>`)">檢視</button></td>
                 <td><button onclick="showContentInWindow('參考文獻', `<?php echo addslashes(str_replace('`', '\`', $row['references'])); ?>`)">檢視</button></td>
@@ -114,6 +125,18 @@ while($row_edit = $res_edit->fetch_assoc()) { $edit_data[$row_edit['id']] = $row
 
     <datalist id="ajax-list"></datalist>
     <script>
+        // 設定開始時間為當前時間
+        window.onload = function() {
+            const now = new Date();
+            // 轉為 YYYY-MM-DDThh:mm 格式
+            const formatted = now.getFullYear() + '-' + 
+                              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                              String(now.getDate()).padStart(2, '0') + 'T' + 
+                              String(now.getHours()).padStart(2, '0') + ':' + 
+                              String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('dev_start_at').value = formatted;
+        };
+
         const editData = <?php echo json_encode($edit_data); ?>;
         function editRow(id) {
             const data = editData[id];
