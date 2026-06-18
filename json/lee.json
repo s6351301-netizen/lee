@@ -1,0 +1,40 @@
+{
+  "name": "李良經",
+  "generation": "繩",
+  "level": 20,
+  "children": [
+    {
+      "name": "李祖溪",
+      "generation": "祖",
+      "level": 21,
+      "children": [
+        { "name": "李瑞麟", "generation": "武", "level": 22, "children": [{ "name": "李德順" }, { "name": "李德行" }, { "name": "李德淋" }, { "name": "李德獻" }, { "name": "李德良" }, { "name": "李德量" }, { "name": "李德補" }, { "name": "李德地" }] },
+        { "name": "李瑞鸞", "generation": "武", "level": 22, "children": [{ "name": "絕嗣" }] },
+        { "name": "李瑞盛", "generation": "武", "level": 22, "children": [{ "name": "李德胡" }] },
+        { "name": "李瑞色", "generation": "武", "level": 22, "children": [{ "name": "李德老" }] },
+        { "name": "李瑞賢", "generation": "武", "level": 22, "children": [{ "name": "李德炎" }] }
+      ]
+    },
+    {
+      "name": "李祖僖",
+      "generation": "祖",
+      "level": 21,
+      "children": [
+        { "name": "李畝美", "generation": "武", "level": 22, "children": [{ "name": "李德樣" }] },
+        { "name": "李畝乾", "generation": "武", "level": 22, "children": [{ "name": "李怣番" }, { "name": "李德彥" }] },
+        { "name": "李畝儀", "generation": "武", "level": 22, "children": [{ "name": "李德同" }] },
+        { "name": "李敷遠", "generation": "武", "level": 22, "children": [{ "name": "李德賢" }] }
+      ]
+    },
+    {
+      "name": "李祖朗",
+      "generation": "祖",
+      "level": 21,
+      "children": [
+        { "name": "李畝安", "generation": "武", "level": 22, "children": [{ "name": "未詳" }] },
+        { "name": "李畝諒", "generation": "武", "level": 22, "children": [{ "name": "李德耀" }, { "name": "李德華" }, { "name": "李德談" }, { "name": "李德照" }, { "name": "李德福" }, { "name": "李德強" }] },
+        { "name": "李畝雲", "generation": "武", "level": 22, "children": [{ "name": "李清風" }] }
+      ]
+    }
+  ]
+}

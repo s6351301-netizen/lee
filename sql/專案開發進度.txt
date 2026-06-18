@@ -1,0 +1,56 @@
+
+用以下原始碼做修改:
+1.將"作品與狀態基礎資訊"與"時間維度與課程關聯"去掉標題,所有欄位合併,雷同寫在一起.
+3.上面合併內容,一列至少要放入3-4個項目,除了"練習技能點"是單獨一行.
+2.所有欄位有時間,若是空白,全部以登入時當下時間做預設值.
+
+用以下原始碼做修改,所有類別,比如"AI 輔助與參考資訊"全部刪除:
+一列:作品名稱(中) / 作品名稱(英) / 狀態
+一列:開始時間/結束時間/指導老師
+一列:課程名稱/技能領域/練習技能點
+其他沒寫到的,全部獨自一個項目一列.
+
+
+
+CREATE TABLE IF NOT EXISTS dev_tracking (
+    -- 系統主鍵
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    -- 1. 會員綁定欄位
+    creator_member_id VARCHAR(50) NULL COMMENT '登入會員編號',
+    
+    -- 2. 作品與狀態基礎資訊
+    project_name_zh TEXT NULL COMMENT '名稱(中)',
+    project_name_en TEXT NULL COMMENT '檔名(中/英)',
+    status ENUM('待辦事項', '進行中', '測試中', '已完成') DEFAULT '進行中' NULL COMMENT '開發狀態',
+    
+    -- 3. 時間維度與維護欄位
+    dev_start_at DATETIME NULL COMMENT '開發-起',
+    dev_end_at DATETIME NULL COMMENT '開發-迄',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+    
+    -- 4. 課程與技能關聯欄位
+    course_name_zh TEXT NULL COMMENT '課程名稱',
+    teacher_name TEXT NULL COMMENT '指導老師',
+    skill_category TEXT NULL COMMENT '技能領域', 
+    Technology_Name TEXT NULL COMMENT '技術名稱',
+    skill_practiced TEXT NULL COMMENT '練習技能點',
+    
+    -- 5. AI 輔助與參考資訊
+    ai_url TEXT NULL COMMENT 'AI開發網址',
+    `references` TEXT NULL COMMENT '參考文獻',
+    
+    -- 6. 開發筆記 (1-10)
+    dev_note TEXT NULL COMMENT '開發筆記',
+    dev_note1 TEXT NULL COMMENT '開發筆記一',
+    dev_note2 TEXT NULL COMMENT '開發筆記二',
+    dev_note3 TEXT NULL COMMENT '開發筆記三',
+    dev_note4 TEXT NULL COMMENT '開發筆記四',
+    dev_note5 TEXT NULL COMMENT '開發筆記五',
+    dev_note6 TEXT NULL COMMENT '開發筆記六',
+    dev_note7 TEXT NULL COMMENT '開發筆記七',
+    dev_note8 TEXT NULL COMMENT '開發筆記八',
+    dev_note9 TEXT NULL COMMENT '開發筆記九',
+    dev_note10 TEXT NULL COMMENT '開發筆記十'    
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -92,7 +92,7 @@ while($row_edit = $res_edit->fetch_assoc()) { $edit_data[$row_edit['id']] = $row
         <button type="submit" form="trackingForm" class="fixed-submit-btn">儲存紀錄</button>
 
         <table>
-            <tr><th>修改與刪除</th><th>名稱(中)</th><th>AI網址</th><th>技能點</th><th>參考文獻</th><th>開發筆記</th></tr>
+            <tr><th>修改與刪除</th><th>名稱(中)</th><th>檔名(中/英)</th><th>課程名稱</th><th>AI網址</th><th>練習技能點</th><th>參考文獻</th><th>開發筆記</th></tr>
             <?php while ($row = $result->fetch_assoc()): ?>
             <tr>
                 <td>
@@ -103,6 +103,8 @@ while($row_edit = $res_edit->fetch_assoc()) { $edit_data[$row_edit['id']] = $row
                     </form>
                 </td>
                 <td><?php echo htmlspecialchars($row['project_name_zh']); ?></td>
+                <td><?php echo htmlspecialchars($row['project_name_en']); ?></td>
+                <td><?php echo htmlspecialchars($row['course_name_zh']); ?></td>
                 <td><button onclick="showContentInWindow('AI 開發網址', `<?php echo addslashes(str_replace('`', '\`', $row['ai_url'])); ?>`)">檢視</button></td>
                 <td><button onclick="showContentInWindow('練習技能點', `<?php echo addslashes(str_replace('`', '\`', $row['skill_practiced'])); ?>`)">檢視</button></td>
                 <td><button onclick="showContentInWindow('參考文獻', `<?php echo addslashes(str_replace('`', '\`', $row['references'])); ?>`)">檢視</button></td>
