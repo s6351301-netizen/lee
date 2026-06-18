@@ -220,7 +220,17 @@ while ($row_edit = $res_edit->fetch_assoc()) {
                 <div><label>技術名稱</label><input type="text" name="technology_name" id="technology_name" class="ajax-field"></div>
                 <div class="full-width"><label>練習技能點</label><textarea name="skill_practiced" id="skill_practiced" class="ajax-field"></textarea></div>
                 <div class="full-width"><label>參考文獻</label><textarea name="references" id="references" class="ajax-field"></textarea></div>
-                <div class="full-width"><label>開發筆記</label><textarea name="dev_note" id="dev_note" class="ajax-field"></textarea></div>
+               <!-- <div class="full-width"><label>開發筆記</label><textarea name="dev_note" id="dev_note" class="ajax-field"></textarea></div>
+            --> 
+               <div class="full-width">
+    <label>
+        開發筆記 
+        <span onclick="openJoditEditor()" style="color: blue; cursor: pointer; text-decoration: underline; font-size: 0.8em; margin-left: 10px;">
+            [展開進階編輯]
+        </span>
+    </label>
+    <textarea name="dev_note" id="dev_note" class="ajax-field"></textarea>
+</div>
                 <div class="full-width"><label>AI 開發網址</label><textarea name="ai_url" id="ai_url" class="ajax-field"></textarea></div>
                 <div class="full-width">
                     <details>
@@ -360,6 +370,45 @@ while ($row_edit = $res_edit->fetch_assoc()) {
             }
         });
     </script>
+    <script>
+function openJoditEditor() {
+    // 取得當前 textarea 的原始值
+    const originalContent = document.getElementById('dev_note').value;
+    
+    // 開啟一個空白的新視窗
+    const editorWin = window.open("", "JoditEditor", "width=1000,height=700");
+    
+    // 直接在視窗中寫入編輯器結構 (保持與您之前提供的配置一致)
+    editorWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.css">
+            <script src="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.js"><\/script>
+        </head>
+        <body style="padding:20px;">
+            <textarea id="tempEditor"></textarea>
+            <button onclick="saveAndClose()" style="margin-top:15px; padding:10px 20px;">儲存並返回</button>
+            <script>
+                const editor = new Jodit('#tempEditor', {
+                    height: 500,
+                    language: 'zh_tw',
+                    uploader: { url: '?action=upload_icon' }
+                });
+                editor.value = \`${originalContent.replace(/`/g, '\\`')}\`;
+                
+                function saveAndClose() {
+                    // 將編輯器的值寫回父視窗的 dev_note
+                    window.opener.document.getElementById('dev_note').value = editor.value;
+                    window.close();
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+    editorWin.document.close();
+}
+</script>
 </body>
 
 </html>

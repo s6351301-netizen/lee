@@ -52,7 +52,19 @@ while ($row_edit = $res_edit->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <title>開發進度追蹤</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.css">    
+    <script src="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.js"></script>
     <style>
+        /* 基礎編輯器外觀與對話視窗的自訂樣式 */
+        .jodit-container { background: #f0fdf4 !important; color: #000000 !important; border: 1px solid #cbd5e1 !important; }
+        .jodit-toolbar__box { background: #e0f2fe !important; border-bottom: 1px solid #bae6fd !important; }
+        .jodit-toolbar-button__icon { fill: #1e293b !important; }
+        .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
+        .jodit-wysiwyg { color: #000000; }
+        .jodit-wysiwyg a { text-decoration: underline !important; }
+
+
+
         .container {
             max-width: 1100px;
             margin: auto;
@@ -161,7 +173,7 @@ while ($row_edit = $res_edit->fetch_assoc()) {
                 <th>AI開發網址</th>
                 <th>練習技能點</th>
                 <th>參考文獻</th>
-                <th>開發筆記</th>
+                <th>開發筆記<span class="expand-link" id="openEditorBtn">[展開進階編輯"無法上傳檔案"]</span></th>
                 <th>時間-起</th>
             </tr>
             <?php while ($row = $result->fetch_assoc()): ?>
@@ -208,7 +220,17 @@ while ($row_edit = $res_edit->fetch_assoc()) {
                 <div><label>技術名稱</label><input type="text" name="technology_name" id="technology_name" class="ajax-field"></div>
                 <div class="full-width"><label>練習技能點</label><textarea name="skill_practiced" id="skill_practiced" class="ajax-field"></textarea></div>
                 <div class="full-width"><label>參考文獻</label><textarea name="references" id="references" class="ajax-field"></textarea></div>
-                <div class="full-width"><label>開發筆記</label><textarea name="dev_note" id="dev_note" class="ajax-field"></textarea></div>
+               <!-- <div class="full-width"><label>開發筆記</label><textarea name="dev_note" id="dev_note" class="ajax-field"></textarea></div>
+            --> 
+               <div class="full-width">
+    <label>
+        開發筆記 
+        <span onclick="openJoditEditor()" style="color: blue; cursor: pointer; text-decoration: underline; font-size: 0.8em; margin-left: 10px;">
+            [展開進階編輯]
+        </span>
+    </label>
+    <textarea name="dev_note" id="dev_note" class="ajax-field"></textarea>
+</div>
                 <div class="full-width"><label>AI 開發網址</label><textarea name="ai_url" id="ai_url" class="ajax-field"></textarea></div>
                 <div class="full-width">
                     <details>
@@ -272,6 +294,121 @@ while ($row_edit = $res_edit->fetch_assoc()) {
             });
         });
     </script>
+
+<script>
+        // 4. 定義工具列按鈕配置
+        const fullFreeButtons = [
+            'source', '|', 'bold', 'strikethrough', 'underline', 'italic', '|',
+            'superscript', 'subscript', '|', 'ul', 'ol', '|',
+            'outdent', 'indent', '|', 'font', 'fontsize', 'brush', 'paragraph', '|',
+            'image', 'file', 'video', 'table', 'link', '|', 'align', 'undo', 'redo', '|',
+            'hr', 'eraser', 'copyformat', '|', 'symbol', 'print', 'about'
+        ];
+
+        // 5. 初始化 Jodit 編輯器
+        const joditEditor = new Jodit('#joditEditorTarget', {
+            buttons: fullFreeButtons, 
+            buttonsMD: fullFreeButtons, 
+            buttonsSM: fullFreeButtons, 
+            buttonsXS: fullFreeButtons, 
+            disablePlugins: [], 
+            height: 450, 
+            language: 'zh_tw', 
+            style: { color: '#000000' },
+            controls: {
+                font: {
+                    list: {
+                        'Microsoft JhengHei, sans-serif': '微軟正黑體',
+                        'PMingLiU, serif': '新細明體',
+                        'DFKai-SB, serif': '標楷體',
+                        'PingFang TC, sans-serif': '蘋方體 (Mac)',
+                        'Arial, Helvetica, sans-serif': 'Arial (無襯線體)',
+                        'Times New Roman, Times, serif': 'Times New Roman (襯線體)'
+                    }
+                },
+                file: {
+                    text: '文件上傳 (檔案請保持在 500M 以內)',
+                    tooltip: '上傳任意格式文件'
+                }
+            },
+            // 6. 檔案與圖片上傳設定
+            uploader: {
+                url: '?action=upload_icon', // 請根據實際接收上傳的 PHP 路由調整此 URL
+                format: 'json',
+                path: 'files',
+                multiple: true,
+                isSuccess: function (resp) { return resp.success === true; },
+                getMessage: function (resp) { return resp.error; },
+                process: function (resp) {
+                    return { files: resp.files || [], error: resp.error, msg: resp.msg };
+                },
+                defaultHandlerSuccess: function (data, resp) {
+                    if (data.files && data.files.length) {
+                        data.files.forEach(fileUrl => {
+                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+                            
+                            let displayFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+                            try { displayFileName = decodeURIComponent(displayFileName); } catch(e) {}
+                            
+                            // 格式化檔名（去除時間戳記等前綴）
+                            if (displayFileName.includes('_')) {
+                                const parts = displayFileName.split('_');
+                                if (parts.length >= 4 && /^\d{8}$/.test(parts[0])) {
+                                    displayFileName = parts.slice(3).join('_');
+                                }
+                            }
+
+                            if (isImage) {
+                                this.s.insertImage(fileUrl, null, 200); 
+                            } else {
+                                this.s.insertHTML(`<a href="${fileUrl}" target="_blank" style="color: #0284c7; text-decoration: underline;">📎 下載附件: ${displayFileName}</a>&nbsp;`);
+                            }
+                        });
+                    }
+                },
+                defaultHandlerError: function (err) { this.alerts.error(err.getMessage()); }
+            }
+        });
+    </script>
+    <script>
+function openJoditEditor() {
+    // 取得當前 textarea 的原始值
+    const originalContent = document.getElementById('dev_note').value;
+    
+    // 開啟一個空白的新視窗
+    const editorWin = window.open("", "JoditEditor", "width=1000,height=700");
+    
+    // 直接在視窗中寫入編輯器結構 (保持與您之前提供的配置一致)
+    editorWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.css">
+            <script src="https://cdn.jsdelivr.net/npm/jodit@3.24.5/build/jodit.min.js"><\/script>
+        </head>
+        <body style="padding:20px;">
+            <textarea id="tempEditor"></textarea>
+            <button onclick="saveAndClose()" style="margin-top:15px; padding:10px 20px;">儲存並返回</button>
+            <script>
+                const editor = new Jodit('#tempEditor', {
+                    height: 500,
+                    language: 'zh_tw',
+                    uploader: { url: '?action=upload_icon' }
+                });
+                editor.value = \`${originalContent.replace(/`/g, '\\`')}\`;
+                
+                function saveAndClose() {
+                    // 將編輯器的值寫回父視窗的 dev_note
+                    window.opener.document.getElementById('dev_note').value = editor.value;
+                    window.close();
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+    editorWin.document.close();
+}
+</script>
 </body>
 
 </html>
