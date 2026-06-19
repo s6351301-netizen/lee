@@ -1,0 +1,32 @@
+-- --------------------------------------------------------
+-- 1. 建立站點基本資料表 (原本的 bike_stations 改名為 youbike)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `youbike` (
+  `station_id` VARCHAR(20) NOT NULL COMMENT 'YouBike官方站點編號(主鍵)',
+  `city_name` VARCHAR(20) NOT NULL COMMENT '縣市(例如：臺中市、臺北市、新北市)',
+  `sarea` VARCHAR(50) NOT NULL COMMENT '行政區(例如：大甲區、大安區、板橋區)',
+  `station_name_tw` VARCHAR(100) NOT NULL COMMENT '中文站點名稱',
+  `lat` DECIMAL(10, 8) NOT NULL COMMENT '緯度',
+  `lng` DECIMAL(11, 8) NOT NULL COMMENT '經度',
+  `address` VARCHAR(255) DEFAULT NULL COMMENT '詳細地址',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '系統首次偵測並建立時間',
+  PRIMARY KEY (`station_id`),
+  INDEX `idx_city_sarea` (`city_name`, `sarea`) COMMENT '加速縣市與行政區的篩選查詢'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='YouBike站點基本資料表';
+
+-- --------------------------------------------------------
+-- 2. 建立即時車位紀錄表 (同步更新外鍵關聯)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `bike_logs` (
+  `id` BIGINT AUTO_INCREMENT NOT NULL COMMENT '流水號(主鍵)',
+  `station_id` VARCHAR(20) NOT NULL COMMENT '對應 youbike 的站點編號',
+  `available_bikes` SMALLINT NOT NULL COMMENT '可借車輛數(sbi)',
+  `empty_spaces` SMALLINT NOT NULL COMMENT '可停空位數(bemp)',
+  `is_status` TINYINT(1) DEFAULT 1 NOT NULL COMMENT '服務狀態(1:正常, 0:暫停)',
+  `official_update_time` DATETIME NOT NULL COMMENT '官方最後更新時間(mday)',
+  `recorded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '系統執行抓取的時間',
+  PRIMARY KEY (`id`),
+  -- 外鍵約束同步對應到新的 youbike 表
+  CONSTRAINT `fk_station_id` FOREIGN KEY (`station_id`) REFERENCES `youbike` (`station_id`) ON DELETE CASCADE,
+  INDEX `idx_station_time` (`station_id`, `recorded_at`) COMMENT '加速特定站點的時間範圍查詢'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='YouBike即時車位動態紀錄表';

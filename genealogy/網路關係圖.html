@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 互動式網路關係圖範例</title>
+    <script src="https://d3js.org/d7/d3.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #f5f7fa;
+        }
+        #title-box {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 5px solid #2ecc71;
+            z-index: 10;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 20px; color: #2c3e50; }
+        p { margin: 0; font-size: 13px; color: #7f8c8d; }
+        
+        /* 關係連線樣式 */
+        .link {
+            stroke: #95a5a6;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+        /* 節點樣式 */
+        .node circle {
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+        .node text {
+            font-size: 11px;
+            font-weight: bold;
+            fill: #34495e;
+            pointer-events: none; /* 防止文字干擾滑鼠拖曳事件 */
+        }
+        #hint {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            background: #333;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+    <div id="title-box">
+        <h1>D3.js 動態網路關係圖 (力導向圖)</h1>
+        <p>模擬物理力學的網絡佈局，呈現實體之間的複雜關聯</p>
+    </div>
+
+    <div id="hint">💡 提示：可以用滑鼠【點擊並拖曳】任何一個圓圈，體驗物理彈力效果。</div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- 1. 定義網絡數據 (節點與連線關係) ---
+        // group 用來分類（區分顏色），size 用來決定圓圈大小
+        const dataset = {
+            nodes: [
+                { id: "核心核心", group: 1, size: 15 },
+                { id: "大主管 A", group: 2, size: 12 },
+                { id: "大主管 B", group: 3, size: 12 },
+                { id: "大主管 C", group: 4, size: 12 },
+                { id: "員工 A1", group: 2, size: 8 },
+                { id: "員工 A2", group: 2, size: 8 },
+                { id: "員工 B1", group: 3, size: 8 },
+                { id: "員工 B2", group: 3, size: 8 },
+                { id: "員工 C1", group: 4, size: 8 },
+                { id: "跨部門專案專員", group: 5, size: 10 }
+            ],
+            links: [
+                { source: "核心核心", target: "大主管 A" },
+                { source: "核心核心", target: "大主管 B" },
+                { source: "核心核心", target: "大主管 C" },
+                { source: "大主管 A", target: "員工 A1" },
+                { source: "大主管 A", target: "員工 A2" },
+                { source: "大主管 B", target: "員工 B1" },
+                { source: "大主管 B", target: "員工 B2" },
+                { source: "大主管 C", target: "員工 C1" },
+                // 增加跨組織的連線，這在樹狀圖很難呈現，但網路關係圖可以完美處理
+                { source: "跨部門專案專員", target: "大主管 A" },
+                { source: "跨部門專案專員", target: "員工 B2" },
+                { source: "跨部門專案專員", target: "員工 C1" }
+            ]
+        };
+
+        // --- 2. 初始化畫布尺寸 ---
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select("#canvas-container")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // D3.js 內建的自動顏色分類器
+        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+        // --- 3. 建立物理力導向模擬器 (Force Simulation) ---
+        const simulation = d3.forceSimulation(dataset.nodes)
+            // 連線引力：設定連線數據，並讓連線長度固定在 90 像素
+            .force("link", d3.forceLink(dataset.links).id(d => d.id).distance(90))
+            // 萬有排斥力：負值代表排斥，數值越大排斥越遠
+            .force("charge", d3.forceManyBody().strength(-200))
+            // 中心匯集力：把整個網絡穩固在畫布正中央
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // --- 4. 開始繪製 SVG 元素 ---
+        // 繪製連線 (必須放在節點前面，線段才不會擋住圓圈)
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(dataset.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        // 建立節點複合容器物件
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(dataset.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag() // 綁定滑鼠拖曳事件
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // 在複合容器內畫上圓圈
+        node.append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => colorScale(d.group));
+
+        // 在複合容器內畫上文字 (往右偏 12px 避開圓心)
+        node.append("text")
+            .attr("x", d => d.size + 4)
+            .attr("y", 4)
+            .text(d => d.id);
+
+        // --- 5. 核心動態刷新：物理引擎每走一步，就重新設定座標位置 ---
+        simulation.on("tick", () => {
+            // 更新連線的兩端坐標 (source 與 target 的 x, y)
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            // 更新節點容器的整體坐標
+            node
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // --- 6. 滑鼠拖曳的物理控制函式 ---
+        // 當滑鼠開始抓取
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart(); // 重新喚醒物理模擬
+            d.fx = d.x; // fx 與 fy 代表固定坐標 (fixed)
+            d.fy = d.y;
+        }
+
+        // 當滑鼠正在拖曳中
+        function dragged(event, d) {
+            d.fx = event.x; // 讓節點坐標死死跟著滑鼠位置
+            d.fy = event.y;
+        }
+
+        // 當滑鼠放開
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0); // 讓物理模擬冷卻回歸靜止
+            d.fx = null; // 解除固定，讓節點回歸物理引力彈性擺動
+            d.fy = null;
+        }
+
+        // 視窗縮放自動調整
+        window.addEventListener("resize", () => {
+            svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
+            simulation.force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2));
+            simulation.alpha(0.3).restart();
+        });
+    </script>
+    
+</body>
+</html>

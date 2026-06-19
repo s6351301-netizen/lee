@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 10層深度網站結構超連結關係圖 (文字18PX版)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000; 
+        }
+        #title-box {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            background: rgba(30, 32, 41, 0.95);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-left: 5px solid #3498db;
+            z-index: 10;
+        }
+        /* 所有標題與副標題文字皆統一改為 18px */
+        h1 { margin: 0 0 5px 0; font-size: 18px; color: #ecf0f1; }
+        p { margin: 0; font-size: 18px; color: #95a5a6; line-height: 1.5; }
+        
+        /* 網頁超連結線條樣式 */
+        .link {
+            stroke: #546e7a;
+            stroke-opacity: 0.5;
+            stroke-width: 1.5px;
+        }
+        /* 網頁節點樣式 */
+        .node circle {
+            stroke: #ed0000;
+            stroke-width: 1.5px;
+            cursor: pointer;
+        }
+        /* 【核心修改】節點名稱文字一律改為 18px */
+        .node text {
+            font-size: 18px;
+            fill: #b2bec3;
+            pointer-events: none;
+        }
+        /* 鼠標懸停在節點上時加亮 */
+        .node:hover circle {
+            stroke: #fff;
+            stroke-width: 2px;
+        }
+        .node:hover text {
+            fill: #fff;
+            font-weight: bold;
+        }
+        /* 【核心修改】底部提示字改為 18px */
+        #hint {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 8px 14px;
+            font-size: 18px;
+            border-radius: 4px;
+            opacity: 0.9;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="title-box">
+        <h1>網站超連結結構圖 (Website Link Sitemap)</h1>
+        <p><strong>結構規模：</strong>精確 10 層超連結深度 / 40 個網頁節點</p>
+        <p><strong>視覺邏輯：</strong>圓圈越大代表該網頁內部連結與權重越高（如首頁、聯絡我們）</p>
+    </div>
+
+    <div id="hint">💡 互動提示：可滑鼠【滾輪放大縮小】畫布、按住背景【拖曳視角】、或是【抓取網頁節點】體驗物理彈力。</div>
+
+    <div id="tree-canvas"></div>
+
+    <script>
+        // --- 1. 建立精確 10 層深度的網站地圖數據 ---
+        const websiteData = {
+            nodes: [
+                { id: "首頁 (index.html)", layer: 1, size: 24 },
+                { id: "關於我們 (about)", layer: 2, size: 16 },
+                { id: "商品中心 (products)", layer: 2, size: 18 },
+                { id: "最新消息 (news)", layer: 2, size: 15 },
+                { id: "聯絡我們 (contact)", layer: 2, size: 16 },
+                { id: "公司歷程", layer: 3, size: 12 },
+                { id: "硬體商品線", layer: 3, size: 14 },
+                { id: "軟體商品線", layer: 3, size: 14 },
+                { id: "企業公告", layer: 3, size: 11 },
+                { id: "線上表單", layer: 3, size: 11 },
+                { id: "3C周邊類別", layer: 4, size: 10 },
+                { id: "智慧家電類別", layer: 4, size: 10 },
+                { id: "雲端SaaS服務", layer: 4, size: 10 },
+                { id: "活動新聞稿", layer: 4, size: 9 },
+                { id: "筆電配件專區", layer: 5, size: 9 },
+                { id: "手機防護殼專區", layer: 5, size: 9 },
+                { id: "廚房智能家電", layer: 5, size: 9 },
+                { id: "大數據分析模組", layer: 5, size: 9 },
+                { id: "Type-C集線器產品頁", layer: 6, size: 8 },
+                { id: "氮化鎵快充頭產品頁", layer: 6, size: 8 },
+                { id: "AI變頻微波爐產品頁", layer: 6, size: 8 },
+                { id: "核心運算API說明", layer: 6, size: 8 },
+                { id: "快充頭規格參數檔", layer: 7, size: 7 },
+                { id: "微波爐節能認證書", layer: 7, size: 7 },
+                { id: "API開發者指南", layer: 7, size: 8 },
+                { id: "API認證授權機制", layer: 7, size: 7 },
+                { id: "充電器安全過載規範說明", layer: 8, size: 6 },
+                { id: "OAuth2.0串接流程", layer: 8, size: 7 },
+                { id: "金鑰產生器頁面", layer: 8, size: 6 },
+                { id: "錯誤代碼對照表", layer: 8, size: 7 },
+                { id: "安全性漏洞聲明條款", layer: 9, size: 6 },
+                { id: "全域資安防護政策", layer: 9, size: 6 },
+                { id: "進階偵錯Log紀錄系統", layer: 9, size: 6 },
+                { id: "資料庫加密異常排除", layer: 9, size: 6 },
+                { id: "隱私權外部反查雜湊頁", layer: 10, size: 5 },
+                { id: "資安內部稽核紀錄備份", layer: 10, size: 5 },
+                { id: "底層核心除錯核心Dump檔", layer: 10, size: 5 },
+                { id: "歷史過期備用條款(2018)", layer: 10, size: 5 },
+                { id: "歷史過期備用條款(2015)", layer: 10, size: 5 }
+            ],
+            links: [
+                { source: "首頁 (index.html)", target: "關於我們 (about)" },
+                { source: "首頁 (index.html)", target: "商品中心 (products)" },
+                { source: "首頁 (index.html)", target: "最新消息 (news)" },
+                { source: "首頁 (index.html)", target: "聯絡我們 (contact)" },
+                { source: "關於我們 (about)", target: "公司歷程" },
+                { source: "商品中心 (products)", target: "硬體商品線" },
+                { source: "商品中心 (products)", target: "軟體商品線" },
+                { source: "最新消息 (news)", target: "企業公告" },
+                { source: "聯絡我們 (contact)", target: "線上表單" },
+                { source: "硬體商品線", target: "3C周邊類別" },
+                { source: "硬體商品線", target: "智慧家電類別" },
+                { source: "軟體商品線", target: "雲端SaaS服務" },
+                { source: "企業公告", target: "活動新聞稿" },
+                { source: "3C周邊類別", target: "筆電配件專區" },
+                { source: "3C周邊類別", target: "手機防護殼專區" },
+                { source: "智慧家電類別", target: "廚房智能家電" },
+                { source: "雲端SaaS服務", target: "大數據分析模組" },
+                { source: "筆電配件專區", target: "Type-C集線器產品頁" },
+                { source: "手機防護殼專區", target: "氮化鎵快充頭產品頁" },
+                { source: "廚房智能家電", target: "AI變頻微波爐產品頁" },
+                { source: "大數據分析模組", target: "核心運算API說明" },
+                { source: "氮化鎵快充頭產品頁", target: "快充頭規格參數檔" },
+                { source: "AI變頻微波爐產品頁", target: "微波爐節能認證書" },
+                { source: "核心運算API說明", target: "API開發者指南" },
+                { source: "核心運算API說明", target: "API認證授權機制" },
+                { source: "快充頭規格參數檔", target: "充電器安全過載規範說明" },
+                { source: "API認證授權機制", target: "OAuth2.0串接流程" },
+                { source: "API認證授權機制", target: "金鑰產生器頁面" },
+                { source: "API開發者指南", target: "錯誤代碼對照表" },
+                { source: "充電器安全過載規範說明", target: "安全性漏洞聲明條款" },
+                { source: "OAuth2.0串接流程", target: "全域資安防護政策" },
+                { source: "錯誤代碼對照表", target: "進階偵錯Log紀錄系統" },
+                { source: "錯誤代碼對照表", target: "資料庫加密異常排除" },
+                { source: "安全性漏洞聲明條款", target: "隱私權外部反查雜湊頁" },
+                { source: "全域資安防護政策", target: "資安內部稽核紀錄備份" },
+                { source: "進階偵錯Log紀錄系統", target: "底層核心除錯核心Dump檔" },
+                { source: "資料庫加密異常排除", target: "歷史過期備用條款(2018)" },
+                { source: "資料庫加密異常排除", target: "歷史過期備用條款(2015)" },
+                { source: "歷史過期備用條款(2015)", target: "首頁 (index.html)" },
+                { source: "隱私權外部反查雜湊頁", target: "首頁 (index.html)" },
+                { source: "底層核心除錯核心Dump檔", target: "聯絡我們 (contact)" }
+            ]
+        };
+
+        // --- 2. 初始化畫布與 D3 縮放機制 ---
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select("#tree-canvas")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const gMain = svg.append("g");
+
+        // 縮放設定
+        svg.call(d3.zoom()
+            .extent([[0, 0], [width, height]])
+            .scaleExtent([0.1, 4])
+            .on("zoom", (event) => {
+                gMain.attr("transform", event.transform);
+            }));
+
+        // 使用彩虹漸層色階區分 10 個層級
+        const colorScale = d3.scaleSequential(d3.interpolateTurbo).domain([1, 11]);
+
+        // --- 3. 配置物理力學引擎（調整排斥力與連線長度，預留空間給 18px 字體） ---
+        const simulation = d3.forceSimulation(websiteData.nodes)
+            .force("link", d3.forceLink(websiteData.links).id(d => d.id).distance(120)) // 拉長連線間距
+            .force("charge", d3.forceManyBody().strength(-400)) // 加強排斥力
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            // 碰撞防護牆：確保大字體節點跟文字絕不重疊
+            .force("collision", d3.forceCollide().radius(d => d.size + 45));
+
+        // --- 4. 繪製超連結路徑 ---
+        const link = gMain.append("g")
+            .selectAll("line")
+            .data(websiteData.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        // --- 5. 繪製網頁節點群組 ---
+        const node = gMain.append("g")
+            .selectAll("g")
+            .data(websiteData.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // 繪製網頁圓圈
+        node.append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => colorScale(d.layer));
+
+        // 繪製網頁名稱文字標籤 (往右修正 8px 避免貼太近圓圈)
+        node.append("text")
+            .attr("x", d => d.size + 8)
+            .attr("y", 6)
+            .text(d => d.id);
+
+        // --- 6. 物理模擬步進更新 ---
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // --- 7. 滑鼠拖曳互動控制處理 ---
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // 響應式視窗縮放
+        window.addEventListener("resize", () => {
+            svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
+            simulation.force("center", d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2));
+            simulation.alpha(0.3).restart();
+        });
+    </script>
+</body>
+</html>
