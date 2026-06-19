@@ -45,6 +45,26 @@ $res_edit = $conn->query("SELECT * FROM dev_tracking");
 while ($row_edit = $res_edit->fetch_assoc()) {
     $edit_data[$row_edit['id']] = $row_edit;
 }
+
+// 處理圖片上傳 (必須放在檔案最上方)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET['action']) && $_GET['action'] == 'upload_icon') {
+    $uploaded_files = [];
+    if (!empty($_FILES['files'])) {
+        $target_dir = "uploads/"; // 確保此資料夾存在並有寫入權限
+        if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+        
+        foreach ($_FILES['files']['name'] as $key => $name) {
+            $new_name = time() . '_' . basename($name);
+            $target_file = $target_dir . $new_name;
+            if (move_uploaded_file($_FILES['files']['tmp_name'][$key], $target_file)) {
+                $uploaded_files[] = $target_file;
+            }
+        }
+    }
+    // 關鍵：必須回傳 JSON，並立即終止程式
+    echo json_encode(['success' => true, 'files' => $uploaded_files]);
+    exit; 
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -62,8 +82,6 @@ while ($row_edit = $res_edit->fetch_assoc()) {
         .jodit-status-bar { background: #e0f2fe !important; color: #334155 !important; border-top: 1px solid #bae6fd !important; }
         .jodit-wysiwyg { color: #000000; }
         .jodit-wysiwyg a { text-decoration: underline !important; }
-
-
 
         .container {
             max-width: 1100px;
@@ -173,7 +191,7 @@ while ($row_edit = $res_edit->fetch_assoc()) {
                 <th>AI開發網址</th>
                 <th>練習技能點</th>
                 <th>參考文獻</th>
-                <th>開發筆記<span class="expand-link" id="openEditorBtn">[展開進階編輯"無法上傳檔案"]</span></th>
+                <th>開發筆記</th>
                 <th>時間-起</th>
             </tr>
             <?php while ($row = $result->fetch_assoc()): ?>
@@ -191,7 +209,7 @@ while ($row_edit = $res_edit->fetch_assoc()) {
                     <td><button onclick="showContentInWindow('AI 開發網址', `<?php echo addslashes(str_replace('`', '\`', $row['ai_url'])); ?>`)">檢視</button></td>
                     <td><button onclick="showContentInWindow('練習技能點', `<?php echo addslashes(str_replace('`', '\`', $row['skill_practiced'])); ?>`)">檢視</button></td>
                     <td><button onclick="showContentInWindow('參考文獻', `<?php echo addslashes(str_replace('`', '\`', $row['references'])); ?>`)">檢視</button></td>
-                    <td><button onclick="showContentInWindow('開發筆記', `<?php echo addslashes(str_replace('`', '\`', $row['dev_note'])); ?>`)">檢視</button></td>
+                    <td><button onclick="showContentInWindow('開發筆記', `<?php echo addslashes(str_replace('`', '\`', $row['dev_note'])); ?>`)">檢視</button></td>              
                     <td><?php echo htmlspecialchars($row['dev_start_at']); ?></td>
                 </tr>
             <?php endwhile; ?>

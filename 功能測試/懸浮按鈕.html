@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>懸浮按鈕</title>
+    <style>
+        /* 關閉按鈕的外觀與固定效果 */
+.fixed-close-btn {
+    position: fixed;         /* 鎖定位置 */
+    bottom: 25px;            /* 距離底部距離 */
+    left: 50%;               /* 水平居中 */
+    transform: translateX(-50%); /* 修正置中偏移 */
+    
+    /* 按鈕美化 */
+    padding: 12px 40px;
+    background: linear-gradient(135deg, #475569, #1e293b); /* 漸層色 */
+    color: white;
+    border: none;
+    border-radius: 50px;     /* 膠囊形狀 */
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* 立體陰影 */
+    transition: all 0.3s ease; /* 滑鼠懸停特效 */
+    z-index: 9999;           /* 確保浮在最上層 */
+}
+
+/* 滑鼠移上去時的特效 */
+.fixed-close-btn:hover {
+    background: #000;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    transform: translateX(-50%) scale(1.05); /* 微放大 */
+}
+    </style>
+</head>
+<body>
+   <div id="content">
+        <h3>檢視內容</h3>
+        <p>一個漂亮、固定在視窗底部、且不會隨捲軸捲動的「關閉視窗」按鈕樣式，完全透過 CSS 與 JS 的外觀處理即可。...</p>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+   <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+    </div>
+
+    <button class="fixed-close-btn" onclick="window.close()">
+        關閉視窗
+    </button>
+</body>
+</html>
