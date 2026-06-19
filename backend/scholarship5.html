@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宗親優秀獎學金申請</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        input,
+        select {
+            margin: 10px;
+            padding: 5px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 98%;
+            margin: 20px auto;
+        }
+
+        th,
+        td {
+            border: 1px solid #666;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #e6f2ff;
+        }
+
+        tr:hover {
+            background-color: #87cefa;
+        }
+
+        /* 統計列樣式 */
+        .stats-row th {
+            text-align: center;
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+
+        .male-stats {
+            color: darkblue;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .female-stats {
+            color: darkred;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .total-stats {
+            color: darkgreen;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .all-stats {
+            color: purple;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        /* 錯誤訊息提示區優化 */
+        .error-message {
+            padding: 20px;
+            background: #fff0f0;
+            border: 1px solid #ffcccc;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 20px;
+            text-align: left;
+            max-width: 80%;
+        }
+        .error-message h3 {
+            margin-top: 0;
+            color: #cc0000;
+        }
+
+        /* D3 圖表專用樣式 */
+        #d3-chart-wrapper {
+            width: 95%;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .axis-label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            fill: #1a5276;
+        }
+        /* 懸停提示框 (Tooltip) */
+        .d3-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            text-align: left;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="stats-container" style="transform: scale(0.8); transform-origin: top center; margin-bottom: -100px;"></div>
+    
+    <div id="d3-chart-wrapper" style="display: none;">
+        <div id="d3-chart-container"></div>
+    </div>
+
+    <div id="tooltip" class="d3-tooltip"></div>
+
+    <div id="content-container">
+        <p style="color: #666; text-align: center;">系統正嘗試調閱 genealogy2.json 宗族字輩資料庫...</p>
+    </div>
+
+    <script>
+        // 建立一個用於計算台中各區人數統計並繪製 D3 圖表的函式
+        function generateTaichungStats() {
+            // 1. 定義台中市所有的行政區清單
+            const taichungDistricts = [
+                "中區", "東區", "南區", "西區", "北區", "西屯區", "南屯區", "北屯區",
+                "豐原區", "大里區", "太平區", "清水區", "沙鹿區", "大甲區", "東勢區",
+                "梧棲區", "烏日區", "神岡區", "大雅區", "潭子區", "大肚區", "龍井區",
+                "霧峰區", "和平區", "石岡區", "外埔區", "大安區", "后里區", "新社區"
+            ];
+
+            // 初始化統計物件
+            let statsData = {};
+            taichungDistricts.forEach(dist => {
+                statsData[dist] = { male: 0, female: 0, total: 0 };
+            });
+
+            // 2. 抓取詳細結果資料表內的所有資料列 (排除標頭列 th)
+            const rows = document.querySelectorAll('#content-container table tr');
+            let hasTaichungData = false;
+
+            rows.forEach(row => {
+                const tds = row.querySelectorAll('td');
+                if (tds.length >= 7) { 
+                    const gender = tds[2].textContent.trim(); // 性別在第3欄
+                    const address = tds[6].textContent.trim(); // 住址在第7欄
+                    
+                    // 檢查住址屬於哪一個台中行政區
+                    for (let dist of taichungDistricts) {
+                        if (address.includes(dist) || address.includes("台中市" + dist.replace("區", ""))) {
+                            hasTaichungData = true;
+                            if (gender === "男") {
+                                statsData[dist].male++;
+                            } else if (gender === "女") {
+                                statsData[dist].female++;
+                            }
+                            statsData[dist].total++;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            // 3. 如果有撈到資料，建立表格與 D3 圖表
+            const statsContainer = document.getElementById('stats-container');
+            const d3Wrapper = document.getElementById('d3-chart-wrapper');
+            
+            if (hasTaichungData) {
+                // 先篩選出有資料的行政區
+                let activeDistricts = taichungDistricts.filter(dist => statsData[dist].total > 0);
+                
+                let grandMale = 0, grandFemale = 0, grandTotal = 0;
+                taichungDistricts.forEach(dist => {
+                    grandMale += statsData[dist].male;
+                    grandFemale += statsData[dist].female;
+                    grandTotal += statsData[dist].total;
+                });
+
+                // --- 渲染 HTML 統計表格 ---
+                let html = `
+                    <div style="width: 95%; margin: 20px auto; text-align: left;">
+                        <table style="margin-bottom: 0; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th colspan="16" style="background-color: #f0f0f0; padding: 15px; text-align: center; border-bottom: 1px solid #666;">
+                                        <h2 style="color: #1a5276; margin: 0 0 10px 0;">台中市各區宗親人數統計表</h2>
+                                        <div style="font-size: 16px; color: #333;">
+                                            <span style="font-weight: bold;">[ 台中市總計 ] </span>
+                                            <span>男：<span class="male-stats">${grandMale}</span> ｜ </span>
+                                            <span>女：<span class="female-stats">${grandFemale}</span> ｜ </span>
+                                            <span>合計：<span class="all-stats">${grandTotal}</span></span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th style="text-align:center; width: 10%;">區域</th><th style="text-align:center; width: 5%;">男</th><th style="text-align:center; width: 5%;">女</th><th style="text-align:center; width: 5%;">合計</th>
+                                    <th style="text-align:center; width: 10%; border-left: 2px solid #666;">區域</th><th style="text-align:center; width: 5%;">男</th><th style="text-align:center; width: 5%;">女</th><th style="text-align:center; width: 5%;">合計</th>
+                                    <th style="text-align:center; width: 10%; border-left: 2px solid #666;">區域</th><th style="text-align:center; width: 5%;">男</th><th style="text-align:center; width: 5%;">女</th><th style="text-align:center; width: 5%;">合計</th>
+                                    <th style="text-align:center; width: 10%; border-left: 2px solid #666;">區域</th><th style="text-align:center; width: 5%;">男</th><th style="text-align:center; width: 5%;">女</th><th style="text-align:center; width: 5%;">合計</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                for (let i = 0; i < activeDistricts.length; i += 4) {
+                    html += `<tr>`;
+                    for (let j = 0; j < 4; j++) {
+                        let currentIndex = i + j;
+                        if (currentIndex < activeDistricts.length) {
+                            let dist = activeDistricts[currentIndex];
+                            let data = statsData[dist];
+                            let borderStyle = (j > 0) ? 'style="border-left: 2px solid #666;"' : '';
+                            html += `
+                                <td ${borderStyle}><strong>${dist}</strong></td>
+                                <td class="male-stats" style="font-size:20px; text-align:center;">${data.male}</td>
+                                <td class="female-stats" style="font-size:20px; text-align:center;">${data.female}</td>
+                                <td class="total-stats" style="font-size:20px; text-align:center;">${data.total}</td>
+                            `;
+                        } else {
+                            html += `<td style="border-left: 2px solid #666;"></td><td></td><td></td><td></td>`;
+                        }
+                    }
+                    html += `</tr>`;
+                }
+                html += `</tbody></table><hr style="border: 0; height: 1px; background: #ccc; margin: 30px 0;"></div>`;
+                statsContainer.innerHTML = html;
+
+                // --- 執行 D3 視覺化長條圖繪製 ---
+                d3Wrapper.style.display = "block";
+                drawD3Chart(activeDistricts, statsData);
+
+            } else {
+                statsContainer.innerHTML = "";
+                d3Wrapper.style.display = "none";
+            }
+        }
+
+        // 核心 D3 繪圖函式
+        function drawD3Chart(districts, statsData) {
+            // 清空舊的圖表內容避免重複繪製
+            const container = d3.select("#d3-chart-container");
+            container.selectAll("*").remove();
+
+            // 格式化 D3 需要的資料結構
+            const chartData = districts.map(dist => ({
+                district: dist,
+                "男": statsData[dist].male,
+                "女": statsData[dist].female,
+                "總和": statsData[dist].total
+            }));
+
+            // 定義畫布尺寸與邊界
+            const margin = { top: 60, right: 30, bottom: 60, left: 50 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 450 - margin.top - margin.bottom;
+
+            // 建立 SVG 畫布
+            const svg = container.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+              .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // 設定 X 軸主要群組比例尺 (決定行政區位置)
+            const x0 = d3.scaleBand()
+                .domain(chartData.map(d => d.district))
+                .rangeRound([0, width])
+                .paddingInner(0.2);
+
+            // 設定群組內部的子比例尺 (決定男、女、總和長條圖的並排位置)
+            const keys = ["男", "女", "總和"];
+            const x1 = d3.scaleBand()
+                .domain(keys)
+                .rangeRound([0, x0.bandwidth()])
+                .padding(0.05);
+
+            // 設定 Y 軸比例尺 (決定長條圖高度)
+            const maxValue = d3.max(chartData, d => d3.max(keys, key => d[key]));
+            const y = d3.scaleLinear()
+                .domain([0, maxValue || 10]) // 避免全為0時圖表出錯
+                .nice()
+                .rangeRound([height, 0]);
+
+            // 設定顏色群
+            const color = d3.scaleOrdinal()
+                .domain(keys)
+                .range(["#1f77b4", "#d62728", "#2ca02c"]); // 藍色(男)、紅色(女)、綠色(總和)
+
+            // 繪製 X 軸
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x0))
+                .selectAll("text")
+                .style("font-size", "13px")
+                .style("font-weight", "bold");
+
+            // 繪製 Y 軸
+            svg.append("g")
+                .call(d3.axisLeft(y).ticks(null, "s"))
+              .append("text")
+                .attr("x", 2)
+                .attr("y", y(y.ticks().pop()) + 0.5)
+                .attr("dy", "0.32em")
+                .attr("fill", "#000")
+                .attr("font-weight", "bold")
+                .attr("text-anchor", "start")
+                .text("人數 (人)");
+
+            // 建立群組並綁定資料繪製長條圖
+            const tooltip = d3.select("#tooltip");
+
+            svg.append("g")
+              .selectAll("g")
+              .data(chartData)
+              .join("g")
+                .attr("transform", d => `translate(${x0(d.district)},0)`)
+              .selectAll("rect")
+              .data(d => keys.map(key => ({ key, value: d[key], district: d.district })))
+              .join("rect")
+                .attr("x", d => x1(d.key))
+                .attr("y", d => y(0)) // 動態轉場起點
+                .attr("width", x1.bandwidth())
+                .attr("height", 0)    // 動態轉場起點
+                .attr("fill", d => color(d.key))
+                .attr("cursor", "pointer")
+                // 互動滑鼠事件
+                .on("mouseover", function(event, d) {
+                    d3.select(this).opacity = 0.85;
+                    tooltip.style("opacity", 1)
+                           .html(`<strong>${d.district}</strong><br/>${d.key}: <span style="font-size:15px;font-weight:bold;">${d.value}</span> 人`);
+                })
+                .on("mousemove", function(event) {
+                    tooltip.style("left", (event.pageX + 15) + "px")
+                           .style("top", (event.pageY - 40) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this).opacity = 1;
+                    tooltip.style("opacity", 0);
+                })
+                // 加入 D3 載入時的動態升起轉場特效 (Transitions)
+                .transition()
+                .duration(800)
+                .attr("y", d => y(d.value))
+                .attr("height", d => height - y(d.value));
+
+            // 繪製圖表標題
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", -margin.top / 2)
+                .attr("text-anchor", "middle")
+                .attr("class", "chart-title")
+                .text("台中市各區宗親人數分布圖 (D3.js 視覺化展示)");
+
+            // 繪製圖例 (Legend)
+            const legend = svg.append("g")
+                .attr("font-family", "sans-serif")
+                .attr("font-size", 12)
+                .attr("text-anchor", "end")
+              .selectAll("g")
+              .data(keys.slice())
+              .join("g")
+                .attr("transform", (d, i) => `translate(0,${i * 24 - 40})`);
+
+            legend.append("rect")
+                .attr("x", width - 19)
+                .attr("width", 19)
+                .attr("height", 19)
+                .attr("fill", color);
+
+            legend.append("text")
+                .attr("x", width - 24)
+                .attr("y", 9.5)
+                .attr("dy", "0.32em")
+                .style("font-weight", "bold")
+                .text(d => d);
+        }
+
+        // 原本的非同步加載核心資料邏輯不變
+        async function loadGenealogyData() {
+            const container = document.getElementById('content-container');
+            
+            try {
+                const response = await fetch('../json/genealogy2.json');
+                if (!response.ok) throw new Error(`網頁讀取 JSON 失敗，錯誤代碼: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data && data[1] && data[1].note) {
+                    const rawNote = data[1].note;
+                    
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(rawNote, 'text/html');
+                    
+                    const scripts = Array.from(doc.querySelectorAll('script'));
+                    scripts.forEach(s => s.remove());
+                    
+                    container.innerHTML = doc.body.innerHTML;
+
+                    for (let oldScript of scripts) {
+                        const newScript = document.createElement('script');
+                        
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        
+                        if (oldScript.textContent) {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        
+                        if (newScript.src) {
+                            await new Promise((resolve) => {
+                                newScript.onload = resolve;
+                                newScript.onerror = resolve;
+                                document.body.appendChild(newScript);
+                            });
+                        } else {
+                            document.body.appendChild(newScript);
+                        }
+                    }
+                    
+                    console.log("✅ 全模組（含外部 CDN 套件）已成功依序完全加載並執行。");
+                    
+                    setTimeout(() => {
+                        const searchInput = container.querySelector('input[type="text"]') || container.querySelector('input');
+                        
+                        if (searchInput) {
+                            searchInput.value = "台中"; 
+                            
+                            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            
+                            const searchBtn = container.querySelector('button') || container.querySelector('input[type="button"]') || container.querySelector('input[type="submit"]');
+                            if (searchBtn) {
+                                searchBtn.click();
+                            }
+                            console.log("🎯 已成功預設查詢「台中」的資料。");
+
+                            setTimeout(() => {
+                                generateTaichungStats();
+                            }, 150); 
+                        }
+                    }, 100); 
+                    
+                } else {
+                    container.innerHTML = "<div class='error-message'>⚠️ JSON 找不到 \"note\" 欄位資料。</div>";
+                }
+                
+            } catch (error) {
+                console.error("載入失敗:", error);
+                container.innerHTML = `<div class="error-message"><h3>⚠️ 無法讀取資料</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadGenealogyData);
+    </script>
+</body>
+</html>

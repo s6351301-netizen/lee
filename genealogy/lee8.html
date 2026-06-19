@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>李氏家族八代宗親字輩族譜 (D3.js) - 修正版</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #f7f9fa;
+        }
+        #title-container {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 22px;
+            color: #1a5276;
+        }
+        p {
+            margin: 0;
+            font-size: 13px;
+            color: #555;
+        }
+        /* D3 節點與線條樣式 */
+        .node circle {
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+        .node text {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #333;
+        }
+        .link {
+            fill: none;
+            stroke: #b2c2d1;
+            stroke-width: 1.5px;
+        }
+        /* 提示引導 */
+        #hint {
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+            background: #333;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="title-container">
+        <h1>隴西李氏家族族譜 (修正版)</h1>
+        <p>字輩順序：繩 ➔ 祖 ➔ 武 ➔ 德 ➔ 業 ➔ 貽 ➔ 孫 ➔ 謀（共八代，總計 534 人）</p>
+    </div>
+
+    <div id="hint">💡 提示：點擊藍色圓圈可【展開/收合】分支。可用滑鼠滾輪【放大/縮小】、按住拖曳畫布。</div>
+    
+    <div id="tree-container"></div>
+
+    <script>
+        // --- 1. 自動依新需求隨機生成 534 人的八代李氏數據 ---
+        function generateFamilyData() {
+            // 字輩定義
+            const generationGens = ["繩", "祖", "武", "德", "業", "貽", "孫", "謀"];
+            // 隨機名字尾字字典
+            const namePool = ["山", "川", "海", "峰", "宇", "宏", "強", "明", "志", "文", "武", "德", "賢", "才", "良", "平", "安", "康", "健", "新", "興", "昌", "盛", "榮", "華", "富", "貴", "生", "其", "克", "紹", "先", "光", "大", "廷"];
+            
+            function getRandomName(genIdx) {
+                const genChar = generationGens[genIdx];
+                const lastChar = namePool[Math.floor(Math.random() * namePool.length)];
+                return `李${genChar}${lastChar}`;
+            }
+
+            // 建立第1代根節點
+            let rootNode = { name: getRandomName(0), children: [] };
+            let currentGenNodes = [rootNode];
+
+            // 題目要求的各代人數設定：第2代到第8代 (3, 10, 20, 50, 100, 150, 200)
+            const genSizes = [3, 10, 20, 50, 100, 150, 200]; 
+
+            for (let g = 0; g < genSizes.length; g++) {
+                let nextGenSize = genSizes[g];
+                let nextGenNodes = [];
+
+                // 依據目標人數，將子節點平均或循環分流掛載到上一代節點中
+                for (let i = 0; i < nextGenSize; i++) {
+                    let parentNode = currentGenNodes[i % currentGenNodes.length];
+                    let child = { name: getRandomName(g + 1), children: [] };
+                    if (!parentNode.children) parentNode.children = [];
+                    parentNode.children.push(child);
+                    nextGenNodes.push(child);
+                }
+                currentGenNodes = nextGenNodes;
+            }
+            return rootNode;
+        }
+
+        const familyData = generateFamilyData();
+
+        // --- 2. D3.js 畫布與樹狀圖佈局設定 ---
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // 建立 SVG 畫布，並加上 Zoom（縮放/拖曳）功能
+        const svg = d3.select("#tree-container")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const gMain = svg.append("g"); // 所有的圖形元素都放在這個群組，以便統一縮放
+
+        svg.call(d3.zoom()
+            .extent([[0, 0], [width, height]])
+            .scaleExtent([0.05, 3]) // 因人數增加，微調最小縮放比例至 0.05 倍，方便看全景
+            .on("zoom", (event) => {
+                gMain.attr("transform", event.transform);
+            }));
+
+        // 設定 D3 樹狀佈局：微調節點垂直間距為 32px，水平代數間距為 190px，防文字重疊
+        const tree = d3.tree().nodeSize([32, 190]); 
+
+        let i = 0;
+        const duration = 750; // 動態轉場時間 (毫秒)
+        let root;
+
+        // 初始化階層資料
+        root = d3.hierarchy(familyData, d => d.children);
+        root.x0 = height / 2; // 起始點在畫布垂直中央
+        root.y0 = 0;
+
+        // 預設優化：將第 4 代（德字輩）以後的子孫先收合，維持初次載入時的畫面整潔
+        root.children.forEach(collapse);
+
+        function collapse(d) {
+            if (d.children) {
+                d._children = d.children;
+                d._children.forEach(collapse);
+                d.children = null;
+            }
+        }
+
+        // 開始繪製/更新圖表
+        update(root);
+
+        // --- 3. 核心繪圖與動態渲染函式 ---
+        function update(source) {
+            // 計算新的樹狀圖物理座標位置
+            const treeData = tree(root);
+
+            // 取得節點與連接線的陣列
+            const nodes = treeData.descendants();
+            const links = treeData.links();
+
+            // 調整每代之間的 Y 軸固定間距 (水平展開，每代相隔 190px)
+            nodes.forEach(d => { d.y = d.depth * 190; });
+
+            // 調整起始點偏移量
+            const xOffset = 80;
+            const yOffset = height / 2;
+
+            // ---------------- 節點 (Nodes) 處理 ----------------
+            const node = gMain.selectAll('g.node')
+                .data(nodes, d => d.id || (d.id = ++i));
+
+            // Enter: 新增節點到父節點的舊位置
+            const nodeEnter = node.enter().append('g')
+                .attr('class', 'node')
+                .attr("transform", d => `translate(${source.y0 + xOffset}, ${source.x0 + yOffset})`)
+                .on('click', click);
+
+            // 為新節點畫上圓圈
+            nodeEnter.append('circle')
+                .attr('r', 1e-6)
+                .style("fill", d => d._children ? "lightsteelblue" : "#fff")
+                .style("stroke", d => d.depth === 0 ? "#cc0000" : "steelblue");
+
+            // 為新節點加上文字（姓名）
+            nodeEnter.append('text')
+                .attr("dy", ".35em")
+                .attr("x", d => d.children || d._children ? -13 : 13)
+                .attr("text-anchor", d => d.children || d._children ? "end" : "start")
+                .text(d => d.data.name);
+
+            // Update: 將所有節點滑順地平移到計算好的新座標位置
+            const nodeUpdate = nodeEnter.merge(node);
+
+            nodeUpdate.transition()
+                .duration(duration)
+                .attr("transform", d => `translate(${d.y + xOffset}, ${d.x + yOffset})`);
+
+            // 更新圓圈的顏色
+            nodeUpdate.select('circle')
+                .attr('r', 6.5)
+                .style("fill", d => d._children ? "steelblue" : "#fff")
+                .attr('cursor', 'pointer');
+
+            // Exit: 移除收合起來的節點
+            const nodeExit = node.exit().transition()
+                .duration(duration)
+                .attr("transform", d => `translate(${source.y + xOffset}, ${source.x + yOffset})`)
+                .remove();
+
+            nodeExit.select('circle')
+                .attr('r', 1e-6);
+
+            nodeExit.select('text')
+                .style('fill-opacity', 1e-6);
+
+            // ---------------- 連接線 (Links) 處理 ----------------
+            const link = gMain.selectAll('path.link')
+                .data(links, d => d.target.id);
+
+            // 建立橫向貝茲曲線生成器
+            function diagonal(s, d) {
+                return `M ${s.y + xOffset} ${s.x + yOffset}
+                        C ${(s.y + d.y) / 2 + xOffset} ${s.x + yOffset},
+                          ${(s.y + d.y) / 2 + xOffset} ${d.x + yOffset},
+                          ${d.y + xOffset} ${d.x + yOffset}`;
+            }
+
+            // Enter: 線條從父節點的舊位置延伸出來
+            const linkEnter = link.enter().insert('path', 'g')
+                .attr('class', 'link')
+                .attr('d', d => {
+                    const o = { x: source.x0, y: source.y0 };
+                    return diagonal(o, o);
+                });
+
+            // Update: 將線條轉換成滑順的連線曲線
+            const linkUpdate = linkEnter.merge(link);
+            linkUpdate.transition()
+                .duration(duration)
+                .attr('d', d => diagonal(d.source, d.target));
+
+            // Exit: 收合時，線條縮回父節點位置後消失
+            link.exit().transition()
+                .duration(duration)
+                .attr('d', d => {
+                    const o = { x: source.x, y: source.y };
+                    return diagonal(o, o);
+                })
+                .remove();
+
+            // 紀錄目前的舊位置
+            nodes.forEach(d => {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+        }
+
+        // 點擊節點時觸展展開或收合的事件
+        function click(event, d) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            } else {
+                d.children = d._children;
+                d._children = null;
+            }
+            update(d);
+        }
+    </script>
+</body>
+</html>
