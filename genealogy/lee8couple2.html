@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>李氏家族八代宗親夫妻並列族譜 (字輩置上直角版)</title>
+    <title>李氏家族八代宗親夫妻並列族譜 (配偶直列/字輩置上版)</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -50,17 +50,17 @@
         .node text {
             font-weight: bold;
         }
-        /* 字輩標記文字：稍微縮小，改用深灰色以利層次區分 */
+        /* 新增：字輩標記文字專屬樣式，顏色稍淡、字體稍微縮小以凸顯層次 */
         .text-gen-info {
             font-size: 10px;
             fill: #7f8c8d;
         }
         .text-husband {
-            font-size: 13px;
+            font-size: 12px;
             fill: #0d47a1;
         }
         .text-wife {
-            font-size: 13px;
+            font-size: 12px;
             fill: #880e4f;
         }
         /* 垂直夫妻連接虛線 */
@@ -69,12 +69,10 @@
             stroke-width: 1.5px;
             stroke-dasharray: 2,2;
         }
-        /* 傳統整齊直角族譜連接線 */
         .link {
             fill: none;
-            stroke: #a6acaf;
-            stroke-width: 2px;
-            stroke-linejoin: round;
+            stroke: #b2c2d1;
+            stroke-width: 1.5px;
         }
         /* 提示引導 */
         #hint {
@@ -95,10 +93,10 @@
     <div id="title-container">
         <h1>隴西李氏家族族譜 - 夫妻並列版 (配偶直列/字輩置上)</h1>
         <p><strong>字輩順序：</strong>繩 ➔ 祖 ➔ 武 ➔ 德 ➔ 業 ➔ 貽 ➔ 孫 ➔ 謀（共八代）</p>
-        <p><strong>精確人數：</strong>1 ➔ 3 ➔ 10 ➔ 20 ➔ 50 ➔ 100 ➔ 150 ➔ 200（字輩獨立標記於男性姓名上方）</p>
+        <p><strong>精確人數：</strong>1 ➔ 3 ➔ 10 ➔ 20 ➔ 50 ➔ 100 ➔ 150 ➔ 200（代際橫向發展，字輩獨立於男性姓名上方）</p>
     </div>
 
-    <div id="hint">💡 提示：點擊圓圈可【展開/收合】子孫。滑鼠滾輪可【放大/縮小】、按住可【拖曳畫布】。</div>
+    <div id="hint">💡 提示：點擊任何圓圈可【展開/收合】子孫。滑鼠滾輪可【放大/縮小】、按住可【拖曳畫布】。</div>
     
     <div id="tree-container"></div>
 
@@ -159,7 +157,7 @@
 
         const familyData = generateFamilyData();
 
-        // --- 2. D3.js 初始化畫布與縮放設定 ---
+        // --- 2. D3.js 初始化畫布與畫布縮放 ---
         const width = window.innerWidth;
         const height = window.innerHeight;
 
@@ -177,8 +175,8 @@
                 gMain.attr("transform", event.transform);
             }));
 
-        // 調整動態佈局：因為字輩移到姓名上方，垂直間距加寬至 110px 避免文字上下重疊，橫向每代延伸 280px
-        const tree = d3.tree().nodeSize([110, 280]); 
+        // 因為字輩文字移到姓名上方佔用垂直空間，將垂直邊界從 75px 加大至 105px 防止重疊
+        const tree = d3.tree().nodeSize([105, 260]); 
 
         let i = 0;
         const duration = 750; 
@@ -188,7 +186,7 @@
         root.x0 = height / 2; 
         root.y0 = 0;
 
-        // 【功能保留：全數展開】網頁載入時即會完整展開，不進行任何自動折疊
+        // 預設調整為全數展開，方便直接檢視
         update(root);
 
         // --- 3. 核心繪圖與動態渲染函式 ---
@@ -197,10 +195,10 @@
             const nodes = treeData.descendants();
             const links = treeData.links();
 
-            // 設定橫向每代固定間距為 280px
-            nodes.forEach(d => { d.y = d.depth * 280; });
+            // 每代相隔 260px
+            nodes.forEach(d => { d.y = d.depth * 260; });
 
-            const xOffset = 60;
+            const xOffset = 80;
             const yOffset = height / 2;
 
             // ---------------- 夫妻複合節點 (Nodes) 處理 ----------------
@@ -219,7 +217,7 @@
                 .attr('r', 1e-6)
                 .on('click', (event, d) => { click(event, d); });
 
-            // 【功能要求】在男性姓名的「正上方」寫上第几代几字辈文字 (dy 設為 -.65em 往上提)
+            // 【核心修改】將代數與字輩搬移到男性的正上方 (dy 設成負值 -.65em 往上推)
             nodeEnter.append('text')
                 .attr('class', 'text-gen-info')
                 .attr("dy", "-.65em")
@@ -227,15 +225,15 @@
                 .attr("text-anchor", "start")
                 .text(d => `(第${d.depth + 1}代/${generationGens[d.depth]}字輩)`);
 
-            // 繪製先生姓名文字 (dy 設為 .45em 維持正常水平位置)
+            // 繪製先生本名 (dy 設成正常偏下的 .45em，與圓圈保持美觀高度)
             nodeEnter.append('text')
                 .attr('class', 'text-husband')
                 .attr("dy", ".45em")
-                .attr("x", 12) 
+                .attr("x", 12)
                 .attr("text-anchor", "start")
                 .text(d => d.data.name);
 
-            // --- 繪製夫妻連接線 (垂直虛線) ---
+            // --- 繪製夫妻連接線 (改為垂直線段) ---
             nodeEnter.append('line')
                 .attr('class', 'spouse-line')
                 .attr('x1', 0)
@@ -251,7 +249,7 @@
                 .attr('r', 1e-6)
                 .on('click', (event, d) => { click(event, d); });
 
-            // 【功能保留：移除無限符號】拿掉 ⚭，只留純粹的姓名
+            // 保留設定：移除 ⚭ 無限符號，維持純淨文字並靠左對齊
             nodeEnter.append('text')
                 .attr('class', 'text-wife')
                 .attr("dy", ".35em")
@@ -270,21 +268,21 @@
                 .attr('r', 6.5)
                 .style("fill", d => d._children ? "#1e88e5" : "#fff");
 
-            // 太太位置一律改在先生的正下方 35px 處 (留空間給名字與線條)
-            const wifeYOffset = 35;
+            // 太太圓圈改為垂直下移 32px (因先生上方有字輩，稍微拉大與配偶之垂直距離)
+            const wifeYOffset = 32;
             nodeUpdate.select('circle.wife')
                 .attr('cx', 0)
                 .attr('cy', wifeYOffset)
                 .attr('r', 6.5);
 
-            // 垂直夫妻虛線連通
+            // 夫妻虛線改為由夫(0, 6.5) 連接到 妻(0, 25.5) 的垂直線段
             nodeUpdate.select('line.spouse-line')
                 .attr('x1', 0)
                 .attr('y1', 6.5)
                 .attr('x2', 0)
                 .attr('y2', wifeYOffset - 6.5);
 
-            // 太太文字水平與先生名字左側對齊
+            // 太太文字水平與先生名字左側平行對齊
             nodeUpdate.select('text.text-wife')
                 .attr('x', 12)
                 .attr('y', wifeYOffset)
@@ -302,40 +300,34 @@
             nodeExit.select('line.spouse-line').attr('y2', 0);
 
 
-            // ---------------- 父子代際連接線處理 (傳統整齊直角折線樣式) ----------------
+            // ---------------- 父子代際連接線 (Links) 處理 ----------------
             const link = gMain.selectAll('path.link')
                 .data(links, d => d.target.id);
 
-            function orthogonalPath(s, d) {
-                const sx = s.y + xOffset;
-                const sy = s.x + yOffset;
-                const dx = d.y + xOffset;
-                const dy = d.x + yOffset;
-                const midX = (sx + dx) / 2;
-
-                return `M ${sx} ${sy}
-                        L ${midX} ${sy}
-                        L ${midX} ${dy}
-                        L ${dx} ${dy}`;
+            function diagonal(s, d) {
+                return `M ${s.y + xOffset} ${s.x + yOffset}
+                        C ${(s.y + d.y) / 2 + xOffset} ${s.x + yOffset},
+                          ${(s.y + d.y) / 2 + xOffset} ${d.x + yOffset},
+                          ${d.y + xOffset} ${d.x + yOffset}`;
             }
 
             const linkEnter = link.enter().insert('path', 'g')
                 .attr('class', 'link')
                 .attr('d', d => {
                     const o = { x: source.x0, y: source.y0 };
-                    return orthogonalPath(o, o);
+                    return diagonal(o, o);
                 });
 
             const linkUpdate = linkEnter.merge(link);
             linkUpdate.transition()
                 .duration(duration)
-                .attr('d', d => orthogonalPath(d.source, d.target));
+                .attr('d', d => diagonal(d.source, d.target));
 
             link.exit().transition()
                 .duration(duration)
                 .attr('d', d => {
                     const o = { x: source.x, y: source.y };
-                    return orthogonalPath(o, o);
+                    return diagonal(o, o);
                 })
                 .remove();
 
