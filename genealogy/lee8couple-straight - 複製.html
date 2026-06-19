@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>李氏家族八代宗親夫妻並列族譜 (D3.js 直式優化版)</title>
+    <title>李氏家族八代宗親夫妻並列族譜 (D3.js 直式版)</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -47,7 +47,7 @@
             stroke-width: 2px;
             cursor: pointer;
         }
-        /* 統一姓名與內文為黑色，避免雜亂 */
+        /* 統一姓名與內文為黑色 */
         .node text {
             font-size: 13px;
             font-weight: bold;
@@ -55,18 +55,18 @@
         }
         /* 夫妻連接虛線 */
         .spouse-line {
-            stroke: #383838;
-            stroke-width: 2.2px;
+            stroke: #b2babb;
+            stroke-width: 1.2px;
             stroke-dasharray: 2,2;
         }
-        /* 每一代最右側代表專用字樣 (18px, 粗體, 標楷體, 紅色) */
+        /* 每一代最右側代表專用字樣 */
         .right-gen-label {
             font-family: "BiauKai", "DFKai-SB", "標楷體", sans-serif;
             font-size: 18px;
             font-weight: bold;
             fill: #ff0000; 
         }
-        /* 傳統直角族譜連接線樣式 */
+        /* 修正：傳統直角族譜連接線樣式 */
         .link {
             fill: none;
             stroke: #566573; 
@@ -85,6 +85,7 @@
             border-radius: 4px;
             opacity: 0.8;
         }
+    
     </style>
 </head>
 <body>
@@ -92,7 +93,7 @@
     <div id="title-container">
         <h1>隴西李氏家族族譜 - 直式夫妻並列版</h1>
         <p><strong>字輩順序：</strong>繩 ➔ 祖 ➔ 武 ➔ 德 ➔ 業 ➔ 貽 ➔ 孫 ➔ 謀（共八代）</p>
-        <p><strong>精確人數：</strong>1 ➔ 3 ➔ 10 ➔ 20 ➔ 50 ➔ 100 ➔ 150 ➔ 200（直角分支，夫妻文字間距大於 10px）</p>
+        <p><strong>精確人數：</strong>1 ➔ 3 ➔ 10 ➔ 20 ➔ 50 ➔ 100 ➔ 150 ➔ 200（由上往下展開，總計 534 對夫妻）</p>
     </div>
 
     <div id="hint">💡 提示：點擊任何圓圈可【展開/收合】子孫。滑鼠滾輪可【放大/縮小】、按住可【拖曳畫布】。</div>
@@ -100,10 +101,9 @@
     <div id="tree-container"></div>
 
     <script>
-        const generationGens = ["繩", "祖", "武", "德", "業", "貽", "孫", "謀"];
-
         // --- 1. 資料產生器：精確生成 534 位男性與非李姓配偶 ---
         function generateFamilyData() {
+            const generationGens = ["繩", "祖", "武", "德", "業", "貽", "孫", "謀"];
             const namePool = ["山", "川", "海", "峰", "宇", "宏", "強", "明", "志", "文", "武", "德", "賢", "才", "良", "平", "安", "康", "健", "新", "興", "昌", "盛", "榮", "華", "富", "貴", "生", "其", "克", "紹", "先", "光", "大", "廷"];
             const wifeSurPool = ["陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊", "許", "鄭", "謝", "洪", "郭", "邱", "曾", "廖", "賴", "徐"];
             const wifeNamePool = ["美", "玲", "婷", "芬", "芳", "娟", "蘭", "秀", "華", "鳳", "珍", "燕", "莉", "梅", "雅", "淑", "惠", "晴", "妤", "萱"];
@@ -125,6 +125,7 @@
                 return `${sur}${m1}${m2}`;
             }
 
+            // 建立第1代根節點
             let rootNode = { 
                 name: getRandomHusbandName(0), 
                 wifeName: getRandomWifeName(),
@@ -132,6 +133,7 @@
             };
             let currentGenNodes = [rootNode];
 
+            // 嚴格依需求人數生成 2~8 代 (3, 10, 20, 50, 100, 150, 200)
             const genSizes = [3, 10, 20, 50, 100, 150, 200]; 
 
             for (let g = 0; g < genSizes.length; g++) {
@@ -169,22 +171,25 @@
 
         svg.call(d3.zoom()
             .extent([[0, 0], [width, height]])
-            .scaleExtent([0.02, 3]) 
+            .scaleExtent([0.02, 3]) // 直式下方更廣，放寬最小縮放比
             .on("zoom", (event) => {
                 gMain.attr("transform", event.transform);
             }));
 
-        // 【關鍵優化】將水平間距拉大至 175px，配合緊湊的夫妻寬度，保證兩組夫妻文字邊緣至少有 10px 以上的安全距離
-        const tree = d3.tree().nodeSize([175, 160]); 
+        // 設定直式樹狀佈局：
+        // nodeSize([水平夫妻組合間的間距, 垂直代際之間的間距])
+        // 因為每對夫妻寬度約 120px，水平間距設為 140px 防止左右碰撞；垂直代際設為 160px。
+        const tree = d3.tree().nodeSize([140, 160]); 
 
         let i = 0;
         const duration = 750; 
         let root;
 
         root = d3.hierarchy(familyData, d => d.children);
-        root.x0 = width / 2; 
+        root.x0 = width / 2; // 起始點在畫布水平中央
         root.y0 = 0;
 
+        // 預設優化：將第 4 代（德字輩）以後先收合
         root.children.forEach(collapse);
 
         function collapse(d) {
@@ -197,35 +202,29 @@
 
         update(root);
 
-        // --- 3. 核心繪圖與動態渲染函式 ---
+        // --- 3. 核心繪圖與動態渲染函式 (直式對調) ---
         function update(source) {
             const treeData = tree(root);
             const nodes = treeData.descendants();
             const links = treeData.links();
 
+            // 調整每代之間的 Y 軸垂直伸展距離 (每代垂直相隔 160px)
             nodes.forEach(d => { d.y = d.depth * 160; });
 
+            // 直式展開的起點偏移量：X 移到畫布中央，Y 往下一點避開標題
             const xOffset = width / 2;
             const yOffset = 150;
-
-            // 動態尋找當前畫面上每一代最右側的代表節點
-            const rightmostNodesPerGen = new Map();
-            nodes.forEach(d => {
-                if (!rightmostNodesPerGen.has(d.depth) || d.x > rightmostNodesPerGen.get(d.depth).x) {
-                    rightmostNodesPerGen.set(d.depth, d);
-                }
-            });
-            const rightmostIds = new Set(Array.from(rightmostNodesPerGen.values()).map(d => d.id || i));
 
             // ---------------- 夫妻複合節點 (Nodes) 處理 ----------------
             const node = gMain.selectAll('g.node')
                 .data(nodes, d => d.id || (d.id = ++i));
 
+            // Enter: 建立節點容器群組 (直式標準：translate(x, y))
             const nodeEnter = node.enter().append('g')
                 .attr('class', 'node')
                 .attr("transform", d => `translate(${source.x0 + xOffset}, ${source.y0 + yOffset})`);
 
-            // --- 繪製先生 ---
+            // --- 繪製先生 (Husband) ---
             nodeEnter.append('circle')
                 .attr('class', 'husband')
                 .attr('cx', 0)
@@ -236,11 +235,11 @@
             nodeEnter.append('text')
                 .attr('class', 'text-husband')
                 .attr("dy", ".35em")
-                .attr("x", -10) // 縮小文字靠球的距離
+                .attr("x", -12)
                 .attr("text-anchor", "end")
                 .text(d => d.data.name);
 
-            // --- 繪製夫妻連接線 ---
+            // --- 繪製夫妻連接線 (Spouse Line) ---
             nodeEnter.append('line')
                 .attr('class', 'spouse-line')
                 .attr('x1', 0)
@@ -248,7 +247,7 @@
                 .attr('x2', 0)
                 .attr('y2', 0);
 
-            // --- 繪製太太 ---
+            // --- 繪製太太 (Wife) ---
             nodeEnter.append('circle')
                 .attr('class', 'wife')
                 .attr('cx', 0) 
@@ -264,48 +263,37 @@
                 .text(d => ` ⚭ ${d.data.wifeName}`)
                 .style('fill-opacity', 1e-6);
 
-            // --- 在太太右側預留字輩代表文字欄位 ---
-            nodeEnter.append('text')
-                .attr('class', 'right-gen-label')
-                .attr("dy", ".35em")
-                .attr("text-anchor", "start")
-                .style('fill-opacity', 1e-6);
 
-
+            // Update: 平移到直式新座標 (注意：d.x 是水平計算值，d.y 是垂直深度)
             const nodeUpdate = nodeEnter.merge(node);
             const t = nodeUpdate.transition().duration(duration);
             
             t.attr("transform", d => `translate(${d.x + xOffset}, ${d.y + yOffset})`);
 
+            // 先生圓圈更新
             nodeUpdate.select('circle.husband')
-                .attr('r', 6)
+                .attr('r', 6.5)
                 .style("fill", d => d._children ? "#1e88e5" : "#fff");
 
-            // 【關鍵優化】夫妻間距緊縮至 28px
-            const wifeXOffset = 28; 
+            // 太太圓圈水平右移 45px 位置更新
             nodeUpdate.select('circle.wife')
-                .attr('cx', wifeXOffset)
-                .attr('r', 6);
+                .attr('cx', 45)
+                .attr('r', 6.5);
 
-            // 夫妻連接線長度微調同步
+            // 夫妻虛線更新
             nodeUpdate.select('line.spouse-line')
-                .attr('x1', 6)
+                .attr('x1', 6.5)
                 .attr('y1', 0)
-                .attr('x2', wifeXOffset - 6)
+                .attr('x2', 38.5)
                 .attr('y2', 0);
 
-            // 太太文字緊貼右側圓圈
+            // 太太文字更新
             nodeUpdate.select('text.text-wife')
-                .attr('x', wifeXOffset + 10)
+                .attr('x', 56)
                 .style('fill-opacity', 1);
 
-            // 動態控制字輩標記的定位與內容
-            nodeUpdate.select('text.right-gen-label')
-                .attr('x', wifeXOffset + 75) 
-                .text(d => rightmostIds.has(d.id) ? ` ➔ 【第${d.depth + 1}代 : [${generationGens[d.depth]}]字輩】` : "")
-                .style('fill-opacity', d => rightmostIds.has(d.id) ? 1 : 0);
 
-
+            // Exit: 收合時縮回父輩位置
             const nodeExit = node.exit().transition()
                 .duration(duration)
                 .attr("transform", d => `translate(${source.x + xOffset}, ${source.y + yOffset})`)
@@ -317,51 +305,47 @@
             nodeExit.select('line.spouse-line').attr('x2', 0);
 
 
-            // ---------------- 父子代際連接線處理 (傳統直角折線樣式) ----------------
+            // ---------------- 父子代際連接線 (Links) 處理 ----------------
             const link = gMain.selectAll('path.link')
                 .data(links, d => d.target.id);
 
-            // 傳統族譜直角折線生成演算法
-            function orthogonalPath(s, d) {
-                const sx = s.x + xOffset;
-                const sy = s.y + yOffset;
-                const dx = d.x + xOffset;
-                const dy = d.y + yOffset;
-                const midY = (sy + dy) / 2;
-
-                return `M ${sx} ${sy}
-                        L ${sx} ${midY}
-                        L ${dx} ${midY}
-                        L ${dx} ${dy}`;
+            // 直式貝茲曲線生成器：
+            // 座標傳入標準的 (x, y)。因為起點在先生(0,0)，代際線會從上一代先生對準下一代先生
+            function diagonal(s, d) {
+                return `M ${s.x + xOffset} ${s.y + yOffset}
+                        C ${s.x + xOffset} ${(s.y + d.y) / 2 + yOffset},
+                          ${d.x + xOffset} ${(s.y + d.y) / 2 + yOffset},
+                          ${d.x + xOffset} ${d.y + yOffset}`;
             }
 
-            // 【修正點】改用對應的直角路徑生成起點線段，補回消失的直線與橫直線
             const linkEnter = link.enter().insert('path', 'g')
                 .attr('class', 'link')
                 .attr('d', d => {
                     const o = { x: source.x0, y: source.y0 };
-                    return orthogonalPath(o, o);
+                    return diagonal(o, o);
                 });
 
             const linkUpdate = linkEnter.merge(link);
             linkUpdate.transition()
                 .duration(duration)
-                .attr('d', d => orthogonalPath(d.source, d.target));
+                .attr('d', d => diagonal(d.source, d.target));
 
             link.exit().transition()
                 .duration(duration)
                 .attr('d', d => {
                     const o = { x: source.x, y: source.y };
-                    return orthogonalPath(o, o);
+                    return diagonal(o, o);
                 })
                 .remove();
 
+            // 歷史座標紀錄
             nodes.forEach(d => {
                 d.x0 = d.x;
                 d.y0 = d.y;
             });
         }
 
+        // 點擊事件
         function click(event, d) {
             if (d.children) {
                 d._children = d.children;
