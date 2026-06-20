@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 家族族譜物理模擬動態教學網頁</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #161a1d; /* 古典深色背景 */
+            color: #f5f3f4;
+            padding: 20px;
+        }
+        
+        /* 教學說明面板 */
+        #tutorial-header {
+            background: rgba(22, 26, 29, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+            border-left: 6px solid #b7094c;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0 0 8px 0; font-size: 24px; color: #f5f3f4; }
+        p { margin: 5px 0; font-size: 18px; color: #a3b18a; line-height: 1.6; }
+        
+        /* 圖表畫布容器 */
+        #chart-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 600px;
+            margin: 0 auto;
+            background-color: #0b0c10;
+            border-radius: 8px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+            border: 1px solid #242526;
+        }
+
+        /* 關係連線樣式 */
+        .link {
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+        /* 區分血緣與婚姻的線段外觀 */
+        .link-blood { stroke: #e07a5f; } /* 血親：暖橘線 */
+        .link-marriage { stroke: #3d5a80; stroke-dasharray: 4,4; } /* 婚姻：藍虛線 */
+
+        /* 節點基本樣式 */
+        .node circle {
+            stroke: #0b0c10;
+            stroke-width: 2px;
+            cursor: grab;
+        }
+        .node:active circle { cursor: grabbing; }
+
+        /* 18px 家族成員字體 */
+        .node text {
+            font-size: 18px; /* 全局指定 18px */
+            fill: #ffffff;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tutorial-header">
+        <h1>D3.js 族譜高度複雜物理模擬 (Genealogy Force Layout)</h1>
+        <p><strong>範例主題：</strong> 李氏家族三代宗親與配偶之血緣、姻親網絡關係圖</p>
+        <p><strong>物理結構解說：</strong> 實線代表「血親（父母子女）」，虛線代表「婚姻（夫妻）」。</p>
+        <p>💡 頂級互動：滑鼠 **按住任一成員即可拖曳**。抓取時，配偶會因為「婚姻強拉力」緊緊跟隨，子女則會保持完美的物理間距彈性晃動。</p>
+    </div>
+
+    <div id="chart-container"></div>
+
+    <script>
+        // ==========================================
+        // 1. 族譜數據架構 (圖論結構：Nodes 與 Links)
+        // ==========================================
+        // type 1: 宗親核心實體, type 2: 引入的配偶
+        const memberNodes = [
+            { id: "第一代：李老太爺", type: 1, radius: 45 },
+            { id: "祖奶奶 (配偶)", type: 2, radius: 40 },
+            
+            { id: "二代長子：李大華", type: 1, radius: 35 },
+            { id: "大華媳婦 (配偶)", type: 2, radius: 32 },
+            { id: "二代次子：李二華", type: 1, radius: 35 },
+            
+            { id: "三代長孫：李小明", type: 1, radius: 25 },
+            { id: "三代長女：李小婷", type: 1, radius: 25 }
+        ];
+
+        // 關係連線：定義誰跟誰有關係，並指定關係類型
+        const relationshipLinks = [
+            // 夫妻姻親關係 (Marriage)
+            { source: "第一代：李老太爺", target: "祖奶奶 (配偶)", relType: "marriage" },
+            { source: "二代長子：李大華", target: "大華媳婦 (配偶)", relType: "marriage" },
+            
+            // 父母子女血緣關係 (Blood)
+            { source: "第一代：李老太爺", target: "二代長子：李大華", relType: "blood" },
+            { source: "第一代：李老太爺", target: "二代次子：李二華", relType: "blood" },
+            
+            { source: "二代長子：李大華", target: "三代長孫：李小明", relType: "blood" },
+            { source: "二代長子：李大華", target: "三代長女：李小婷", relType: "blood" }
+        ];
+
+        // ==========================================
+        // 2. 初始化畫布尺寸與色階
+        // ==========================================
+        const width = 1000;
+        const height = 600;
+
+        const svg = d3.select("#chart-container")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+
+        // 宗親用古典紅，配偶用優雅藍
+        const colorScale = d3.scaleOrdinal()
+            .domain([1, 2])
+            .range(["#b7094c", "#aacc00"]); 
+
+        // ==========================================
+        // 3. 配置高複雜族譜物理模擬器 (Force Simulation)
+        // ==========================================
+        const simulation = d3.forceSimulation(memberNodes)
+            // A. 自訂拉力：依據關係種類，賦予不同的橡皮筋彈性強度
+            .force("link", d3.forceLink(relationshipLinks)
+                .id(d => d.id)
+                .distance(d => d.relType === "marriage" ? 60 : 130) // 夫妻靠極近(60px)，父子拉開(130px)
+                .strength(d => d.relType === "marriage" ? 1.0 : 0.5) // 夫妻拉力極強(1.0)，結構不易散
+            )
+            // B. 多體排斥力：防止不同分支的堂兄弟姊妹或姻親重疊擠壓
+            .force("charge", d3.forceManyBody().strength(-500))
+            // C. 中心向心力：穩固大家族在畫布中央
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            // D. 實體碰撞防重疊：圓半徑外加 10px 安全氣墊
+            .force("collide", d3.forceCollide().radius(d => d.radius + 10));
+
+        // ==========================================
+        // 4. 渲染連線與成員氣泡
+        // ==========================================
+        // 畫關係線
+        const linkElements = svg.append("g")
+            .selectAll("line")
+            .data(relationshipLinks)
+            .enter().append("line")
+            .attr("class", d => d.relType === "marriage" ? "link link-marriage" : "link link-blood");
+
+        // 畫成員群組
+        const nodeElements = svg.append("g")
+            .selectAll("g")
+            .data(memberNodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag()
+                .on("start", dragStarted)
+                .on("drag", dragging)
+                .on("end", dragEnded));
+
+        // 成員外觀圓圈
+        nodeElements.append("circle")
+            .attr("r", d => d.radius)
+            .attr("fill", d => colorScale(d.type));
+
+        // 寫入 18px 名字
+        nodeElements.append("text")
+            .text(d => d.id.split("：").pop()); // 教學技巧：只顯示後半段名字，保持視覺乾淨
+
+        // ==========================================
+        // 5. 物理引擎時鐘 Tick 聯動更新
+        // ==========================================
+        simulation.on("tick", () => {
+            linkElements
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            nodeElements
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // ==========================================
+        // 6. 互動演算法：滑鼠拖曳能量轉換
+        // ==========================================
+        function dragStarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragging(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragEnded(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    </script>
+</body>
+</html>

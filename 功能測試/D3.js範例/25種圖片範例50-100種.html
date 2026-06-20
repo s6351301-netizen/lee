@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 50 Unique Visual Topology Matrix</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #04040a;
+            --panel-bg: rgba(10, 10, 25, 0.9);
+            --neon-green: #00ffaa;
+            --neon-pink: #ff0055;
+            --neon-blue: #00ffff;
+            --text-muted: #52667a;
+            --border-line: rgba(0, 255, 170, 0.15);
+        }
+        body { background-color: var(--bg-color); color: #fff; font-family: monospace; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); font-size: 1.8rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1920px; margin: 20px auto; }
+        .card { background: var(--panel-bg); border: 1px solid var(--border-line); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; }
+        .header { font-size: 0.75rem; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 10px; }
+        .container { width: 100%; height: 200px; display: flex; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <h1>D3_VISUAL_TOPOLOGY_MATRIX // 50_NON_REPEATING_SHAPES</h1>
+    <div class="grid" id="matrix"></div>
+
+    <script>
+        const total = 50;
+        const grid = d3.select("#matrix");
+        const W = 260, H = 200;
+
+        // 50個在視覺幾何結構上完全相異的圖表類型
+        const specs = [
+            "Line", "Area", "Bar", "Scatter", "Bubble", "Pie", "Donut", "Step", "Polar", "Radar",
+            "Chord", "Force", "Treemap", "Voronoi", "Delaunay", "Candlestick", "Waterfall", "Funnel", "Pyramid", "Bullet",
+            "RadialProgress", "Heatmap", "Calendar", "Sankey", "Stream", "BoxPlot", "Violin", "Contour", "Hexbin", "Parallel",
+            "Sunburst", "CirclePacking", "Tree", "Cluster", "Icicle", "ArcDiagram", "Slope", "DotPlot", "Lollipop", "Dumbbell",
+            "Horizon", "Gantt", "RoseWind", "MatrixCorrelation", "ArcClock", "SpiralScatter", "SuperformulaShape", "VectorField", "MeshGrid", "Waveform"
+        ];
+
+        // 初始化50個卡片容器
+        specs.forEach((type, i) => {
+            const id = 101 + i;
+            const card = grid.append("div").attr("class", "card");
+            const head = card.append("div").attr("class", "header");
+            head.append("span").style("color", "var(--neon-green)").text(`NODE_${id}`);
+            head.append("span").style("color", "var(--text-muted)").text(type.toUpperCase());
+            card.append("div").attr("id", `node-${id}`).attr("class", "container");
+        });
+
+        // 為50個卡片注入「真正具有該拓撲視覺外貌」的數學/D3渲染邏輯
+        specs.forEach((type, i) => {
+            const id = 101 + i;
+            const svg = d3.select(`#node-${id}`).append("svg").attr("width", W).attr("height", H);
+            const g = svg.append("g").attr("transform", "translate(30,20)");
+            const w = W - 50, h = H - 40;
+
+            switch(type) {
+                case "Line": // 1. 標準連續折線
+                    g.append("path").datum([10,40,25,75,45,85]).attr("fill","none").attr("stroke","#00ffaa").attr("stroke-width",2).attr("d",d3.line().x((d,j)=>j*w/5).y(d=>h-d*h/100));
+                    break;
+                case "Area": // 2. 閉合填充面積
+                    g.append("path").datum([15,35,20,60,40,80]).attr("fill","rgba(0,255,170,0.2)").attr("stroke","#00ffaa").attr("d",d3.area().x((d,j)=>j*w/5).y0(h).y1(d=>h-d*h/100));
+                    break;
+                case "Bar": // 3. 獨立離散長條
+                    g.selectAll("r").data([35,65,45,85,55]).enter().append("rect").attr("x",(d,j)=>j*w/5+5).attr("y",d=>h-d*h/100).attr("width",18).attr("height",d=>d*h/100).attr("fill","#ff0055");
+                    break;
+                case "Scatter": // 4. 正交星空散點
+                    g.selectAll("c").data([{x:10,y:20},{x:40,y:70},{x:70,y:40},{x:90,y:80},{x:50,y:30}]).enter().append("circle").attr("cx",d=>d.x*w/100).attr("cy",d=>h-d.y*h/100).attr("r",4).attr("fill","#ffff00");
+                    break;
+                case "Bubble": // 5. 多維氣泡交疊
+                    g.selectAll("c").data([{x:25,y:40,r:12},{x:55,y:60,r:22},{x:75,y:30,r:16}]).enter().append("circle").attr("cx",d=>d.x*w/100).attr("cy",d=>h-d.y*h/100).attr("r",d=>d.r).attr("fill","rgba(0,255,255,0.5)").attr("stroke","#00ffff");
+                    break;
+                case "Pie": // 6. 經典圓形圓餅
+                    const pG = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    pG.selectAll("path").data(d3.pie()([3,5,2])).enter().append("path").attr("d",d3.arc().innerRadius(0).outerRadius(45)).attr("fill",(d,j)=>["#00ffaa","#ff0055","#00bfff"][j]);
+                    break;
+                case "Donut": // 7. 環狀圓環
+                    const dG = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    dG.selectAll("path").data(d3.pie()([4,4,2])).enter().append("path").attr("d",d3.arc().innerRadius(30).outerRadius(46)).attr("fill",(d,j)=>["#ffaa00","#bd00ff","#00ffaa"][j]);
+                    break;
+                case "Step": // 8. 階梯波形線
+                    g.append("path").datum([20,70,40,85,30]).attr("fill","none").attr("stroke","#00ffff").attr("stroke-width",2).attr("d",d3.line().x((d,j)=>j*w/4).y(d=>h-d*h/100).curve(d3.curveStep));
+                    break;
+                case "Polar": // 9. 極座標射線風扇
+                    const pol = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    pol.selectAll("p").data([30,55,75,45,90,60]).enter().append("path").attr("fill","rgba(255,0,85,0.4)").attr("stroke","#ff0055")
+                       .attr("d",(d,j)=>d3.arc().innerRadius(0).outerRadius(d*0.4).startAngle(j*Math.PI/3).endAngle((j+1)*Math.PI/3)());
+                    break;
+                case "Radar": // 10. 雷達五角網格
+                    const rad = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    [45,30,15].forEach(r=>rad.append("polygon").attr("points",d3.range(5).map(v=>`${r*Math.sin(v*Math.PI*2/5)},${-r*Math.cos(v*Math.PI*2/5)}`).join(" ")).attr("fill","none").attr("stroke","rgba(255,255,255,0.15)"));
+                    rad.append("polygon").attr("points","0,-42 33,-10 20,30 -22,15 -35,-12").attr("fill","rgba(0,255,170,0.3)").attr("stroke","#00ffaa");
+                    break;
+                case "Chord": // 11. 弦圖（圓環內織線）
+                    const cho = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    cho.append("circle").attr("r",45).attr("fill","none").attr("stroke","#bd00ff").attr("stroke-width",3);
+                    cho.append("path").attr("d","M -40 -15 Q 0 0 40 15 M -30 30 Q 0 0 30 -30 M -10 -42 Q 0 0 10 42").attr("stroke","rgba(189,0,255,0.4)").attr("fill","none");
+                    break;
+                case "Force": // 12. 力導向網絡（球體蜘蛛網）
+                    const fNodes = [{x:40,y:40},{x:140,y:50},{x:90,y:110},{x:160,y:120},{x:60,y:130}];
+                    const fLinks = [[0,1],[1,2],[2,3],[3,4],[4,0],[0,2],[1,3]];
+                    fLinks.forEach(l=>g.append("line").attr("x1",fNodes[l[0]].x).attr("y1",fNodes[l[0]].y).attr("x2",fNodes[l[1]].x).attr("y2",fNodes[l[1]].y).attr("stroke","rgba(255,255,255,0.2)"));
+                    g.selectAll("c").data(fNodes).enter().append("circle").attr("cx",d=>d.x).attr("cy",d=>d.y).attr("r",5).attr("fill","#00ffaa");
+                    break;
+                case "Treemap": // 13. 矩形樹狀結構拼圖
+                    g.append("rect").attr("x",0).attr("y",0).attr("width",w*0.55).attr("height",h).attr("fill","#ff0055").attr("stroke","#04040a");
+                    g.append("rect").attr("x",w*0.55).attr("y",0).attr("width",w*0.45).attr("height",h*0.4).attr("fill","#00ffaa").attr("stroke","#04040a");
+                    g.append("rect").attr("x",w*0.55).attr("y",h*0.4).attr("width",w*0.25).attr("height",h*0.6).attr("fill","#00bfff").attr("stroke","#04040a");
+                    g.append("rect").attr("x",w*0.8).attr("y",h*0.4).attr("width",w*0.2).attr("height",h*0.6).attr("fill","#ffaa00").attr("stroke","#04040a");
+                    break;
+                case "Voronoi": // 14. 泰森多邊形（細胞不規則破裂縫）
+                    g.append("path").attr("d",`M0,0 L${w*0.4},0 L${w*0.3},${h*0.5} L0,${h*0.4} Z`).attr("fill","none").attr("stroke","#bd00ff");
+                    g.append("path").attr("d",`M${w*0.4},0 L${w},0 L${w},${h*0.4} L${w*0.5},${h*0.6} L${w*0.3},${h*0.5} Z`).attr("fill","none").attr("stroke","#bd00ff");
+                    g.append("path").attr("d",`M0,${h*0.4} L${w*0.3},${h*0.5} L${w*0.5},${h*0.6} L${w*0.4},${h} L0,${h} Z`).attr("fill","none").attr("stroke","#bd00ff");
+                    g.append("path").attr("d",`M${w*0.5},${h*0.6} L${w},${h*0.4} L${w},${h} L${w*0.4},${h} Z`).attr("fill","none").attr("stroke","#bd00ff");
+                    break;
+                case "Delaunay": // 15. 德勞內三角網網格
+                    g.append("path").attr("d",`M10,20 L${w-25},35 L${w*0.4},${h-15} Z M${w-25},35 L${w*0.4},${h-15} L${w-10},${h-30} Z M10,20 L${w*0.4},${h-15} L15,${h-20} Z`).attr("fill","none").attr("stroke","#00ffff");
+                    break;
+                case "Candlestick": // 16. 金融蠟燭K線
+                    [30,70,110,150].forEach((xK,idx)=> {
+                        let top = [20,40,15,60][idx], bot = [70,50,85,95][idx];
+                        g.append("line").attr("x1",xK).attr("y1",top-10).attr("x2",xK).attr("y2",bot+10).attr("stroke","#00ffaa");
+                        g.append("rect").attr("x",xK-6).attr("y",top).attr("width",12).attr("height",bot-top).attr("fill",idx%2?"#ff0055":"#00ffaa");
+                    });
+                    break;
+                case "Waterfall": // 17. 階梯階躍瀑布圖
+                    g.append("rect").attr("x",10).attr("y",10).attr("width",30).attr("height",40).attr("fill","#00ffaa");
+                    g.append("rect").attr("x",45).attr("y",50).attr("width",30).attr("height",30).attr("fill","#ff0055");
+                    g.append("rect").attr("x",80).attr("y",80).attr("width",30).attr("height",25).attr("fill","#ff0055");
+                    g.append("rect").attr("x",115).attr("y",10).attr("width",30).attr("height",95).attr("fill","#00ffff");
+                    break;
+                case "Funnel": // 18. 漏斗倒金字塔
+                    g.append("polygon").attr("points",`10,10 ${w-10},10 ${w*0.75},${h*0.35} ${w*0.25},${h*0.35}`).attr("fill","#bd00ff");
+                    g.append("polygon").attr("points",` ${w*0.25+3},${h*0.35+4} ${w*0.75-3},${h*0.35+4} ${w*0.63},${h*0.7} ${w*0.37},${h*0.7}`).attr("fill","#ff0055");
+                    g.append("polygon").attr("points",` ${w*0.37+3},${h*0.7+4} ${w*0.63-3},${h*0.7+4} ${w*0.56},${h} ${w*0.44},${h}`).attr("fill","#00ffaa");
+                    break;
+                case "Pyramid": // 19. 人口雙向金字塔
+                    [20,40,60,80].forEach((yP,j)=>{
+                        let lenL = [60,50,35,15][j], lenR = [55,48,40,18][j];
+                        g.append("rect").attr("x",w/2 - lenL).attr("y",yP).attr("width",lenL).attr("height",15).attr("fill","#00bfff");
+                        g.append("rect").attr("x",w/2).attr("y",yP).attr("width",lenR).attr("height",15).attr("fill","#ff0055");
+                    });
+                    break;
+                case "Bullet": // 20. 子彈評級圖
+                    g.append("rect").attr("x",0).attr("y",h/2-12).attr("width",w).attr("height",24).attr("fill","rgba(255,255,255,0.08)");
+                    g.append("rect").attr("x",0).attr("y",h/2-12).attr("width",w*0.65).attr("height",24).attr("fill","rgba(255,255,255,0.15)");
+                    g.append("rect").attr("x",0).attr("y",h/2-5).attr("width",w*0.75).attr("height",10).attr("fill","#00ffaa");
+                    g.append("line").attr("x1",w*0.85).attr("y1",h/2-18).attr("x2",w*0.85).attr("y2",h/2+18).attr("stroke","#ff0055").attr("stroke-width",3);
+                    break;
+                case "RadialProgress": // 21. 儀表板厚環進度條
+                    const rp = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    rp.append("circle").attr("r",40).attr("fill","none").attr("stroke","rgba(255,255,255,0.05)").attr("stroke-width",10);
+                    rp.append("path").attr("d",d3.arc().innerRadius(35).outerRadius(45).startAngle(0).endAngle(Math.PI*1.55)()).attr("fill","#00ffff");
+                    break;
+                case "Heatmap": // 22. 矩陣熱力色塊群
+                    for(let x=0;x<5;x++) for(let y=0;y<4;y++) g.append("rect").attr("x",x*32+20).attr("y",y*28+10).attr("width",28).attr("height",24).attr("fill",`rgba(255,0,85,${(x*y+2)/20})`);
+                    break;
+                case "Calendar": // 23. 日曆矩陣細小色塊
+                    for(let wk=0;wk<7;wk++) for(let dy=0;dy<4;dy++) g.append("rect").attr("x",wk*22+15).attr("y",dy*22+20).attr("width",16).attr("height",16).attr("fill",Math.random()>0.35?"#00ffaa":"rgba(255,255,255,0.05)");
+                    break;
+                case "Sankey": // 24. 桑基能源分流織帶
+                    g.append("rect").attr("x",10).attr("y",15).attr("width",12).attr("height",80).attr("fill","#00ffaa");
+                    g.append("rect").attr("x",w-22).attr("y",5).attr("width",12).attr("height",40).attr("fill","#00bfff");
+                    g.append("rect").attr("x",w-22).attr("y",55).attr("width",12).attr("height",45).attr("fill","#bd00ff");
+                    g.append("path").attr("d",`M 22,25 C ${w/2},25 ${w/2},15 ${w-22},15 L ${w-22},35 C ${w/2},35 ${w/2},45 22,45 Z`).attr("fill","rgba(0,191,255,0.35)");
+                    g.append("path").attr("d",`M 22,60 C ${w/2},60 ${w/2},75 ${w-22},75 L ${w-22},95 C ${w/2},95 ${w/2},80 22,80 Z`).attr("fill","rgba(189,0,255,0.35)");
+                    break;
+                case "Stream": // 25. 有機河流雙向層疊圖
+                    g.append("path").datum([20,50,15,65,30]).attr("fill","#ffaa00").attr("d",d3.area().x((d,j)=>j*w/4).y0((d,j)=>[35,20,40,15,30][j]).y1((d,j)=>[35,20,40,15,30][j]+d).curve(d3.curveBasis));
+                    g.append("path").datum([25,35,40,20,35]).attr("fill","#ff0055").attr("d",d3.area().x((d,j)=>j*w/4).y0((d,j)=>[35,20,40,15,30][j]+[20,50,15,65,30][j]).y1((d,j)=>[35,20,40,15,30][j]+[20,50,15,65,30][j]+d).curve(d3.curveBasis));
+                    break;
+                case "BoxPlot": // 26. 箱型圖（中位數上下限）
+                    g.append("line").attr("x1",w/2).attr("y1",15).attr("x2",w/2).attr("y2",h-15).attr("stroke","#fff");
+                    g.append("rect").attr("x",w/2-22).attr("y",35).attr("width",44).attr("height",h-75).attr("fill","#bd00ff").attr("stroke","#fff");
+                    g.append("line").attr("x1",w/2-22).attr("y1",h/2+5).attr("x2",w/2+22).attr("y2",h/2+5).attr("stroke","#00ffaa").attr("stroke-width",3);
+                    break;
+                case "Violin": // 27. 小提琴雙向密度波形
+                    g.append("path").attr("d",`M ${w/2},10 Q ${w/2-35},${h/3} ${w/2-8},${h/2} T ${w/2},${h-10} Q ${w/2+8},${h/2} ${w/2+35},${h/3} T ${w/2},10 Z`).attr("fill","rgba(0,255,170,0.25)").attr("stroke","#00ffaa");
+                    break;
+                case "Contour": // 28. 高低差等高線立體圈
+                    g.append("circle").attr("cx",w/2).attr("cy",h/2).attr("r",48).attr("fill","none").attr("stroke","rgba(0,255,255,0.2)").attr("stroke-width",1.5);
+                    g.append("circle").attr("cx",w/2+8).attr("cy",h/2-4).attr("r",32).attr("fill","none").attr("stroke","rgba(0,255,255,0.4)").attr("stroke-width",1.5);
+                    g.append("circle").attr("cx",w/2+14).attr("cy",h/2-6).attr("r",16).attr("fill","none").attr("stroke","rgba(0,255,255,0.7)").attr("stroke-width",1.5);
+                    break;
+                case "Hexbin": // 29. 蜂巢六角格格網
+                    const hx=(cx,cy)=>[0,1,2,3,4,5].map(v=>`${cx+12*Math.sin(v*Math.PI/3)},${cy-12*Math.cos(v*Math.PI/3)}`).join(" ");
+                    g.append("polygon").attr("points",hx(w/2,h/2)).attr("fill","#ff0055");
+                    g.append("polygon").attr("points",hx(w/2-20,h/2-11)).attr("fill","rgba(255,0,85,0.5)").attr("stroke","rgba(255,255,255,0.2)");
+                    g.append("polygon").attr("points",hx(w/2+20,h/2-11)).attr("fill","rgba(255,0,85,0.5)").attr("stroke","rgba(255,255,255,0.2)");
+                    g.append("polygon").attr("points",hx(w/2,h/2+22)).attr("fill","rgba(255,0,85,0.5)").attr("stroke","rgba(255,255,255,0.2)");
+                    break;
+                case "Parallel": // 30. 多維度平行軸穿梭線
+                    [15, w/2, w-15].forEach(xP=>g.append("line").attr("x1",xP).attr("y1",10).attr("x2",xP).attr("y2",h-10).attr("stroke","rgba(255,255,255,0.2)"));
+                    g.append("path").attr("d",`M 15,25 L ${w/2},${h-35} L ${w-15},45`).attr("fill","none").attr("stroke","#ffaa00").attr("stroke-width",2);
+                    g.append("path").attr("d",`M 15,${h-15} L ${w/2},15 L ${w-15},${h-40}`).attr("fill","none").attr("stroke","#00ffff").attr("stroke-width",2);
+                    break;
+                case "Sunburst": // 31. 旭日多層放射同心圓
+                    const sb = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    sb.append("circle").attr("r",15).attr("fill","#bd00ff");
+                    sb.selectAll("p1").data(d3.pie()([1,1,1])).enter().append("path").attr("d",d3.arc().innerRadius(18).outerRadius(32)).attr("fill","rgba(189,0,255,0.6)").attr("stroke","#04040a");
+                    sb.selectAll("p2").data(d3.pie()([1,1,2,1,1])).enter().append("path").attr("d",d3.arc().innerRadius(35).outerRadius(48)).attr("fill","rgba(189,0,255,0.3)").attr("stroke","#04040a");
+                    break;
+                case "CirclePacking": // 32. 圓形大氣泡嵌套小圓
+                    g.append("circle").attr("cx",w/2).attr("cy",h/2).attr("r",48).attr("fill","none").attr("stroke","rgba(255,255,255,0.15)");
+                    g.append("circle").attr("cx",w/2-18).attr("cy",h/2+4).attr("r",22).attr("fill","rgba(0,255,170,0.3)");
+                    g.append("circle").attr("cx",w/2+20).attr("cy",h/2-14).attr("r",16).attr("fill","rgba(0,255,170,0.5)");
+                    g.append("circle").attr("cx",w/2+14).attr("cy",h/2+20).attr("r",10).attr("fill","rgba(0,255,170,0.7)");
+                    break;
+                case "Tree": // 33. 分支樹狀拓撲網絡
+                    g.append("path").attr("d",`M20,h/2 Q${w*0.4},${h/2} ${w*0.4},30 L${w-20},30 M${w*0.4},30 M${w*0.4},${h/2} Q${w*0.4},${h/2} ${w*0.4},${h-30} L${w-20},${h-30}`).attr("fill","none").attr("stroke","#fff");
+                    [ [20,h/2], [w*0.4,30], [w*0.4,h-30], [w-20,30], [w-20,h-30] ].forEach(p=>g.append("circle").attr("cx",p[0]).attr("cy",p[1]).attr("r",4).attr("fill","#00ffff"));
+                    break;
+                case "Cluster": // 34. 階層群聚方摺線圖
+                    g.append("path").attr("d",`M20,${h/2} L${w*0.5},${h/2} L${w*0.5},20 L${w-20},20 M${w*0.5},${h/2} L${w*0.5},${h-20} L${w-20},${h-20}`).attr("fill","none").attr("stroke","#ff0055");
+                    break;
+                case "Icicle": // 35. 階層冰柱方塊
+                    g.append("rect").attr("x",0).attr("y",10).attr("width",w).attr("height",20).attr("fill","#ffaa00");
+                    g.append("rect").attr("x",0).attr("y",34).attr("width",w*0.6).attr("height",20).attr("fill","rgba(255,170,0,0.6)");
+                    g.append("rect").attr("x",w*0.63).attr("y",34).attr("width",w*0.37).attr("height",20).attr("fill","rgba(255,170,0,0.6)");
+                    break;
+                case "ArcDiagram": // 36. 線性節點跨座弧線圖
+                    [25, 85, 145, 205].forEach(x=>g.append("circle").attr("cx",x).attr("cy",h-15).attr("r",4).attr("fill","#00ffaa"));
+                    g.append("path").attr("d",`M 25,${h-20} A 50,50 0 0,1 145,${h-20} M 85,${h-20} A 50,50 0 0,1 205,${h-20}`).attr("fill","none").attr("stroke","#00ffaa");
+                    break;
+                case "Slope": // 37. 雙軸斜率趨勢交叉線
+                    g.append("line").attr("x1",20).attr("y1",20).attr("x2",w-20).attr("y2",h-30).attr("stroke","#ff0055").attr("stroke-width",2);
+                    g.append("line").attr("x1",20).attr("y1",h-20).attr("x2",w-20).attr("y2",35).attr("stroke","#00ffff").attr("stroke-width",2);
+                    break;
+                case "DotPlot": // 38. 離散圓點計數矩陣
+                    [20,45,70].forEach((yD,i)=> {
+                        for(let k=0;k<i+3;k++) g.append("circle").attr("cx",k*16+30).attr("cy",yD).attr("r",5).attr("fill","#ffaa00");
+                    });
+                    break;
+                case "Lollipop": // 39. 棒棒糖高低圖
+                    [30,75,120,165].forEach((xL,idx)=> {
+                        let yV = [110,45,85,30][idx];
+                        g.append("line").attr("x1",xL).attr("y1",h).attr("x2",xL).attr("y2",yV).attr("stroke","rgba(255,255,255,0.3)");
+                        g.append("circle").attr("cx",xL).attr("cy",yV).attr("r",5).attr("fill","#00ffaa");
+                    });
+                    break;
+                case "Dumbbell": // 40. 雙端對比啞鈴圖
+                    [30,65,100].forEach((yDum,idx)=> {
+                        g.append("line").attr("x1",30).attr("y1",yDum).attr("x2",w-30).attr("y2",yDum).attr("stroke","rgba(255,255,255,0.15)");
+                        g.append("circle").attr("cx",[40,80,60][idx]).attr("cy",yDum).attr("r",5).attr("fill","#ff0055");
+                        g.append("circle").attr("cx",[150,180,130][idx]).attr("cy",yDum).attr("r",5).attr("fill","#00ffff");
+                    });
+                    break;
+                case "Horizon": // 41. 地平線多重鏡像重疊圖
+                    g.append("path").datum([20,55,75,35,85,40]).attr("fill","rgba(0,255,170,0.15)").attr("d",d3.area().x((d,j)=>j*w/5).y0(h).y1(d=>h-d*h/100));
+                    g.append("path").datum([20,55,75,35,85,40]).attr("fill","rgba(0,255,170,0.4)").attr("d",d3.area().x((d,j)=>j*w/5).y0(h).y1(d=>d>50?h-(d-50)*h/100:h));
+                    break;
+                case "Gantt": // 42. 甘特橫向時間橫條
+                    g.append("rect").attr("x",10).attr("y",15).attr("width",70).attr("height",12).attr("fill","#00ffff");
+                    g.append("rect").attr("x",75).attr("y",45).attr("width",80).attr("height",12).attr("fill","#ffaa00");
+                    g.append("rect").attr("x",130).attr("y",75).attr("width",65).attr("height",12).attr("fill","#00ffaa");
+                    break;
+                case "RoseWind": // 43. 南丁格爾玫瑰風向圖
+                    const rose = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    [0,1,2,3,4,5,6,7].forEach(v=>{
+                        let r1=[20,40,30,50,15,45,25,35][v];
+                        rose.append("path").attr("fill",`rgba(0,255,170,${0.3+v/12})`).attr("stroke","#00ffaa")
+                            .attr("d",d3.arc().innerRadius(0).outerRadius(r1).startAngle(v*Math.PI/4).endAngle((v+1)*Math.PI/4)());
+                    });
+                    break;
+                case "MatrixCorrelation": // 44. 相關性對角線色塊矩陣
+                    for(let x=0;x<4;x++) for(let y=0;y<4;y++) g.append("circle").attr("cx",x*32+35).attr("cy",y*28+15).attr("r",Math.abs(x-y)===0?12:Math.abs(x-y)===1?8:4).attr("fill",x===y?"#ff0055":"#00bfff");
+                    break;
+                case "ArcClock": // 45. 多重環狀同心弧時鐘
+                    const ac = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    ac.append("path").attr("d",d3.arc().innerRadius(15).outerRadius(20).startAngle(0).endAngle(Math.PI*1.2)()).attr("fill","#ff0055");
+                    ac.append("path").attr("d",d3.arc().innerRadius(25).outerRadius(30).startAngle(0).endAngle(Math.PI*0.8)()).attr("fill","#00ffaa");
+                    ac.append("path").attr("d",d3.arc().innerRadius(35).outerRadius(40).startAngle(0).endAngle(Math.PI*1.7)()).attr("fill","#00ffff");
+                    break;
+                case "SpiralScatter": // 46. 阿基米德螺旋散射線
+                    const spi = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    d3.range(30).forEach(v=>{
+                        let r = v*1.5 + 5, theta = v * 0.4;
+                        spi.append("circle").attr("cx",r*Math.sin(theta)).attr("cy",-r*Math.cos(theta)).attr("r",3).attr("fill","#ffaa00");
+                    });
+                    break;
+                case "SuperformulaShape": // 47. 幾何超級公式奇異花紋
+                    const sf = svg.append("g").attr("transform",`translate(${W/2},${H/2})`);
+                    let pts = d3.range(0, Math.PI*2, 0.05).map(t=>{
+                        let r = 35 + 12 * Math.sin(5*t);
+                        return `${r*Math.cos(t)},${r*Math.sin(t)}`;
+                    }).join(" ");
+                    sf.append("polygon").attr("points",pts).attr("fill","none").attr("stroke","#bd00ff").attr("stroke-width",2);
+                    break;
+                case "VectorField": // 48. 向量場不規則箭頭流
+                    for(let x=0;x<5;x++) for(let y=0;y<4;y++) {
+                        let rot = (x*30 + y*25);
+                        g.append("g").attr("transform",`translate(${x*35+20},${y*30+15}) rotate(${rot})`)
+                         .append("line").attr("x1",-8).attr("y1",0).attr("x2",8).attr("y2",0).attr("stroke","#00ffaa").attr("stroke-width",1.5)
+                         .select(function(){return this.parentNode.appendChild(this.cloneNode(true));}).attr("x1",4).attr("y1",-3).attr("x2",8).attr("y2",0);
+                    }
+                    break;
+                case "MeshGrid": // 49. 透視網格線陣列
+                    for(let k=0;k<=6;k++) {
+                        g.append("line").attr("x1",k*w/6).attr("y1",0).attr("x2",k*w/6).attr("y2",h).attr("stroke","rgba(255,255,255,0.08)");
+                        g.append("line").attr("x1",0).attr("y1",k*h/6).attr("x2",w).attr("y2",k*h/6).attr("stroke","rgba(255,255,255,0.08)");
+                    }
+                    g.append("path").attr("d",`M 10,10 L ${w*0.3},25 L ${w*0.7},20 L ${w-10},15 L ${w-20},${h-20} L ${w*0.5},${h-10} L 20,${h-15} Z`).attr("fill","none").attr("stroke","#ff0055").attr("stroke-width",1.5);
+                    break;
+                case "Waveform": // 50. 模擬音頻高頻振幅波形
+                    let wpts = d3.range(0, w, 4).map(x=>`${x},${h/2 + 25 * Math.sin(x*0.1) * Math.cos(x*0.03)}`).join(" ");
+                    g.append("polyline").attr("points",wpts).attr("fill","none").attr("stroke","#00ffff").attr("stroke-width",2);
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

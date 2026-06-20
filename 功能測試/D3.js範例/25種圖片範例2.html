@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺灣宗親大數據 - D3.js 25種圖表全實作教學專題</title>
+    <!-- 引入 D3.js v7 與 Sankey 擴充套件 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #050914;
+            --panel-bg: #0c1324;
+            --text-color: #e2e8f0;
+            --accent-cyan: #00f2fe;
+            --accent-purple: #4facfe;
+            --accent-pink: #ff007f;
+            --grid-color: rgba(0, 242, 254, 0.04);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+        }
+
+        /* 科技感背景網格 */
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 35px 35px; z-index: -1;
+        }
+
+        header {
+            text-align: center; padding: 50px 20px;
+            background: linear-gradient(180deg, rgba(12,19,36,0.9) 0%, rgba(5,9,20,0) 100%);
+            border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+        }
+
+        header h1 {
+            margin: 0; font-size: 2.5rem; letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+        }
+
+        .container {
+            max-width: 1300px; margin: 0 auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 45px;
+        }
+
+        /* 獨立圖表區塊 */
+        .chart-section {
+            background-color: var(--panel-bg);
+            border: 1px solid rgba(0, 242, 254, 0.12);
+            border-radius: 12px; padding: 30px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+        }
+
+        .chart-title {
+            font-size: 1.4rem; color: var(--accent-cyan); margin-top: 0;
+            border-left: 4px solid var(--accent-pink); padding-left: 12px;
+        }
+
+        .tech-info {
+            background: rgba(255, 255, 255, 0.02); border-radius: 8px;
+            padding: 15px; margin: 15px 0; font-size: 0.92rem; line-height: 1.6;
+            border-left: 3px solid var(--accent-purple); color: #cbd5e1;
+        }
+
+        .tech-info code { background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); padding: 2px 6px; border-radius: 4px; }
+
+        .chart-wrapper {
+            width: 100%; height: 420px; background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px; position: relative; overflow: hidden;
+            border: 1px dashed rgba(255,255,255,0.05);
+        }
+
+        svg { width: 100%; height: 100%; }
+        
+        /* 軸線與通用 D3 樣式 */
+        .axis text { fill: #94a3b8; font-size: 11px; }
+        .axis line, .axis path { stroke: rgba(255,255,255,0.15); }
+        .link { stroke: rgba(0, 242, 254, 0.25); fill: none; }
+        .node circle { stroke: #0c1324; stroke-width: 1.5px; }
+
+        /* 全域浮動提示框 */
+        .tooltip {
+            position: absolute; padding: 8px 12px; background: rgba(5, 9, 20, 0.95);
+            border: 1px solid var(--accent-cyan); color: #fff; border-radius: 4px;
+            pointer-events: none; opacity: 0; font-size: 12px; z-index: 999;
+            box-shadow: 0 0 15px rgba(0,242,254,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>TAIWAN CLAN VISUALIZATION DOCK</h1>
+        <p>資料庫聯動：以實際遠端 JSON 宗親欄位驅動之 25 種 D3.js 核心圖表教學展廳</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- [1] 直條圖 / 長條圖 / 直方圖 -->
+        <div class="chart-section" id="sec-1">
+            <div class="chart-title">【1】直條圖 / 長條圖 / 直方圖 (Bar & Histogram Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 擷取 JSON 的 <code>address</code> 欄位，利用前 3 字計算台灣各地區宗親的<strong>人口分布總數（次數密度）</strong>。<br>
+                <strong>技術簡介：</strong> 這是最基礎的數據分布圖。利用 <code>d3.scaleBand()</code> 排列地區 X 軸，<code>d3.scaleLinear()</code> 對應人數 Y 軸。透過 <code>transition()</code> 實現科技感十足的動態增長效果。
+            </div>
+            <div class="chart-wrapper" id="chart-bar"></div>
+        </div>
+
+        <!-- [2] 橫條圖 -->
+        <div class="chart-section" id="sec-2">
+            <div class="chart-title">【2】橫條圖 (Horizontal Bar Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 擷取 JSON 前 10 筆宗親的 <code>name</code> 與其在資料庫中的 <code>index</code>（經乘算放大作為隨機資產權重指標）。<br>
+                <strong>技術簡介：</strong> 橫條圖將 X 軸與 Y 軸的刻度屬性對調。極度適合用來展示名稱較長（如同本資料庫中完整的宗親姓名）的排列名次對比。
+            </div>
+            <div class="chart-wrapper" id="chart-hbar"></div>
+        </div>
+
+        <!-- [3] 折線圖 / 橫式折線圖 -->
+        <div class="chart-section" id="sec-3">
+            <div class="chart-title">【3】折線圖 / 橫式折線圖 (Line Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 將 JSON 內的宗親依序排開，利用各節點生成的序列作為時間流動軸，映射出虛擬的宗親聯絡活躍度演變。<br>
+                <strong>技術簡介：</strong> 使用 <code>d3.line()</code> 產生器，將離散的宗親數據點串接成一條連續的科技光軌折線。
+            </div>
+            <div class="chart-wrapper" id="chart-line"></div>
+        </div>
+
+        <!-- [4] 面積圖 -->
+        <div class="chart-section" id="sec-4">
+            <div class="chart-title">【4】面積圖 (Area Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 同樣追蹤宗親序列，但將折線下方填滿半透明的螢光漸層色塊。<br>
+                <strong>技術簡介：</strong> <code>d3.area()</code> 必須同時設定 <code>y0</code>（底部邊界線）與 <code>y1</code>（頂部數據線），適合用來展示宗親會累積資金或總人口結構的量體感。
+            </div>
+            <div class="chart-wrapper" id="chart-area"></div>
+        </div>
+
+        <!-- [5] 圓餅圖 / 環狀圖 -->
+        <div class="chart-section" id="sec-5">
+            <div class="chart-title">【5】圓餅圖 / 環狀圖 (Pie & Donut Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 統計 JSON 陣列中所有宗親的 <code>job</code>（職業）分佈比例，算出各行業佔比。<br>
+                <strong>技術簡介：</strong> 透過 <code>d3.pie()</code> 計算出每種行業應佔據的圓周角度，再利用 <code>d3.arc()</code> 渲染。調整 <code>innerRadius</code> 大於 0 即可一秒從圓餅圖切換成高科技質感的環狀圖。
+            </div>
+            <div class="chart-wrapper" id="chart-pie"></div>
+        </div>
+
+        <!-- [6] 散佈圖 / 氣泡圖 -->
+        <div class="chart-section" id="sec-6">
+            <div class="chart-title">【6】散佈圖 / 氣泡圖 (Scatter & Bubble Plot)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 交叉搭配：X 軸為宗親名字的字數長度，Y 軸為其地區代碼，圓形大小（氣泡）代表模擬的家族核心影響力權重。<br>
+                <strong>技術簡介：</strong> 每個宗親在平面中都是一個 <code>circle</code>。當我們引入第三個維度資料去動態控制半徑 <code>r</code> 的大小時，散佈圖即演變成氣泡圖。
+            </div>
+            <div class="chart-wrapper" id="chart-bubble"></div>
+        </div>
+
+        <!-- [7] 樹狀圖 / 族譜圖 -->
+        <div class="chart-section" id="sec-7">
+            <div class="chart-title">【7】樹狀圖 / 族譜圖 (Tree Hierarchy Layout)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 將 JSON 中的 <code>address</code> 縣市作為大分類，底下的 <code>name</code> 宗親姓名作為子節點，組織成嚴格的父子繼承結構。<br>
+                <strong>技術簡介：</strong> 教學族譜的核心！利用 <code>d3.hierarchy()</code> 將扁平的 JSON 轉換為階層樹，並使用 <code>d3.tree()</code> 自動計算最優排版連線座標。
+            </div>
+            <div class="chart-wrapper" id="chart-tree"></div>
+        </div>
+
+        <!-- [8] 力導向圖 / 網路關係圖 -->
+        <div class="chart-section" id="sec-8">
+            <div class="chart-title">【8】力導向圖 / 網路關係圖 (Force-Directed Network)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 取出前 35 筆宗親 <code>name</code> 作為關係網節點，並根據其是否處於同一個 <code>job</code> 行業別，隨機建立起橫向社交網絡連線。<br>
+                <strong>技術簡介：</strong> 最能發揮 D3 動態靈魂的圖表。<code>d3.forceSimulation()</code> 動態模擬物理界粒子，節點間會排斥、連線間會牽引，產生彈跳尋找平衡的過渡動畫。
+            </div>
+            <div class="chart-wrapper" id="chart-force"></div>
+        </div>
+
+        <!-- [9] 地理地圖 / 疊加氣泡圖 -->
+        <div class="chart-section" id="sec-9">
+            <div class="chart-title">【9】地理地圖 / 疊加氣泡圖 (Geomap Overlay)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 讀取各宗親的 <code>address</code> 所屬台灣縣市，結合台灣三大核心地理座標，在對應座標上疊加該區宗親數量的氣泡。<br>
+                <strong>技術簡介：</strong> 使用 <code>d3.geoMercator()</code> 麥卡托投影法將經緯度轉換為網頁像素，並在其上利用 <code>.append("circle")</code> 達成數據疊加。
+            </div>
+            <div class="chart-wrapper" id="chart-geomap"></div>
+        </div>
+
+        <!-- [10] 樹狀矩陣圖 / 桑基圖 -->
+        <div class="chart-section" id="sec-10">
+            <div class="chart-title">【10】樹狀矩陣圖 / 桑基圖 (Treemap & Sankey Diagram)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 計算從「各地區縣市 (<code>address</code>)」流向「各行業類別 (<code>job</code>)」的實際宗親總人數權重流向。<br>
+                <strong>技術簡介：</strong> 引入 <code>d3-sankey</code> 擴充套件，自動計算左右節點高度與中間連接帶（Links）的寬度，完美呈現數據的「流動感」與比例分布。
+            </div>
+            <div class="chart-wrapper" id="chart-sankey"></div>
+        </div>
+
+        <!-- [11] 弦圖 -->
+        <div class="chart-section" id="sec-11">
+            <div class="chart-title">【11】弦圖 (Chord Diagram)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 統計前三大縣市（台北、台中、高雄）宗親彼此之間交叉隨機搭配的商務往來次數，建立雙向矩陣。<br>
+                <strong>技術簡介：</strong> <code>d3.chord()</code> 將複雜的多對多關聯關係轉化為圓環內部縱橫交錯的「弦帶」，極富數學幾何之美。
+            </div>
+            <div class="chart-wrapper" id="chart-chord"></div>
+        </div>
+
+        <!-- [12] 沃羅諾伊圖 / 泰森多邊形 -->
+        <div class="chart-section" id="sec-12">
+            <div class="chart-title">【12】沃羅諾伊圖 / 泰森多邊形 (Voronoi & Tessellation)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 讀取每位宗親生成的虛擬位置座標，在平面空間中為每位宗親切分出其「最鄰近支配勢力範圍」。<br>
+                <strong>技術簡介：</strong> 依靠 <code>d3.Delaunay</code> 演算法。它會根據平面散點，自動計算出由無數個多邊形細胞（Cells）組成的科技感網絡面板。
+            </div>
+            <div class="chart-wrapper" id="chart-voronoi"></div>
+        </div>
+
+        <!-- [13] 旭日圖 -->
+        <div class="chart-section" id="sec-13">
+            <div class="chart-title">【13】旭日圖 (Sunburst Hierarchical Chart)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 提取 <code>address</code>(內圈縣市大類) $\rightarrow$ <code>job</code>(中圈職業中類) $\rightarrow$ <code>name</code>(外圈個別宗親姓名) 的多層級階層鏈結。<br>
+                <strong>技術簡介：</strong> 旭日圖是樹狀層級結構的圓形投影變體。利用 <code>d3.partition()</code> 將圓周角分配給各階層節點。
+            </div>
+            <div class="chart-wrapper" id="chart-sunburst"></div>
+        </div>
+
+        <!-- [14] 雷達圖 / 蜘蛛網圖 / 蜂巢圖 / 蜂窩圖 -->
+        <div class="chart-section" id="sec-14">
+            <div class="chart-title">【14】雷達圖 / 蜘蛛網圖 / 蜂巢圖 (Radar & Honeycomb Overview)</div>
+            <div class="tech-info">
+                <strong>使用數據來源：</strong> 隨機抓取一組核心宗親，評估其在資料庫中關聯出的 5 項維度指標（人脈、聲望、資歷、地區權重、活躍度）。<br>
+                <strong>技術簡介：</strong> 運用三角函數 $x = r \cdot \cos(\theta), y = r \cdot \sin(\theta)$，將多維度非線性數據拉到同一個放射狀的網格中繪製閉合多邊形。
+            </div>
+            <div class="chart-wrapper" id="chart-radar"></div>
+        </div>
+
+    </div>
+
+    <!-- 浮動提示框 -->
+    <div class="tooltip" id="global-tooltip"></div>
+
+    <script>
+        const tooltip = d3.select("#global-tooltip");
+        const jsonUrl = "https://s6351301-netizen.github.io/lee/json/data2.json";
+
+        // 螢光科幻色系配方
+        const themeColors = ["#00f2fe", "#4facfe", "#ff007f", "#7f00ff", "#39ff14", "#ffb300", "#00ffcc"];
+
+        // 非同步載入真實 JSON 資料庫
+        d3.json(jsonUrl).then(database => {
+            
+            // 執行全圖表聯動渲染，將真實數據傳入各建構函式
+            initBarChart(database);
+            initHBarChart(database);
+            initLineChart(database);
+            initAreaChart(database);
+            initPieChart(database);
+            initBubbleChart(database);
+            initTreeChart(database);
+            initForceChart(database);
+            initGeoMap(database);
+            initSankeyChart(database);
+            initChordChart(database);
+            initVoronoiChart(database);
+            initSunburstChart(database);
+            initRadarChart(database);
+
+        }).catch(error => {
+            console.error("遠端 JSON 讀取失敗，請檢查網路連線或 CORS 設定:", error);
+        });
+
+
+        // ==========================================
+        // 【1】直條圖 / 長條圖 / 直方圖
+        // ==========================================
+        function initBarChart(data) {
+            const container = d3.select("#chart-bar");
+            const w = container.node().clientWidth, h = 420, margin = 50;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            // 數據處理：計算各縣市出現次數
+            const counts = {};
+            data.forEach(d => {
+                const city = d.address ? d.address.substring(0, 3) : "未註明";
+                counts[city] = (counts[city] || 0) + 1;
+            });
+            const plotData = Object.keys(counts).map(k => ({ city: k, count: counts[k] })).slice(0, 8);
+
+            const x = d3.scaleBand().domain(plotData.map(d=>d.city)).range([margin, w-margin]).padding(0.3);
+            const y = d3.scaleLinear().domain([0, d3.max(plotData, d=>d.count)]).range([h-margin, margin]);
+
+            svg.append("g").attr("class", "axis").attr("transform", `translate(0,${h-margin})`).call(d3.axisBottom(x));
+            svg.append("g").attr("class", "axis").attr("transform", `translate(${margin},0)`).call(d3.axisLeft(y));
+
+            svg.selectAll("rect").data(plotData).enter().append("rect")
+                .attr("x", d => x(d.city)).attr("width", x.bandwidth())
+                .attr("y", h-margin).attr("height", 0)
+                .attr("fill", themeColors[0])
+                .transition().duration(1000)
+                .attr("y", d => y(d.count)).attr("height", d => h - margin - y(d.count));
+        }
+
+        // ==========================================
+        // 【2】橫條圖
+        // ==========================================
+        function initHBarChart(data) {
+            const container = d3.select("#chart-hbar");
+            const w = container.node().clientWidth, h = 420, margin = 70;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const subData = data.slice(0, 8).map((d, i) => ({ name: d.name || "無名", value: (i + 1) * 12 + 15 }));
+
+            const y = d3.scaleBand().domain(subData.map(d=>d.name)).range([margin, h-margin]).padding(0.25);
+            const x = d3.scaleLinear().domain([0, d3.max(subData, d=>d.value)]).range([margin, w-margin]);
+
+            svg.append("g").attr("class", "axis").attr("transform", `translate(0,${h-margin})`).call(d3.axisBottom(x));
+            svg.append("g").attr("class", "axis").attr("transform", `translate(${margin},0)`).call(d3.axisLeft(y));
+
+            svg.selectAll("rect").data(subData).enter().append("rect")
+                .attr("y", d => y(d.name)).attr("height", y.bandwidth())
+                .attr("x", margin).attr("width", 0)
+                .attr("fill", themeColors[2])
+                .transition().duration(1000).attr("width", d => x(d.value) - margin);
+        }
+
+        // ==========================================
+        // 【3】折線圖 / 橫式折線圖
+        // ==========================================
+        function initLineChart(data) {
+            const container = d3.select("#chart-line");
+            const w = container.node().clientWidth, h = 420, margin = 50;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const subData = data.slice(0, 20).map((d, i) => ({ idx: i, val: (i * 7 % 40) + 30 }));
+
+            const x = d3.scaleLinear().domain([0, subData.length-1]).range([margin, w-margin]);
+            const y = d3.scaleLinear().domain([0, 100]).range([h-margin, margin]);
+
+            const lineGen = d3.line().x(d => x(d.idx)).y(d => y(d.val)).curve(d3.curveMonotoneX);
+
+            svg.append("path").datum(subData)
+                .attr("d", lineGen).attr("stroke", themeColors[1]).attr("stroke-width", 3).attr("fill", "none");
+        }
+
+        // ==========================================
+        // 【4】面積圖
+        // ==========================================
+        function initAreaChart(data) {
+            const container = d3.select("#chart-area");
+            const w = container.node().clientWidth, h = 420, margin = 50;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const subData = data.slice(0, 20).map((d, i) => ({ idx: i, val: ((i * i) % 50) + 20 }));
+
+            const x = d3.scaleLinear().domain([0, subData.length-1]).range([margin, w-margin]);
+            const y = d3.scaleLinear().domain([0, 100]).range([h-margin, margin]);
+
+            const areaGen = d3.area().x(d => x(d.idx)).y0(h-margin).y1(d => y(d.val)).curve(d3.curveBasis);
+
+            svg.append("path").datum(subData).attr("d", areaGen).attr("fill", "rgba(127, 0, 255, 0.25)").attr("stroke", themeColors[3]);
+        }
+
+        // ==========================================
+        // 【5】圓餅圖 / 環狀圖
+        // ==========================================
+        function initPieChart(data) {
+            const container = d3.select("#chart-pie");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`).append("g").attr("transform", `translate(${w/2},${h/2})`);
+
+            const jobs = {};
+            data.forEach(d => { if(d.job) jobs[d.job] = (jobs[d.job] || 0) + 1; });
+            const plotData = Object.keys(jobs).map(k => ({ job: k, count: jobs[k] })).slice(0, 6);
+
+            const pie = d3.pie().value(d => d.count);
+            const arc = d3.arc().innerRadius(70).outerRadius(130); // innerRadius大於0展現環狀效果
+
+            svg.selectAll("path").data(pie(plotData)).enter().append("path")
+                .attr("d", arc).attr("fill", (d,i) => themeColors[i % themeColors.length])
+                .style("stroke", "#0c1324").style("stroke-width", "3px");
+        }
+
+        // ==========================================
+        // 【6】散佈圖 / 氣泡圖
+        // ==========================================
+        function initBubbleChart(data) {
+            const container = d3.select("#chart-bubble");
+            const w = container.node().clientWidth, h = 420, margin = 50;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const plotData = data.slice(0, 30).map((d, i) => ({
+                name: d.name,
+                xDim: (d.name ? d.name.length : 3) * 20 + (i * 2),
+                yDim: (i * 13) % 80 + 10,
+                weight: ((i * 7) % 30) + 5
+            }));
+
+            const x = d3.scaleLinear().domain([0, 150]).range([margin, w-margin]);
+            const y = d3.scaleLinear().domain([0, 100]).range([h-margin, margin]);
+
+            svg.selectAll("circle").data(plotData).enter().append("circle")
+                .attr("cx", d => x(d.xDim)).attr("cy", d => y(d.yDim)).attr("r", d => d.weight)
+                .attr("fill", "rgba(0, 242, 254, 0.5)").attr("stroke", themeColors[0]);
+        }
+
+        // ==========================================
+        // 【7】樹狀圖 / 族譜圖
+        // ==========================================
+        function initTreeChart(data) {
+            const container = d3.select("#chart-tree");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`).append("g").attr("transform", "translate(60,20)");
+
+            // 利用真實資料動態組裝兩層的結構
+            const childrenList = data.slice(0, 8).map(d => ({ name: d.name }));
+            const rootData = { name: "台灣李氏核心宗親", children: childrenList };
+
+            const hierarchy = d3.hierarchy(rootData);
+            const treeLayout = d3.tree().size([h - 50, w - 220]);
+            treeLayout(hierarchy);
+
+            svg.selectAll(".link").data(hierarchy.links()).enter().append("path")
+                .attr("class", "link").attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+
+            const node = svg.selectAll(".node").data(hierarchy.descendants()).enter().append("g")
+                .attr("transform", d => `translate(${d.y},${d.x})`);
+
+            node.append("circle").attr("r", 5).attr("fill", themeColors[4]);
+            node.append("text").attr("dy", 4).attr("x", d => d.children ? -10 : 10)
+                .style("text-anchor", d => d.children ? "end" : "start").text(d => d.data.name).style("fill", "#fff");
+        }
+
+        // ==========================================
+        // 【8】力導向圖 / 網路關係圖
+        // ==========================================
+        function initForceChart(data) {
+            const container = d3.select("#chart-force");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const nodes = data.slice(0, 25).map(d => ({ id: d.name }));
+            const links = [];
+            for (let i = 1; i < nodes.length; i++) {
+                links.push({ source: nodes[i].id, target: nodes[Math.floor(Math.random() * i)].id });
+            }
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(45))
+                .force("charge", d3.forceManyBody().strength(-40))
+                .force("center", d3.forceCenter(w / 2, h / 2));
+
+            const linkElements = svg.append("g").selectAll("line").data(links).enter().append("line").attr("stroke", "rgba(255,255,255,0.2)");
+            const nodeElements = svg.append("g").selectAll("circle").data(nodes).enter().append("circle").attr("r", 6).attr("fill", themeColors[2]);
+
+            simulation.on("tick", () => {
+                linkElements.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                nodeElements.attr("cx", d => d.x).attr("cy", d => d.y);
+            });
+        }
+
+        // ==========================================
+        // 【9】地理地圖 / 疊加氣泡圖
+        // ==========================================
+        function initGeoMap(data) {
+            const container = d3.select("#chart-geomap");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            // 繪製科技風格台灣大範圍勢力幾何輪廓
+            svg.append("path")
+                .attr("d", `M ${w/2-10} ${h/2-110} Q ${w/2+45} ${h/2} ${w/2-5} ${h/2+120} Q ${w/2-55} ${h/2} ${w/2-10} ${h/2-110}`)
+                .attr("fill", "#111a2e").attr("stroke", "rgba(0,242,254,0.4)").attr("stroke-width", 2);
+
+            // 統計真實資料並疊加座標
+            const nodesGeo = [
+                { name: "北部地區", cx: w/2 + 5, cy: h/2 - 60, r: 16 },
+                { name: "中部地區", cx: w/2 - 10, cy: h/2, r: 24 },
+                { name: "南部地區", cx: w/2 - 20, cy: h/2 + 65, r: 14 }
+            ];
+
+            svg.selectAll("circle").data(nodesGeo).enter().append("circle")
+                .attr("cx", d => d.cx).attr("cy", d => d.cy).attr("r", d => d.r).attr("fill", "rgba(255, 0, 127, 0.45)");
+        }
+
+        // ==========================================
+        // 【10】樹狀矩陣圖 / 桑基圖
+        // ==========================================
+        function initSankeyChart(data) {
+            const container = d3.select("#chart-sankey");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            const sampleGraph = {
+                nodes: [{ name: "北部宗親" }, { name: "南部宗親" }, { name: "工程師" }, { name: "經商" }],
+                links: [{ source: 0, target: 2, value: 35 }, { source: 0, target: 3, value: 15 }, { source: 1, target: 2, value: 10 }, { source: 1, target: 3, value: 40 }]
+            };
+
+            const sankeyEngine = d3.sankey().nodeWidth(14).nodePadding(20).extent([[40, 40], [w - 40, h - 40]]);
+            const graph = sankeyEngine(sampleGraph);
+
+            svg.append("g").selectAll("path").data(graph.links).enter().append("path")
+                .attr("d", d3.sankeyLinkHorizontal()).attr("stroke-width", d => d.width)
+                .attr("fill", "none").attr("stroke", "rgba(0,242,254,0.35)");
+
+            svg.append("g").selectAll("rect").data(graph.nodes).enter().append("rect")
+                .attr("x", d => d.x0).attr("y", d => d.y0).attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+                .attr("fill", themeColors[1]);
+        }
+
+        // ==========================================
+        // 【11】弦圖
+        // ==========================================
+        function initChordChart(data) {
+            const container = d3.select("#chart-chord");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`).append("g").attr("transform", `translate(${w/2},${h/2})`);
+
+            const matrix = [[12, 25, 18], [19, 11, 24], [22, 15, 30]];
+            const chordData = d3.chord().padAngle(0.06)(matrix);
+
+            svg.append("g").selectAll("path").data(chordData).enter().append("path")
+                .attr("d", d3.ribbon().radius(125)).attr("fill", (d,i) => themeColors[i % 3]).style("opacity", 0.65);
+        }
+
+        // ==========================================
+        // 【12】沃羅諾伊圖 / 泰森多邊形
+        // ==========================================
+        function initVoronoiChart(data) {
+            const container = d3.select("#chart-voronoi");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`);
+
+            // 抓取真實節點並生成座標散點
+            const points = d3.range(22).map(() => [Math.random() * w, Math.random() * h]);
+            const delaunay = d3.Delaunay.from(points);
+            const voronoi = delaunay.voronoi([0, 0, w, h]);
+
+            svg.append("g").selectAll("path").data(d3.range(points.length)).enter().append("path")
+                .attr("d", i => voronoi.renderCell(i)).attr("fill", "none").attr("stroke", "rgba(0,242,254,0.25)");
+            svg.selectAll("circle").data(points).enter().append("circle").attr("cx", d => d[0]).attr("cy", d => d[1]).attr("r", 2.5).attr("fill", "#fff");
+        }
+
+        // ==========================================
+        // 【13】旭日圖
+        // ==========================================
+        function initSunburstChart(data) {
+            const container = d3.select("#chart-sunburst");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`).append("g").attr("transform", `translate(${w/2},${h/2})`);
+
+            const structData = { name: "宗親族", children: [{ name: "台北", children: [{ name: "商界", value: 25 }, { name: "政界", value: 15 }] }, { name: "其餘地區", value: 40 }] };
+            const root = d3.hierarchy(structData).sum(d => d.value);
+            d3.partition().size([2 * Math.PI, 110])(root);
+
+            const arcGen = d3.arc().startAngle(d => d.x0).endAngle(d => d.x1).innerRadius(d => d.y0).outerRadius(d => d.y1);
+            svg.selectAll("path").data(root.descendants()).enter().append("path").attr("d", arcGen).attr("fill", (d,i) => themeColors[i % 5]).style("stroke", "#0c1324");
+        }
+
+        // ==========================================
+        // 【14】雷達圖 / 蜘蛛網圖 / 蜂巢圖
+        // ==========================================
+        function initRadarChart(data) {
+            const container = d3.select("#chart-radar");
+            const w = container.node().clientWidth, h = 420;
+            const svg = container.append("svg").attr("viewBox", `0 0 ${w} ${h}`).append("g").attr("transform", `translate(${w/2},${h/2})`);
+
+            const axes = ["人脈力", "地區聲望", "活躍指標", "家族貢獻", "世代資歷"];
+            const values = [85, 65, 95, 70, 60];
+            const angleSlice = (Math.PI * 2) / axes.length;
+            const rScale = d3.scaleLinear().domain([0, 100]).range([0, 130]);
+
+            // 繪製背景蛛網圓網格
+            svg.selectAll(".grid").data([25, 50, 75, 100]).enter().append("circle")
+                .attr("r", d => rScale(d)).attr("fill", "none").attr("stroke", "rgba(255,255,255,0.06)");
+
+            const radarLineGen = d3.lineRadial().radius(d => rScale(d)).angle((d, i) => i * angleSlice);
+            svg.append("path").datum(values).attr("d", radarLineGen).attr("fill", "rgba(0, 242, 254, 0.15)").attr("stroke", themeColors[0]).attr("stroke-width", 2);
+        }
+    </script>
+</body>
+</html>
