@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 複雜重組家庭物理模擬教學範例</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #f8f9fa; /* 嚴格要求：純淨白/淺色背景 */
+            color: #212529;
+            padding: 20px;
+        }
+        
+        /* 教學與劇情說明面板 */
+        #story-panel {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-left: 8px solid #dc3545;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0 0 12px 0; font-size: 26px; color: #212529; }
+        h2 { font-size: 18px; margin: 15px 0 5px 0; color: #dc3545; }
+        p { margin: 6px 0; font-size: 18px; color: #495057; line-height: 1.6; }
+        
+        /* 圖表畫布容器 */
+        #chart-container {
+            width: 100%;
+            max-width: 1100px;
+            height: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            border: 2px solid #dee2e6;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        /* 關係連線基礎樣式 */
+        .link {
+            stroke-opacity: 0.7;
+            stroke-width: 3px;
+        }
+        
+        /* 【關鍵要求】：不同陣線與關係使用不同顏色的線條 */
+        .link-normal { stroke: #ced4da; stroke-width: 1.5px; } /* 一般血緣婚姻：淡灰 */
+        .link-alliance { stroke: #28a745; stroke-width: 4px; } /* 反抗理論陣線（綠線）：多嘴媳婦 + 三房女兒 + 三兒子 */
+        .link-attack { stroke: #dc3545; stroke-width: 3.5px; stroke-dasharray: 6,4; } /* 打人/對著幹關係（紅虛線） */
+
+        /* 節點基本樣式 */
+        .node circle {
+            stroke: #ffffff;
+            stroke-width: 2.5px;
+            cursor: grab;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .node:active circle { cursor: grabbing; }
+
+        /* 18px 家族成員字體與防重疊背景 */
+        .node text {
+            font-size: 18px; /* 全局指定 18px */
+            fill: #212529;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: #ffffff; /* 白字底，防止文字與線條交錯時看不清 */
+            stroke-width: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="story-panel">
+        <h1>D3.js 複雜重組家庭恩怨錄（4代同堂物理模擬）</h1>
+        
+        <h2>🔥 家族大混戰劇情背景</h2>
+        <p><strong>第一代再婚：</strong>「我（李老太爺）」與「你（新夫人）」重組家庭。各自帶有前房兒女，並生下最受寵的「我們生的小孩（三兒子）」。</p>
+        <p><strong>不和睦的妯娌：</strong>長房大華媳婦與二房的多嘴媳婦天天吵架，妯娌關係惡劣。</p>
+        
+        <h2>⚡ 戰況導火線與對立陣線（請對照圖表顏色線條）</h2>
+        <p>🔴 <strong>紅虛線（衝突）</strong>：【我的二兒子】與【你的大女兒】聯手打了【我們生的小孩（三兒子）】。三兒子憤而要找【我的大兒子（長房大哥）】理論！</p>
+        <p>🟢 <strong>綠粗線（反抗陣線結盟）</strong>：你那【多嘴的二媳婦】為了整長房，跑去跟三兒子的【第3個女兒】講壞話。結果兩人合流，演變成<strong>「多嘴媳婦 + 三房女兒 + 三兒子」組成同盟</strong>，一起衝去找大兒子理論對著幹！</p>
+        <p>💡 <strong>互動教學：</strong>滑鼠可任意拖曳成員。當你拖曳綠色陣線的成員時，可以看到整條反抗聯盟會呈現高度動態的物理拉扯！</p>
+    </div>
+
+    <div id="chart-container"></div>
+
+    <script>
+        // ==========================================
+        // 1. 數據準備：不同人使用不同顏色 (身分標籤)
+        // ==========================================
+        const memberNodes = [
+            // 第一代
+            { id: "我 (李老太爺)", role: "me", r: 40 },
+            { id: "你 (新夫人)", role: "you", r: 40 },
+
+            // 第二代（我的小孩）
+            { id: "我的大兒子 (長房掌權)", role: "my-child-1", r: 35 },
+            { id: "大華媳婦 (長房媳)", role: "my-wife-1", r: 30 },
+            { id: "我的二兒子 (打人者A)", role: "my-child-2", r: 32 },
+
+            // 第二代（你的小孩）
+            { id: "你的大女兒 (打人者B)", role: "your-child-1", r: 32 },
+            { id: "你的二兒子", role: "your-child-2", r: 32 },
+            { id: "多嘴媳婦 (二房爆料者)", role: "alliance-leader", r: 35 }, // 陣線發起人
+
+            // 第二代（我們生的小孩）
+            { id: "我們生的小孩 (三兒子)", role: "alliance-core", r: 35 },
+
+            // 第三代（長房延伸與三兒子女兒）
+            { id: "長房大孫子", role: "gen3-long", r: 25 },
+            { id: "三房大女兒", role: "gen3-three", r: 25 },
+            { id: "三房二女兒", role: "gen3-three", r: 25 },
+            { id: "三房三女兒 (被煽動者)", role: "alliance-member", r: 28 }, // 陣線成員
+
+            // 第四代（長房曾孫 - 達成四代同堂）
+            { id: "長房長曾孫 (第四代)", role: "gen4", r: 20 }
+        ];
+
+        // 連線與陣線關係
+        const relationshipLinks = [
+            // 基礎家庭樹結構 (一般灰線)
+            { source: "我 (李老太爺)", target: "你 (新夫人)", type: "normal" },
+            { source: "我 (李老太爺)", target: "我的大兒子 (長房掌權)", type: "normal" },
+            { source: "我的大兒子 (長房掌權)", target: "大華媳婦 (長房媳)", type: "normal" },
+            { source: "我 (李老太爺)", target: "我的二兒子 (打人者A)", type: "normal" },
+            { source: "你 (新夫人)", target: "你的大女兒 (打人者B)", type: "normal" },
+            { source: "你 (新夫人)", target: "你的二兒子", type: "normal" },
+            { source: "你的二兒子", target: "多嘴媳婦 (二房爆料者)", type: "normal" },
+            { source: "我 (李老太爺)", target: "我們生的小孩 (三兒子)", type: "normal" },
+            { source: "你 (新夫人)", target: "我們生的小孩 (三兒子)", type: "normal" },
+            
+            // 世代延續
+            { source: "我的大兒子 (長房掌權)", target: "長房大孫子", type: "normal" },
+            { source: "長房大孫子", target: "長房長曾孫 (第四代)", type: "normal" },
+            { source: "我們生的小孩 (三兒子)", target: "三房大女兒", type: "normal" },
+            { source: "我們生的小孩 (三兒子)", target: "三房二女兒", type: "normal" },
+            { source: "我們生的小孩 (三兒子)", target: "三房三女兒 (被煽動者)", type: "normal" },
+
+            // ====== 🔴 衝突與理論關係線（紅虛線） ======
+            { source: "我的二兒子 (打人者A)", target: "我們生的小孩 (三兒子)", type: "attack" },
+            { source: "你的大女兒 (打人者B)", target: "我們生的小孩 (三兒子)", type: "attack" },
+            { source: "我們生的小孩 (三兒子)", target: "我的大兒子 (長房掌權)", type: "attack" },
+
+            // ====== 🟢 同一陣線對著幹結盟線（綠實線） ======
+            { source: "多嘴媳婦 (二房爆料者)", target: "三房三女兒 (被煽動者)", type: "alliance" },
+            { source: "三房三女兒 (被煽動者)", target: "我們生的小孩 (三兒子)", type: "alliance" },
+            { source: "多嘴媳婦 (二房爆料者)", target: "我的大兒子 (長房掌權)", type: "attack" } // 多嘴媳婦也加入對著幹
+        ];
+
+        // ==========================================
+        // 2. 嚴格要求：不同人使用不同顏色 (Color Scale)
+        // ==========================================
+        const colors = {
+            "me": "#4a4e69", "you": "#9a8c98",
+            "my-child-1": "#0077b6", "my-wife-1": "#00b4d8", "my-child-2": "#03045e",
+            "your-child-1": "#f72585", "your-child-2": "#7209b7", 
+            "alliance-leader": "#2bc016", // 綠色系代表反抗陣線
+            "alliance-core": "#208b12",   
+            "alliance-member": "#56e343", 
+            "gen3-long": "#90e0ef", "gen3-three": "#b5e2fa", "gen4": "#caf0f8"
+        };
+
+        // ==========================================
+        // 3. 配置物理模擬器 (碰撞與排斥極大化，防止畫面打結)
+        // ==========================================
+        const width = 1100, height = 650;
+        const svg = d3.select("#chart-container").append("svg")
+            .attr("width", "100%").attr("height", "100%").attr("viewBox", `0 0 ${width} ${height}`);
+
+        const simulation = d3.forceSimulation(memberNodes)
+            .force("link", d3.forceLink(relationshipLinks).id(d => d.id)
+                .distance(d => d.type === "alliance" ? 70 : (d.type === "attack" ? 150 : 100)).strength(1))
+            .force("charge", d3.forceManyBody().strength(-800)) // 強力排斥
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide().radius(d => d.r + 25)); // 氣墊加大，18px字體絕不重疊
+
+        // ==========================================
+        // 4. 繪製線條 (區分陣線顏色)
+        // ==========================================
+        const linkElements = svg.append("g")
+            .selectAll("line")
+            .data(relationshipLinks)
+            .enter().append("line")
+            .attr("class", d => {
+                if (d.type === "alliance") return "link link-alliance";
+                if (d.type === "attack") return "link link-attack";
+                return "link link-normal";
+            });
+
+        // ==========================================
+        // 5. 繪製節點群組
+        // ==========================================
+        const nodeElements = svg.append("g")
+            .selectAll("g")
+            .data(memberNodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag().on("start", dragStart).on("drag", dragging).on("end", dragEnd));
+
+        // 畫不同顏色的成員圓圈
+        nodeElements.append("circle")
+            .attr("r", d => d.r)
+            .attr("fill", d => colors[d.role] || "#7f8c8d");
+
+        // 寫入 18px 繁體中文標籤
+        nodeElements.append("text")
+            .attr("dy", "0.35em")
+            .text(d => d.id.split(" (")[0]); // 僅擷取主名稱，使畫面更精簡乾淨
+
+        // ==========================================
+        // 6. 物理引擎時鐘 Tick 刷新
+        // ==========================================
+        simulation.on("tick", () => {
+            linkElements
+                .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+
+            nodeElements.attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // 拖曳演算法
+        function dragStart(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x; d.fy = d.y;
+        }
+        function dragging(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragEnd(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null; d.fy = null;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲化問答驗證範例</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; user-select: none; }
+        .captcha-card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        .game-area { position: relative; width: 150px; height: 150px; margin: 20px auto; border-radius: 50%; overflow: hidden; box-shadow: 0 0 8px rgba(0,0,0,0.2); background: #ffffff; }
+        #vectorCanvas { width: 100%; height: 100%; transition: transform 0.1s ease; }
+        .control-group { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        .btn-rotate { background: #e4e7eb; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn-rotate:hover { background: #dcdfe6; }
+        .btn-submit { width: 100%; padding: 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn-submit:hover { background: #059669; }
+    </style>
+</head>
+<body>
+
+<div class="captcha-card">
+    <h3 style="margin:0; color:#333;">安全驗證</h3>
+    <p style="font-size:14px; color:#666; margin: 5px 0 0 0;">請將下方的【紅色箭頭】旋轉至垂直朝上</p>
+
+    <div class="game-area">
+        <canvas id="vectorCanvas" width="150" height="150"></canvas>
+    </div>
+
+    <div class="control-group">
+        <button class="btn-rotate" id="rotateLeft">↺ 左轉</button>
+        <button class="btn-rotate" id="rotateRight">↻ 右轉</button>
+    </div>
+
+    <button class="btn-submit" id="submitBtn">確認送出</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('vectorCanvas');
+    const ctx = canvas.getContext('2d');
+    const rotateLeft = document.getElementById('rotateLeft');
+    const rotateRight = document.getElementById('rotateRight');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // 1. 動態繪製一個絕對垂直朝上的紅色箭頭
+    function drawArrow() {
+        ctx.clearRect(0, 0, 150, 150);
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.moveTo(75, 25);   // 箭頭頂點
+        ctx.lineTo(110, 65);  // 右翼
+        ctx.lineTo(90, 65);   // 右內角
+        ctx.lineTo(90, 125);  // 右底
+        ctx.lineTo(60, 125);  // 左底
+        ctx.lineTo(60, 65);   // 左內角
+        ctx.lineTo(40, 65);   // 左翼
+        ctx.closePath();
+        ctx.fill();
+    }
+    drawArrow();
+
+    // 2. 隨機初始角度（每次重新整理都不一樣，確保一定是歪的）
+    let currentAngle = Math.floor(Math.random() * 240) + 60; 
+    updateImageRotation();
+
+    // 每次點擊旋轉 15 度
+    rotateLeft.addEventListener('click', () => { currentAngle = (currentAngle - 15) % 360; updateImageRotation(); });
+    rotateRight.addEventListener('click', () => { currentAngle = (currentAngle + 15) % 360; updateImageRotation(); });
+
+    function updateImageRotation() {
+        if (currentAngle < 0) currentAngle += 360;
+        canvas.style.transform = `rotate(${currentAngle}deg)`;
+    }
+
+    // 3. AJAX 提交到 PHP 後端
+    submitBtn.addEventListener('click', () => {
+        fetch('verify_v4.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ finalAngle: currentAngle })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("🎉 驗證成功！箭頭已精準朝上。");
+            } else {
+                alert("❌ 驗證失敗：角度不夠端正（目前角度：" + data.debug_received_angle + " 度），請再微調！");
+                // 失敗則再次打亂角度
+                currentAngle = Math.floor(Math.random() * 240) + 60;
+                updateImageRotation();
+            }
+        })
+        .catch(err => {
+            alert("❌ 連線後端 PHP 失敗！請確保您是使用 http://localhost/... 開啟網頁，而非 Live Server 5500。");
+            console.error(err);
+        });
+    });
+</script>
+
+</body>
+</html>

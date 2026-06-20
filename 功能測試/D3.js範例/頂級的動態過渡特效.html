@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 頂級動態過渡特效 (Transition) 教學範例</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #1a1c23; /* 暗色背景 */
+            color: #ecf0f1;
+            padding: 20px;
+        }
+        
+        /* 教學說明面板 */
+        #tutorial-header {
+            background: rgba(30, 32, 41, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+            border-left: 6px solid #e74c3c;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0 0 8px 0; font-size: 24px; color: #ecf0f1; }
+        p { margin: 5px 0; font-size: 18px; color: #95a5a6; line-height: 1.6; }
+        
+        /* 控制按鈕 */
+        .btn-update {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        .btn-update:hover { background-color: #c0392b; }
+
+        /* 圖表畫布容器 */
+        #chart-container {
+            width: 100%;
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #2c3e50;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* 項目文字與數據標籤樣式 */
+        .axis-label {
+            font-size: 18px; /* 全局指定 18px */
+            fill: #ffffff;
+            font-weight: bold;
+        }
+        .value-label {
+            font-size: 18px;
+            fill: #f1c40f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tutorial-header">
+        <h1>D3.js 頂級動態過渡特效教學網頁 (Dynamic Transition)</h1>
+        <p><strong>範例主題：</strong> 核心專案績效指標動態更新與自動排序（FLIP 動畫哲學）</p>
+        <p><strong>視覺邏輯：</strong> 點擊更新時，長條圖會同時進行「長度伸縮」、「上下位置交換排序」與「數字動態滾動補間」。</p>
+        <button class="btn-update" onclick="updateData()">⚡ 隨機重新注入數據並排序</button>
+    </div>
+
+    <div id="chart-container"></div>
+
+    <script>
+        // ==========================================
+        // 1. 初始化基礎數據
+        // ==========================================
+        let datasource = [
+            { id: "A", name: "專案 A (AI)", value: 75 },
+            { id: "B", name: "專案 B (Web)", value: 42 },
+            { id: "C", name: "專案 C (Cloud)", value: 93 },
+            { id: "D", name: "專案 D (DevOps)", value: 55 },
+            { id: "E", name: "專案 E (Cyber)", value: 28 }
+        ];
+
+        // ==========================================
+        // 2. 初始化畫布尺寸與比例尺
+        // ==========================================
+        const margin = { top: 20, right: 80, bottom: 20, left: 160 };
+        const width = 850 - margin.left - margin.right;
+        const height = 450 - margin.top - margin.bottom;
+
+        const svg = d3.select("#chart-container")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", height + margin.top + margin.bottom)
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // X 軸比例尺（控制長條寬度）
+        const xScale = d3.scaleLinear().domain([0, 100]).range([0, width]);
+        
+        // Y 軸比例尺（控制長條上下位置，使用 scaleBand）
+        const yScale = d3.scaleBand().range([0, height]).padding(0.25);
+
+        // ==========================================
+        // 3. 核心繪製與過渡動畫函數 (Render & Transition)
+        // ==========================================
+        function render(data) {
+            // A. 更新 Y 軸比例尺的 Domain（每次數據重排，順序都會改變）
+            yScale.domain(data.map(d => d.id));
+
+            // B. 建立 D3 的頂級過渡特效設定
+            // 使用相同名稱的 transition，D3 會自動進行位置與長度的同步平滑補間
+            const t = svg.transition()
+                .duration(1000) // 動畫時間 1 秒
+                .ease(d3.easeCubicInOut); // 採用頂級漸快漸慢緩和曲線
+
+            // C. 綁定數據，指定以 "id" 作為唯一金鑰 (Key Function) —— 這對位置重排至關重要！
+            const barGroups = svg.selectAll("g.bar-group")
+                .data(data, d => d.id);
+
+            // D. 處理【新加入】及【已存在】的資料群組
+            const barGroupsEnter = barGroups.enter()
+                .append("g")
+                .attr("class", "bar-group")
+                // 新加入的群組起點先放在算好的 yScale 位置，但先透明
+                .attr("transform", d => `translate(0, ${yScale(d.id)})`)
+                .style("opacity", 0);
+
+            // 為新群組建立矩形長條
+            barGroupsEnter.append("rect")
+                .attr("height", yScale.bandwidth())
+                .attr("width", 0) // 從寬度 0 開始長起
+                .attr("fill", (d, i) => d3.schemeTableau10[i]);
+
+            // 為新群組建立 18px 專案名稱標籤
+            barGroupsEnter.append("text")
+                .attr("class", "axis-label")
+                .attr("x", -15)
+                .attr("y", yScale.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .attr("text-anchor", "end")
+                .text(d => d.name);
+
+            // 為新群組建立 18px 數據值標籤
+            barGroupsEnter.append("text")
+                .attr("class", "value-label")
+                .attr("y", yScale.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .attr("x", 5);
+
+            // E. 【合併全新與既有資料】並啟動頂級過渡動畫
+            const barGroupsUpdate = barGroups.merge(barGroupsEnter);
+
+            // 讓整個群組平滑「上下位移」到新的排序位置，並淡入
+            barGroupsUpdate.transition(t)
+                .attr("transform", d => `translate(0, ${yScale(d.id)})`)
+                .style("opacity", 1);
+
+            // 讓長條矩形平滑「變長或變短」
+            barGroupsUpdate.select("rect")
+                .transition(t)
+                .attr("width", d => xScale(d.value))
+                .attr("height", yScale.bandwidth());
+
+            // 讓數據標籤平滑「跟著長條末端移動」
+            barGroupsUpdate.select(".value-label")
+                .transition(t)
+                .attr("x", d => xScale(d.value) + 10)
+                // 【頂級特效細節】：數值文字內容的滾動補間 (Number Tween)
+                // 這能讓數字從舊數值像計分板一樣滾動跳變到新數值，而不是生硬地直接切換文字
+                .tween("text", function(d) {
+                    const currentText = d3.select(this).text();
+                    // 如果原本沒文字(新加入)，就從0開始；否則從原本的數字開始
+                    const i = d3.interpolateNumber(parseInt(currentText) || 0, d.value);
+                    return function(t) {
+                        d3.select(this).text(Math.round(i(t)));
+                    };
+                });
+
+            // F. 處理【被刪除/退出】的舊資料
+            barGroups.exit()
+                .transition(t)
+                .style("opacity", 0)
+                .remove();
+        }
+
+        // ==========================================
+        // 4. 互動事件：點擊按鈕刷新數據
+        // ==========================================
+        function updateData() {
+            // 隨機重新賦予 20 ~ 100 之間的數值
+            datasource.forEach(d => {
+                d.value = Math.floor(Math.random() * 81) + 20;
+            });
+
+            // 【自動排序】：依數值由大到小重新排序陣列
+            datasource.sort((a, b) => b.value - a.value);
+
+            // 重新呼叫繪製，觸活動態過渡
+            render(datasource);
+        }
+
+        // 網頁初次載入時先排序並繪製第一次
+        datasource.sort((a, b) => b.value - a.value);
+        render(datasource);
+
+    </script>
+</body>
+</html>

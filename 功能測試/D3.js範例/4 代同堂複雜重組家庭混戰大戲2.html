@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 電影級商戰模擬：透明字幕、精準輩分與音量倍增版</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #f4f6f9; 
+            color: #212529;
+            padding: 20px 0 220px 0; /* 底部留白，給予浮空透明字幕充足空間 */
+            overflow-x: hidden;
+            transition: background-color 3.0s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+        }
+
+        /* 核心包覆容器：置中且佔螢幕寬度 80% */
+        .theater-container {
+            width: 80%;
+            max-width: 1400px;
+            min-width: 900px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 電影啟動解鎖按鈕 */
+        #audio-unlocker {
+            background: #1a202c;
+            color: #ecc94b;
+            text-align: center;
+            padding: 16px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            margin-bottom: 15px;
+            border: 2px solid #ecc94b;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #audio-unlocker:hover {
+            background: #2d3748;
+            transform: scale(1.005);
+        }
+
+        /* 圖表畫布容器：上移布幕 */
+        #chart-container {
+            width: 100%;
+            height: 680px;
+            background-color: rgba(255,255,255,0.75);
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            margin-top: 5px;
+        }
+        
+        /* 核心需求：字幕全面透明化，改為浮空文字，完全看得到下方穿梭的動畫 */
+        #theater-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%); 
+            width: 80%; 
+            max-width: 1400px;
+            min-width: 900px;
+            background: transparent; /* 【優化】完全透明，不遮擋任何動畫線條 */
+            padding: 10px 30px;
+            box-shadow: none; /* 移除陰影，消除邊界感 */
+            border-left: none; /* 移除左邊條 */
+            box-sizing: border-box;
+            z-index: 9999; 
+            pointer-events: none; /* 讓滑鼠事件能穿透到下方的 D3 畫布 */
+            text-align: center; /* 居中對齊更具電影台詞感 */
+        }
+        
+        /* 提高台詞文字的辨識度（加上優雅的白色文字外襯，確保在任何背景顏色下都極清晰） */
+        #scene-title { 
+            margin: 0 0 6px 0; 
+            font-size: 26px; 
+            color: #1a202c; 
+            font-weight: 900; 
+            text-shadow: 0 0 8px #ffffff, 0 0 8px #ffffff, 0 0 8px #ffffff;
+        }
+        #scene-desc { 
+            margin: 5px 0; 
+            font-size: 19px; 
+            color: #2d3748; 
+            line-height: 1.6; 
+            font-weight: bold; 
+            text-shadow: 0 0 8px #ffffff, 0 0 8px #ffffff, 0 0 8px #ffffff;
+        }
+        #audio-status { 
+            font-size: 13px; 
+            color: #e53e3e; 
+            font-weight: bold; 
+            margin-top: 5px; 
+            text-shadow: 0 0 5px #ffffff;
+        }
+        #timer-bar { 
+            height: 4px; 
+            background-color: #e53e3e; 
+            width: 0%; 
+            transition: width 14s linear; 
+            margin: 12px auto 0 auto; 
+            max-width: 60%; /* 縮短進度條，使其精緻不顯眼 */
+            box-shadow: 0 0 4px rgba(255,255,255,0.8);
+        }
+
+        /* D3.js 關係連線基礎樣式 */
+        .link {
+            stroke-opacity: 0.75;
+            transition: stroke 1.5s, stroke-width 1.5s;
+        }
+        .link-normal { stroke: #cbd5e0; stroke-width: 2.5px; } 
+        .link-alliance { stroke: #38a169; stroke-width: 5.5px; } 
+        .link-conflict { stroke: #e53e3e; stroke-width: 4.5px; stroke-dasharray: 8,4; } 
+        .link-will { stroke: #d69e2e; stroke-width: 6.5px; } 
+
+        /* 節點文字樣式 */
+        .node text {
+            font-size: 16px; 
+            fill: #1a202c;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 4px;
+        }
+        
+        .node circle {
+            stroke: #ffffff;
+            stroke-width: 3.5px;
+            transition: r 1.5s ease-in-out; /* 圓圈尺寸縮放平滑化 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="theater-container">
+        
+        <div id="audio-unlocker" onclick="startCinema()">
+            🎬 點擊此處：以「2倍音量」解鎖 80% 全透明浮空字幕劇院！
+        </div>
+
+        <div id="chart-container"></div>
+        
+    </div>
+
+    <div id="theater-panel">
+        <div id="scene-title">🎬 正在等待解鎖電影舞台...</div>
+        <div id="scene-desc">字幕已全透明浮空，音效放大 1 倍。圓圈半徑已嚴格對應家族輩分。</div>
+        <div id="audio-status">⚠️ 音效系統：尚未解鎖（請點擊上方按鈕開啟最高音量與語音）</div>
+        <div id="timer-bar"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 【核心優化】電影級配樂引擎：音量放大 1 倍
+        // ==========================================
+        let audioCtx = null;
+        let speechEnabled = false;
+        let cinemaStarted = false;
+        let theaterInterval = null;
+
+        function startCinema() {
+            if (cinemaStarted) return;
+            cinemaStarted = true;
+
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            speechEnabled = true;
+
+            document.getElementById("audio-unlocker").style.display = "none";
+            document.getElementById("audio-status").innerText = "🍏 雙倍震撼配樂穩定輸出，清晰男女聲雙旁白已就位。";
+            document.getElementById("audio-status").style.color = "#2f855a";
+
+            // 啟動加強版環境背景配樂
+            playContinuousBGM();
+
+            playTheater();
+            theaterInterval = setInterval(playTheater, 14000); 
+        }
+
+        // 背景配樂音量放大一倍
+        function playContinuousBGM() {
+            if (!audioCtx) return;
+            let osc1 = audioCtx.createOscillator();
+            let osc2 = audioCtx.createOscillator();
+            let gainNode = audioCtx.createGain();
+
+            osc1.type = "sine";     osc1.frequency.value = 60;  
+            osc2.type = "triangle"; osc2.frequency.value = 60.4; 
+
+            // 【優化】原本是 0.03，放大 1 倍調高至 0.06 輸出
+            gainNode.gain.value = 0.06; 
+
+            let filter = audioCtx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.value = 120; 
+
+            osc1.connect(filter); osc2.connect(filter);
+            filter.connect(gainNode); gainNode.connect(audioCtx.destination);
+
+            osc1.start(); osc2.start();
+        }
+
+        // 轉場音效音量放大一倍
+        function playBoom() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.type = "sine"; osc.frequency.setValueAtTime(85, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(25, audioCtx.currentTime + 1.5);
+            
+            // 【優化】原本是 0.5，放大 1 倍滿血調高至 1.0 輸出
+            gain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+        }
+
+        // ==========================================
+        // 2. 清晰流暢旁白控制 (語速加快：rate = 1.18)
+        // ==========================================
+        function speak(text, gender) {
+            if (!speechEnabled) return;
+            window.speechSynthesis.cancel(); 
+
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "zh-TW"; 
+            utterance.rate = 1.18; 
+
+            let voices = window.speechSynthesis.getVoices();
+            if (gender === "male") {
+                let maleVoice = voices.find(v => v.name.includes("Zhiwei") || v.name.includes("Danny") || v.name.includes("Kangkang"));
+                if (maleVoice) utterance.voice = maleVoice;
+                utterance.pitch = 0.85; 
+            } else {
+                let femaleVoice = voices.find(v => v.name.includes("Yating") || v.name.includes("Huihui") || v.name.includes("Hanhan"));
+                if (femaleVoice) utterance.voice = femaleVoice;
+                utterance.pitch = 1.1; 
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+        window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+
+        // ==========================================
+        // 3. 【核心優化】演員名單：嚴格遵循輩分定義圓圈初始半徑 r
+        // ==========================================
+        // 輩分大(老太爺、新夫人) r=55~50 | 中(兒女、媳婦) r=42~38 | 小(孫女) r=30
+        let memberNodes = [
+            { id: "我 (李老太爺)", role: "elder", r: 55, img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&q=80" },
+            { id: "你 (新夫人)", role: "wife", r: 50, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80" },
+            { id: "我的大兒子", role: "son1", r: 42, img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80" },
+            { id: "大華媳婦", role: "daughter-in-law1", r: 38, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" },
+            { id: "我的二兒子", role: "son2", r: 42, img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" },
+            { id: "你的大女兒", role: "daughter1", r: 42, img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" },
+            { id: "你的二兒子", role: "daughter2", r: 42, img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" },
+            { id: "多嘴媳婦", role: "gossip", r: 38, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&q=80" },
+            { id: "我們生的小懷 (三兒子)", role: "son3", r: 42, img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=100&q=80" },
+            { id: "三房三女兒", role: "granddaughter3", r: 30, img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80" }
+        ];
+
+        let relationshipLinks = [];
+
+        // ==========================================
+        // 4. SVG 畫布渲染配置 (完美包覆圖像防拉伸)
+        // ==========================================
+        const width = 1100, height = 680;
+        const svg = d3.select("#chart-container").append("svg")
+            .attr("width", "100%").attr("height", "100%").attr("viewBox", `0 0 ${width} ${height}`);
+
+        const defs = svg.append("defs");
+        
+        // 【優化】動態生成頭像 Pattern，利用物件座標軸百分比，保證頭像不論大小都不扭曲、圓圈內完全看清
+        function updatePatterns() {
+            const pattern = defs.selectAll("pattern").data(memberNodes, d => d.id);
+            pattern.exit().remove();
+            const pEnter = pattern.enter().append("pattern")
+                .attr("id", d => `avatar-${d.role}`)
+                .attr("width", 1).attr("height", 1)
+                .attr("patternContentUnits", "objectBoundingBox");
+            pEnter.append("image")
+                .attr("href", d => d.img)
+                .attr("width", 1).attr("height", 1)
+                .attr("preserveAspectRatio", "xMidYMid slice"); // 強制等比例切片置中，確保頭像五官清晰
+        }
+        updatePatterns();
+
+        const linkGroup = svg.append("g").attr("class", "links-layer");
+        const nodeGroup = svg.append("g").attr("class", "nodes-layer");
+
+        const simulation = d3.forceSimulation(memberNodes)
+            .velocityDecay(0.42) 
+            .force("link", d3.forceLink(relationshipLinks).id(d => d.id).distance(140).strength(0.85))
+            .force("charge", d3.forceManyBody().strength(-800))
+            .force("center", d3.forceCenter(width / 2, height / 2 - 30))
+            .force("collide", d3.forceCollide().radius(d => d.r + 38));
+
+        function updateGraph(durationTime = 1600) {
+            const l = linkGroup.selectAll("line").data(relationshipLinks, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+            l.exit().remove();
+            const lEnter = l.enter().append("line");
+            const allLinks = l.merge(lEnter).attr("class", d => `link link-${d.type}`);
+
+            const n = nodeGroup.selectAll("g.node").data(memberNodes, d => d.id);
+            n.exit().remove();
+            
+            const nEnter = n.enter().append("g").attr("class", "node");
+            nEnter.append("circle");
+            nEnter.append("text").attr("dy", "2.1em").text(d => d.id.split(" (")[0]);
+
+            const allNodes = n.merge(nEnter);
+            
+            // 綁定圓圈，使其過渡動畫平滑，且填色完美對應頭像代碼
+            allNodes.select("circle")
+                .transition().duration(durationTime).ease(d3.easeCubicInOut) 
+                .attr("r", d => d.r)
+                .attr("fill", d => `url(#avatar-${d.role})`);
+
+            simulation.nodes(memberNodes);
+            simulation.force("link").links(relationshipLinks);
+            simulation.alpha(0.6).restart();
+
+            simulation.on("tick", () => {
+                allLinks.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                allNodes.attr("transform", d => `translate(${d.x}, ${d.y})`);
+            });
+        }
+
+        // ==========================================
+        // 5. 放慢一倍劇場編排 (14秒輪播，6秒配對微動作)
+        // ==========================================
+        let currentScene = 0;
+
+        function playTheater() {
+            currentScene++;
+            resetProgressBar();
+            playBoom(); 
+
+            if (currentScene === 1) {
+                d3.select("body").style("background-color", "#eefaf1");
+                document.getElementById("scene-title").innerText = "內鬥爆發 🎬 第一幕：偷看財報露馬腳，長房大姐慘退場";
+                document.getElementById("scene-desc").innerText = "【⏱️ 0秒】多嘴媳婦夥伴三房設局。【⏱️ 6秒 微動作】大女兒崩潰退場，圓圈縮小並緩慢放逐至角落。";
+                
+                speak("第一幕。多嘴媳婦聯手三房查出假帳，董事會上大姐驚慌失措。一場蓄謀已久的驅逐計劃正在上演。", "female");
+
+                relationshipLinks = [
+                    { source: "多嘴媳婦", target: "三房三女兒", type: "alliance" },
+                    { source: "三房三女兒", target: "我們生的小懷 (三兒子)", type: "alliance" },
+                    { source: "我們生的小懷 (三兒子)", target: "我的大兒子", type: "conflict" }
+                ];
+                updateGraph();
+
+                setTimeout(() => {
+                    let d = memberNodes.find(n => n.id === "你的大女兒");
+                    if(d) { d.x = 120; d.y = 120; d.r = 26; } // 退場縮小，但頭像依舊靠 pattern 平滑保持比例
+                    updateGraph(2500); 
+                    speak("請看大螢幕，大女兒罪證確鑿，現在被無情放逐到角落，徹底出局。", "male");
+                }, 6000);
+
+            } else if (currentScene === 2) {
+                d3.select("body").style("background-color", "#edf4f9");
+                document.getElementById("scene-title").innerText = "權謀升級 🎬 第二幕：反叛內鬼逼宮，大兒子慘遭奪權流放";
+                document.getElementById("scene-desc").innerText = "【⏱️ 14秒】假帳風波擴大。【⏱️ 20秒 微動作】枕邊人反目，大兒子在漫長滑動中失勢流放至右下角。";
+                
+                speak("第二幕。政變全面升級。多嘴媳婦與三兒子聯手發起核心免職案，長房權力核心動搖。", "female");
+
+                relationshipLinks = [
+                    { source: "多嘴媳婦", target: "我們生的小懷 (三兒子)", type: "alliance" },
+                    { source: "我的大兒子", target: "大華媳婦", type: "conflict" }
+                ];
+                updateGraph();
+
+                setTimeout(() => {
+                    let s1 = memberNodes.find(n => n.id === "我的大兒子");
+                    if(s1) { s1.x = 980; s1.y = 520; s1.r = 32; } 
+                    updateGraph(2500);
+                    speak("連枕邊人都反目了！大兒子正式被解除總經理職務，流亡至權力邊緣。", "male");
+                }, 6000);
+
+            } else if (currentScene === 3) {
+                d3.select("body").style("background-color", "#fff4f4");
+                document.getElementById("scene-title").innerText = "黑化反擊 🎬 第三幕：落難者靈魂黑化，敵人的敵人就是朋友";
+                document.getElementById("scene-desc").innerText = "【⏱️ 28秒】邊緣落難者結盟。【⏱️ 34秒 微動作】大姐決心復仇圓圈放大(黑化)，拉開巨幅紅色火線。";
+                
+                speak("第三幕。絕望的流亡者在黑暗中碰頭。復仇的黑化同盟正式締結，反擊火線直指中央核心。", "female");
+
+                relationshipLinks = [
+                    { source: "我的大兒子", target: "你的大女兒", type: "conflict" }, 
+                    { source: "我的大兒子", target: "我們生的小懷 (三兒子)", type: "conflict" }
+                ];
+                let d = memberNodes.find(n => n.id === "你的大女兒"); if(d) d.r = 45; // 黑化放大
+                updateGraph();
+
+                setTimeout(() => {
+                    speak("敵人的敵人就是朋友。落難大姐重新奪回力量，聯手向中央董事會發動跨界訴訟。", "male");
+                }, 6000);
+
+            } else if (currentScene === 4) {
+                d3.select("body").style("background-color", "#ffffff");
+                document.getElementById("scene-title").innerText = "巨星隕落 🎬 第四幕：老太爺心臟病發崩逝！利益當前散成一盤沙";
+                document.getElementById("scene-desc").innerText = "【⏱️ 42秒】老太爺震撼猝逝。【⏱️ 48秒 微動作】全場連線斬斷，物理斥力全面爆發，所有人緩慢分崩離析。";
+                
+                speak("第四幕。驚天反轉。董事長李老太爺驚聞家族內鬥官司，心臟病發暴斃身亡。家族大樑崩塌。", "female");
+
+                memberNodes = memberNodes.filter(n => n.id !== "我 (李老太爺)"); // 移除老太爺節點
+                relationshipLinks = []; 
+                
+                simulation.force("charge", d3.forceManyBody().strength(-2400)); 
+                updateGraph(3200);
+
+                setTimeout(() => {
+                    speak("利益當前，親情蕩然無存。瞧啊，整個家族倫理全面斷裂，在畫布上緩慢散成了一盤沙。", "male");
+                }, 6000);
+
+            } else if (currentScene === 5) {
+                d3.select("body").style("background-color", "#fefbbf");
+                document.getElementById("scene-title").innerText = "黃雀在後 👑 最終章：神祕私生子攜遺囑降臨，全盤皆輸！";
+                document.getElementById("scene-desc").innerText = "【⏱️ 56秒】合法繼承人空降。【⏱️ 62秒 微動作】金色鎖鏈強制把所有人狠狠拽回中央，全盤皆輸！";
+                
+                speak("最終章。就在所有人為遺產爭得頭破血流之際，一位神祕的私生子，手持合法公證遺囑，高調空降主席台。", "female");
+
+                // 空降私生子：給予符合其統治者地位的大尺寸(r=52)
+                const bastard = { id: "外來私生子 (遺產繼承人)", role: "bastard", r: 52, img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=100&q=80", x: 550, y: 310 };
+                memberNodes.push(bastard);
+                updatePatterns();
+
+                relationshipLinks = memberNodes
+                    .filter(n => n.role !== "bastard")
+                    .map(n => ({ source: "外來私生子 (遺產繼承人)", target: n.id, type: "will" }));
+
+                simulation.force("charge", d3.forceManyBody().strength(-300));
+                updateGraph(3800);
+
+                setTimeout(() => {
+                    speak("千億資產全數歸於私生子。機關算盡一場空，所有人全盤皆輸，淪為配角。謝幕。", "male");
+                }, 6000);
+                
+                clearInterval(theaterInterval); 
+                document.getElementById("timer-bar").style.display = "none";
+            }
+        }
+
+        function resetProgressBar() {
+            const bar = document.getElementById("timer-bar");
+            bar.style.transition = "none"; bar.style.width = "0%";
+            setTimeout(() => { 
+                bar.style.transition = "width 14s linear"; 
+                bar.style.width = "100%"; 
+            }, 50);
+        }
+    </script>
+</body>
+</html>

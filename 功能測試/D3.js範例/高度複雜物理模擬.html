@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 高度複雜物理模擬 (Force Simulation) 教學範例</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            background-color: #111217; /* 更深色的星空黑背景 */
+            color: #ecf0f1;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        /* 教學說明面板 */
+        #tutorial-header {
+            background: rgba(25, 27, 36, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.6);
+            border-left: 6px solid #2ecc71;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 10;
+        }
+        h1 { margin: 0 0 8px 0; font-size: 24px; color: #ecf0f1; }
+        p { margin: 5px 0; font-size: 18px; color: #95a5a6; line-height: 1.6; }
+        
+        /* 圖表畫布容器 */
+        #chart-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 600px;
+            margin: 0 auto;
+            background-color: #1a1c23;
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* 物理連線樣式（像橡皮筋） */
+        .link {
+            stroke: #546e7a;
+            stroke-opacity: 0.5;
+            stroke-width: 2px;
+        }
+
+        /* 節點氣泡樣式 */
+        .node circle {
+            stroke: #111217;
+            stroke-width: 2px;
+            cursor: grab; /* 提示使用者可以抓取 */
+            transition: r 0.2s;
+        }
+        .node:active circle {
+            cursor: grabbing; /* 抓取中的手勢 */
+        }
+
+        /* 18px 節點文字樣式 */
+        .node text {
+            font-size: 18px; /* 全局指定 18px */
+            fill: #ffffff;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none; /* 防止文字干擾滑鼠拖曳 */
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tutorial-header">
+        <h1>D3.js 高度複雜物理模擬教學 (Force-Directed Graph)</h1>
+        <p><strong>範例主題：</strong> 企業跨部門核心專案與人員連結網路關係圖（非線性複雜結構）</p>
+        <p><strong>微軟 Office 辦不到的細節：</strong> 系統無預設座標，完全由「電荷排斥力、彈簧拉力、實體碰撞力」即時經由瀏覽器 CPU 計算。</p>
+        <p>💡 頂級互動提示：請用滑鼠 **按住並任意拖曳** 任何一個氣泡，體驗如真實橡皮筋與物理碰撞的拉扯特效！</p>
+    </div>
+
+    <div id="chart-container"></div>
+
+    <script>
+        // ==========================================
+        // 1. 教學數據準備 (圖論結構：Nodes 與 Links)
+        // ==========================================
+        // 節點：代表核心實體 (group 1 為專案，group 2 為負責人)
+        const nodes = [
+            { id: "AI 專案", group: 1, size: 45 },
+            { id: "雲端轉型", group: 1, size: 40 },
+            { id: "資安防禦", group: 1, size: 38 },
+            { id: "Alex", group: 2, size: 28 },
+            { id: "Bella", group: 2, size: 28 },
+            { id: "Chris", group: 2, size: 28 },
+            { id: "David", group: 2, size: 28 }
+        ];
+
+        // 連線：代表人員參與了哪些專案（建立彈簧拉力）
+        const links = [
+            { source: "Alex", target: "AI 專案" },
+            { source: "Bella", target: "AI 專案" },
+            { source: "Bella", target: "雲端轉型" },
+            { source: "Chris", target: "雲端轉型" },
+            { source: "Chris", target: "資安防禦" },
+            { source: "David", target: "資安防禦" },
+            { source: "David", target: "AI 專案" }
+        ];
+
+        // ==========================================
+        // 2. 初始化畫布尺寸
+        // ==========================================
+        const container = d3.select("#chart-container");
+        const width = 1000;
+        const height = 600;
+
+        const svg = container.append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width} ${height}`);
+
+        const colorScale = d3.scaleOrdinal()
+            .domain([1, 2])
+            .range(["#e74c3c", "#3498db"]); // 專案用紅色，人員用藍色
+
+        // ==========================================
+        // 3. 建構頂級物理模擬器 (D3 Force Simulation)
+        // ==========================================
+        const simulation = d3.forceSimulation(nodes)
+            // A. 連線彈簧力：設定兩點間的彈簧連線，並以 id 作為識別識別識別
+            .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+            // B. 萬有引力/排斥力：負值代表互相排斥，數值越大排斥越強，防止節點聚成一團
+            .force("charge", d3.forceManyBody().strength(-400))
+            // C. 畫布中心力：將所有人往畫布幾何中心 (500, 300) 吸引，防止漂出畫布
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            // D. 核心實體碰撞力：每個圓有自己的半徑 + 5px 安全邊距，彼此「絕對不會重疊擠壓」
+            .force("collide", d3.forceCollide().radius(d => d.size + 5));
+
+        // ==========================================
+        // 4. 繪製連線與節點元件
+        // ==========================================
+        // 繪製線段 (Links)
+        const linkElements = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        // 繪製節點群組 (Nodes Group)
+        const nodeElements = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            // 綁定頂級滑鼠拖曳物理互動
+            .call(d3.drag()
+                .on("start", dragStarted)
+                .on("drag", dragging)
+                .on("end", dragEnded));
+
+        // 節點畫圓
+        nodeElements.append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => colorScale(d.group));
+
+        // 節點寫入 18px 文字
+        nodeElements.append("text")
+            .text(d => d.id);
+
+        // ==========================================
+        // 5. 核心：物理時鐘聯動渲染 (The Tick Event)
+        // ==========================================
+        // 物理模擬器在運算時，每一幀 (Frame) 都會觸發 "tick" 事件。
+        // 我們必須在這個事件裡，即時更新網頁上所有線段和圓圈的全新 X, Y 座標。
+        simulation.on("tick", () => {
+            // 更新連線兩端的最新坐標
+            linkElements
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            // 更新圓圈與文字群組的最新坐標
+            nodeElements
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // ==========================================
+        // 6. 互動進階：滑鼠拖曳與能量注入演算法
+        // ==========================================
+        function dragStarted(event, d) {
+            // fx 和 fy 是 D3 的「固定座標限制器」。當它不是 null 時，物理引擎會聽從滑鼠座標
+            if (!event.active) simulation.alphaTarget(0.3).restart(); // 注入能量，叫醒原本已經停止運動的物理系統
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragging(event, d) {
+            // 拖曳過程中，死死將節點固定在滑鼠當前位置
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragEnded(event, d) {
+            if (!event.active) simulation.alphaTarget(0); // 讓系統重新緩慢冷卻並回歸平靜平衡
+            // 釋放固定器，節點就會因為週邊鄰居的「拉力與排斥力」產生極為自然的物理回彈特效！
+            d.fx = null;
+            d.fy = null;
+        }
+    </script>
+</body>
+</html>

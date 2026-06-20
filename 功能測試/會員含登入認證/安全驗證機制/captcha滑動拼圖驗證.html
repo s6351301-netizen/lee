@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滑動拼圖驗證範例</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f7f9;
+            margin: 0;
+        }
+        .captcha-container {
+            width: 340px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            user-select: none;
+        }
+        .canvas-area {
+            position: relative;
+            width: 300px;
+            height: 180px;
+            margin-bottom: 15px;
+            background: #eee;
+        }
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #blockCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+        /* 滑動條樣式 */
+        .slider-track {
+            position: relative;
+            width: 300px;
+            height: 40px;
+            background: #e4e7eb;
+            border-radius: 20px;
+            border: 1px solid #dcdfe6;
+        }
+        .slider-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            line-height: 40px;
+            font-size: 14px;
+            color: #606266;
+            z-index: 1;
+        }
+        .slider-btn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            transition: background 0.2s;
+        }
+        .slider-btn:hover {
+            background: #409eff;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="captcha-container">
+    <h3 style="margin-top:0; color:#333;">安全驗證</h3>
+    <p style="font-size:14px; color:#666;">請拖動滑塊填補拼圖圖塊</p>
+    
+    <div class="canvas-area">
+        <canvas id="bgCanvas" width="300" height="180"></canvas>
+        <canvas id="blockCanvas" width="300" height="180"></canvas>
+    </div>
+
+    <div class="slider-track" id="sliderTrack">
+        <div class="slider-text">向右滑動核對圖案</div>
+        <div class="slider-btn" id="sliderBtn">➔</div>
+    </div>
+</div>
+
+<script>
+    const bgCanvas = document.getElementById('bgCanvas');
+    const blockCanvas = document.getElementById('blockCanvas');
+    const sliderBtn = document.getElementById('sliderBtn');
+    const sliderTrack = document.getElementById('sliderTrack');
+
+    const bgCtx = bgCanvas.getContext('2d');
+    const blockCtx = blockCanvas.getContext('2d');
+
+    // 拼圖參數
+    const r = 9; // 拼圖凸起半徑
+    const w = 40; // 拼圖主體寬度
+    const h = 40; // 拼圖主體高度
+    const PI = Math.PI;
+
+    // 隨機生成的目標位置 (凹槽)
+    let targetX = 0;
+    let targetY = 0;
+
+    // 行為軌跡數據收集器
+    let trail = []; 
+    let startTime = 0;
+
+    // 初始化畫布與圖片
+    const img = new Image();
+    img.crossOrigin = "Anonymous"; // 避免畫布跨域問題
+    // 使用隨機風景圖
+    img.src = 'https://picsum.photos/300/180'; 
+    img.onload = function() {
+        initCaptcha();
+    };
+
+    // 繪製拼圖形狀的函數 (用於剪裁凹槽與碎片)
+    function drawPieceShape(ctx, x, y) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        // 上邊凸起
+        ctx.lineTo(x + w / 2 - r, y);
+        ctx.arc(x + w / 2, y, r, PI, 0, false);
+        ctx.lineTo(x + w, y);
+        // 右邊凹陷
+        ctx.lineTo(x + w, y + h / 2 - r);
+        ctx.arc(x + w, y + h / 2, r, 1.5 * PI, 0.5 * PI, false);
+        ctx.lineTo(x + w, y + h);
+        // 下邊平整
+        ctx.lineTo(x, y + h);
+        // 左邊平整
+        ctx.lineTo(x, y);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.stroke();
+    }
+
+    function initCaptcha() {
+        // 1. 隨機決定目標凹槽的位置 (限制在後半段區間)
+        targetX = Math.floor(Math.random() * (300 - w - r - 100)) + 100;
+        targetY = Math.floor(Math.random() * (180 - h - r * 2)) + r;
+
+        // 2. 繪製背景圖
+        bgCtx.drawImage(img, 0, 0, 300, 180);
+
+        // 3. 繪製拼圖碎片 (裁剪原圖對應區塊)
+        blockCtx.save();
+        drawPieceShape(blockCtx, targetX, targetY);
+        blockCtx.clip(); // 裁剪成拼圖形狀
+        blockCtx.drawImage(img, 0, 0, 300, 180);
+        
+        // 提取拼圖碎片影像資料並移到最左邊
+        const pieceData = blockCtx.getImageData(targetX - 2, targetY - r, w + r * 2, h + r * 2);
+        blockCanvas.width = 300; // 重設畫布清除內容
+        blockCtx.putImageData(pieceData, 0, targetY - r);
+        blockCtx.restore();
+
+        // 4. 在背景圖上挖出半透明凹槽
+        bgCtx.save();
+        drawPieceShape(bgCtx, targetX, targetY);
+        bgCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        bgCtx.fill();
+        bgCtx.restore();
+    }
+
+    // --- 事件監聽：拖曳行為 ---
+    let isDragging = false;
+    let startX = 0;
+
+    // 同時支援滑鼠與手機觸控
+    sliderBtn.addEventListener('mousedown', startDrag);
+    sliderBtn.addEventListener('touchstart', startDrag);
+
+    function startDrag(e) {
+        isDragging = true;
+        startTime = new Date().getTime();
+        trail = []; // 清空上一次的軌跡
+        
+        const clientX = e.clientX || e.touches[0].clientX;
+        startX = clientX;
+    }
+
+    window.addEventListener('mousemove', doDrag);
+    window.addEventListener('touchmove', doDrag);
+
+    function doDrag(e) {
+        if (!isDragging) return;
+
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        let moveX = clientX - startX;
+
+        // 限制滑動範圍在軌道內 (0 到 260 像素)
+        if (moveX < 0) moveX = 0;
+        if (moveX > 260) moveX = 260;
+
+        // 更新前端 UI 位置
+        sliderBtn.style.left = moveX + 'px';
+        blockCanvas.style.transform = `translateX(${moveX}px)`;
+
+        // 【核心】記錄行為軌跡：時間、X座標、Y座標
+        trail.push({
+            t: new Date().getTime() - startTime,
+            x: clientX,
+            y: clientY
+        });
+    }
+
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('touchend', stopDrag);
+
+    function stopDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const finalX = parseInt(sliderBtn.style.left || 0);
+
+        // 將位置與軌跡發送到「模擬後端」驗證
+        verifyOnServer(finalX, trail);
+    }
+
+    // --- 模擬後端驗證 (在實際開發中，這段程式碼應在 Server 端執行) ---
+    function verifyOnServer(userX, userTrail) {
+        // 1. 檢查位置誤差是否在允許範圍內 (這裡設定正負 4 像素)
+        const isPositionCorrect = Math.abs(userX - targetX) <= 4;
+
+        // 2. 檢查軌跡特徵 (防機器人演算法)
+        const isHuman = checkTrailIsHuman(userTrail);
+
+        if (isPositionCorrect && isHuman) {
+            alert('🎉 驗證成功！(位置正確且行為符合人類習慣)');
+            // 這裡可以執行後續表單提交
+        } else {
+            alert('❌ 驗證失敗！可能是拼圖沒對準，或偵測到自動化腳本行為。');
+            resetCaptcha();
+        }
+    }
+
+    // 簡易的防機器人軌跡審查
+    function checkTrailIsHuman(userTrail) {
+        if (userTrail.length < 5) return false; // 速度快到不可思議，通常是腳本直接給值
+
+        let yMovements = userTrail.map(p => p.y);
+        let yDiff = Math.max(...yMovements) - Math.min(...yMovements);
+        
+        // 如果 Y 軸完全是一條水平完美直線 (yDiff === 0)，很高機率是機器人
+        if (yDiff === 0) {
+            console.warn("警報：偵測到完美直線，疑似自動化機器人");
+            return false; 
+        }
+
+        console.log("收集到的軌跡點數:", userTrail.length, "Y軸抖動幅度:", yDiff);
+        return true;
+    }
+
+    // 重設驗證碼狀態
+    function resetCaptcha() {
+        sliderBtn.style.left = '0px';
+        blockCanvas.style.transform = 'translateX(0px)';
+        // 重新繪製新圖
+        bgCtx.clearRect(0, 0, 300, 180);
+        blockCtx.clearRect(0, 0, 300, 180);
+        img.src = 'https://picsum.photos/300/180?sig=' + Math.random(); // 加上隨機參數避免快取
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js 力導向圖互動教學範例</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1c23; /* 深色背景更具科技感 */
+        }
+        
+        /* 教學控制面板樣式 */
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 32, 41, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+            border-left: 6px solid #3498db;
+            z-index: 10;
+            width: 320px;
+        }
+        h1 { margin: 0 0 8px 0; font-size: 18px; color: #ecf0f1; }
+        p { margin: 5px 0; font-size: 18px; color: #95a5a6; line-height: 1.6; }
+        hr { border: 0; border-top: 1px solid #34495e; margin: 12px 0; }
+        
+        /* 互動按鈕樣式 */
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .btn:hover { background-color: #2980b9; }
+
+        /* D3 圖表元素樣式 */
+        .link {
+            stroke: #546e7a;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+        .node circle {
+            stroke: #1a1c23;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: r 0.2s;
+        }
+        .node text {
+            font-size: 18px; /* 全局指定 18px */
+            fill: #dfe6e9;
+            pointer-events: none; /* 防止文字干擾滑鼠事件 */
+        }
+        
+        /* 懸停動態加亮 */
+        .node:hover circle {
+            stroke: #ffffff;
+            stroke-width: 2.5px;
+        }
+        .node:hover text {
+            fill: #ffffff;
+            font-weight: bold;
+        }
+
+        /* 右下角提示列 */
+        #hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 10px 18px;
+            font-size: 18px;
+            border-radius: 4px;
+            opacity: 0.95;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="control-panel">
+        <h1>D3.js 力導向圖教學網頁</h1>
+        <p><strong>目前規模：</strong>10 層深度 / 40 個節點</p>
+        <p><strong>物理參數：</strong></p>
+        <p>• 距離 (Distance): 120px</p>
+        <p>• 排斥 (Charge): -400</p>
+        <hr>
+        <button class="btn" onclick="triggerRestart()">重新注入能量擺動</button>
+    </div>
+
+    <div id="hint">💡 互動：【滑鼠滾輪】放大縮小 | 【按住背景】拖曳畫布 | 【抓取節點】甩動測試</div>
+
+    <div id="tree-canvas"></div>
+
+    <script>
+        // ==========================================
+        // 1. 教學數據準備 (Nodes & Links)
+        // ==========================================
+        // layer: 用來決定色階（1~10層）
+        // size: 代表節點權重（圓圈半徑）
+        const websiteData = {
+            nodes: [
+                { id: "首頁 (index.html)", layer: 1, size: 24 },
+                { id: "關於我們 (about)", layer: 2, size: 16 },
+                { id: "商品中心 (products)", layer: 2, size: 18 },
+                { id: "最新消息 (news)", layer: 2, size: 15 },
+                { id: "聯絡我們 (contact)", layer: 2, size: 16 },
+                { id: "公司歷程", layer: 3, size: 12 },
+                { id: "硬體商品線", layer: 3, size: 14 },
+                { id: "軟體商品線", layer: 3, size: 14 },
+                { id: "企業公告", layer: 3, size: 11 },
+                { id: "線上表單", layer: 3, size: 11 },
+                { id: "3C周邊類別", layer: 4, size: 10 },
+                { id: "智慧家電類別", layer: 4, size: 10 },
+                { id: "雲端SaaS服務", layer: 4, size: 10 },
+                { id: "活動新聞稿", layer: 4, size: 9 },
+                { id: "筆電配件專區", layer: 5, size: 9 },
+                { id: "手機防護殼專區", layer: 5, size: 9 },
+                { id: "廚房智能家電", layer: 5, size: 9 },
+                { id: "大數據分析模組", layer: 5, size: 9 },
+                { id: "Type-C集線器產品頁", layer: 6, size: 8 },
+                { id: "氮化鎵快充頭產品頁", layer: 6, size: 8 },
+                { id: "AI變頻微波爐產品頁", layer: 6, size: 8 },
+                { id: "核心運算API說明", layer: 6, size: 8 },
+                { id: "快充頭規格參數檔", layer: 7, size: 7 },
+                { id: "微波爐節能認證書", layer: 7, size: 7 },
+                { id: "API開發者指南", layer: 7, size: 8 },
+                { id: "API認證授權機制", layer: 7, size: 7 },
+                { id: "充電器安全過載規範說明", layer: 8, size: 6 },
+                { id: "OAuth2.0串接流程", layer: 8, size: 7 },
+                { id: "金鑰產生器頁面", layer: 8, size: 6 },
+                { id: "錯誤代碼對照表", layer: 8, size: 7 },
+                { id: "安全性漏洞聲明條款", layer: 9, size: 6 },
+                { id: "全域資安防護政策", layer: 9, size: 6 },
+                { id: "進階偵錯Log紀錄系統", layer: 9, size: 6 },
+                { id: "資料庫加密異常排除", layer: 9, size: 6 },
+                { id: "隱私權外部反查雜湊頁", layer: 10, size: 5 },
+                { id: "資安內部稽核紀錄備份", layer: 10, size: 5 },
+                { id: "底層核心除錯核心Dump檔", layer: 10, size: 5 },
+                { id: "歷史過期備用條款(2018)", layer: 10, size: 5 },
+                { id: "歷史過期備用條款(2015)", layer: 10, size: 5 }
+            ],
+            links: [
+                { source: "首頁 (index.html)", target: "關於我們 (about)" },
+                { source: "首頁 (index.html)", target: "商品中心 (products)" },
+                { source: "首頁 (index.html)", target: "最新消息 (news)" },
+                { source: "首頁 (index.html)", target: "聯絡我們 (contact)" },
+                { source: "關於我們 (about)", target: "公司歷程" },
+                { source: "商品中心 (products)", target: "硬體商品線" },
+                { source: "商品中心 (products)", target: "軟體商品線" },
+                { source: "最新消息 (news)", target: "企業公告" },
+                { source: "聯絡我們 (contact)", target: "線上表單" },
+                { source: "硬體商品線", target: "3C周邊類別" },
+                { source: "硬體商品線", target: "智慧家電類別" },
+                { source: "軟體商品線", target: "雲端SaaS服務" },
+                { source: "企業公告", target: "活動新聞稿" },
+                { source: "3C周邊類別", target: "筆電配件專區" },
+                { source: "3C周邊類別", target: "手機防護殼專區" },
+                { source: "智慧家電類別", target: "廚房智能家電" },
+                { source: "雲端SaaS服務", target: "大數據分析模組" },
+                { source: "筆電配件專區", target: "Type-C集線器產品頁" },
+                { source: "手機防護殼專區", target: "氮化鎵快充頭產品頁" },
+                { source: "廚房智能家電", target: "AI變頻微波爐產品頁" },
+                { source: "大數據分析模組", target: "核心運算API說明" },
+                { source: "氮化鎵快充頭產品頁", target: "快充頭規格參數檔" },
+                { source: "AI變頻微波爐產品頁", target: "微波爐節能認證書" },
+                { source: "核心運算API說明", target: "API開發者指南" },
+                { source: "核心運算API說明", target: "API認證授權機制" },
+                { source: "快充頭規格參數檔", target: "充電器安全過載規範說明" },
+                { source: "API認證授權機制", target: "OAuth2.0串接流程" },
+                { source: "API認證授權機制", target: "金鑰產生器頁面" },
+                { source: "API開發者指南", target: "錯誤代碼對照表" },
+                { source: "充電器安全過載規範說明", target: "安全性漏洞聲明條款" },
+                { source: "OAuth2.0串接流程", target: "全域資安防護政策" },
+                { source: "錯誤代碼對照表", target: "進階偵錯Log紀錄系統" },
+                { source: "錯誤代碼對照表", target: "資料庫加密異常排除" },
+                { source: "安全性漏洞聲明條款", target: "隱私權外部反查雜湊頁" },
+                { source: "全域資安防護政策", target: "資安內部稽核紀錄備份" },
+                { source: "進階偵錯Log紀錄系統", target: "底層核心除錯核心Dump檔" },
+                { source: "資料庫加密異常排除", target: "歷史過期備用條款(2018)" },
+                { source: "資料庫加密異常排除", target: "歷史過期備用條款(2015)" },
+                // 網頁網絡特有的迴路連結（深層頁面連回首頁、聯絡我們）
+                { source: "歷史過期備用條款(2015)", target: "首頁 (index.html)" },
+                { source: "隱私權外部反查雜湊頁", target: "首頁 (index.html)" },
+                { source: "底層核心除錯核心Dump檔", target: "聯絡我們 (contact)" }
+            ]
+        };
+
+        // ==========================================
+        // 2. 初始化畫布與 D3 縮放(Zoom)群組
+        // ==========================================
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // 建立最上層 SVG 畫布
+        const svg = d3.select("#tree-canvas")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // 建立主容器（所有的圖表物件都會放在這個 g 裡面，用來支援整體縮放拖曳）
+        const gMain = svg.append("g");
+
+        // 配置滑鼠滾輪縮放與背景拖曳
+        svg.call(d3.zoom()
+            .extent([[0, 0], [width, height]])
+            .scaleExtent([0.1, 4]) // 限制縮放比例在 0.1 倍到 4 倍之間
+            .on("zoom", (event) => {
+                gMain.attr("transform", event.transform); // 動態套用縮放與平移矩陣
+            }));
+
+        // 設定彩虹色階（Domain 對應第 1 層到第 11 層）
+        const colorScale = d3.scaleSequential(d3.interpolateTurbo).domain([1, 11]);
+
+        // ==========================================
+        // 3. 配置物理力學模擬引擎 (Force Simulation)
+        // ==========================================
+        const simulation = d3.forceSimulation(websiteData.nodes)
+            // A. 連線引力：指定用 id 作為配對鍵，並將橡皮筋長度設定為 120px
+            .force("link", d3.forceLink(websiteData.links).id(d => d.id).distance(120))
+            // B. 萬有相斥力：設定為 -400（負值代表排斥），把節點往外推開
+            .force("charge", d3.forceManyBody().strength(-400))
+            // C. 中心匯集力：把整個網絡平穩推向畫布的中心點
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            // D. 碰撞防護牆（核心亮點）：根據節點大小加上 45px 的安全半徑，徹底消除 18px 大字體的重疊問題
+            .force("collision", d3.forceCollide().radius(d => d.size + 45));
+
+        // ==========================================
+        // 4. 繪製 SVG 元素 (線段與節點)
+        // ==========================================
+        // 繪製連線 (必須先畫線段、再畫圓圈，線才不會壓在圓圈上面)
+        const link = gMain.append("g")
+            .selectAll("line")
+            .data(websiteData.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        // 繪製節點容器 (每個節點是一個 g，裡面包含 circle 和 text)
+        const node = gMain.append("g")
+            .selectAll("g")
+            .data(websiteData.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag() // 綁定滑鼠拖曳事件處理器
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // 在容器內畫上實心網頁圓圈
+        node.append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => colorScale(d.layer));
+
+        // 在容器內加上網頁標籤文字 (x 偏移量 = 半徑 + 8 像素，確保文字與圓圈對齊且有呼吸空間)
+        node.append("text")
+            .attr("x", d => d.size + 8)
+            .attr("y", 6)
+            .text(d => d.id);
+
+        // ==========================================
+        // 5. 核心事件：時鐘步進刷新 (Tick Event)
+        // ==========================================
+        // 當物理引擎每次計算出新座標時（每秒數十次），即時更新 SVG 的屬性
+        simulation.on("tick", () => {
+            // 更新連線的起點與終點座標
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            // 更新節點複合容器的整體 translate 座標位置
+            node
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+        });
+
+        // ==========================================
+        // 6. 互動事件處理：滑鼠拖曳與面板按鈕
+        // ==========================================
+        // 當滑鼠點擊準備抓取節點時
+        function dragstarted(event, d) {
+            // alphaTarget 讓物理引擎重新保持溫熱活躍狀態，不進入靜止休眠
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x; // fx, fy 代表固定坐標 (fixed x/y)
+            d.fy = d.y;
+        }
+
+        // 當滑鼠正在拖曳節點移動時
+        function dragged(event, d) {
+            d.fx = event.x; // 讓物理節點死死鎖定在滑鼠當前的坐標上
+            d.fy = event.y;
+        }
+
+        // 當滑鼠釋放放開節點時
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0); // 讓物理模擬冷卻回歸靜止
+            d.fx = null; // 解除坐標鎖定，釋放節點回歸自然引力拉扯
+            d.fy = null;
+        }
+
+        // 按鈕點擊事件：為畫面手動重新注入能量（alpha），讓圖形再度產生彈跳動畫
+        function triggerRestart() {
+            simulation.alpha(0.8).restart();
+        }
+
+        // 響應式視窗調整：當使用者縮放瀏覽器視窗時，自動修正中心點位置
+        window.addEventListener("resize", () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            svg.attr("width", w).attr("height", h);
+            simulation.force("center", d3.forceCenter(w / 2, h / 2));
+            simulation.alpha(0.3).restart(); // 微幅喚醒物理引擎適應新畫布
+        });
+    </script>
+</body>
+</html>

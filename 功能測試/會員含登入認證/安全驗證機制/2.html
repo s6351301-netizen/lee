@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP + JS 隱形驗證範例</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 300px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 14px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .btn { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3 style="margin-top:0; text-align:center;">安全登入 (PHP 版)</h3>
+    <form id="ajaxForm">
+        <div class="form-group">
+            <label>帳號admin</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>密碼123456</label>
+            <input type="password" name="password" required>
+        </div>
+
+        <div class="cf-turnstile" 
+             data-sitekey="1x00000000000000000000AA" 
+             data-size="invisible" 
+             data-callback="onTurnstileSuccess"></div>
+
+        <button type="submit" class="btn">送出表單</button>
+    </form>
+</div>
+
+<script>
+    let cfToken = "";
+
+    // 背景驗證成功後，Cloudflare 會自動給予 Token
+    function onTurnstileSuccess(token) {
+        cfToken = token;
+        console.log("Turnstile Token 準備就緒:", token);
+    }
+
+    document.getElementById('ajaxForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!cfToken) {
+            alert("驗證尚未就緒，請稍候或重新整理頁面。");
+            return;
+        }
+
+        // 打包資料
+        const payload = {
+            username: e.target.username.value,
+            password: e.target.password.value,
+            captchaToken: cfToken
+        };
+
+        // 以 AJAX (Fetch) 異步發送給後端 PHP
+        fetch('2verify.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("🎉 PHP 後端驗證成功！允許登入。");
+            } else {
+                alert("❌ 驗證失敗：" + data.message);
+                // 失敗則重設驗證碼，以便下次使用
+                if (typeof turnstile !== 'undefined') turnstile.reset();
+            }
+        })
+        .catch(err => console.error("通訊錯誤:", err));
+    });
+</script>
+
+</body>
+</html>

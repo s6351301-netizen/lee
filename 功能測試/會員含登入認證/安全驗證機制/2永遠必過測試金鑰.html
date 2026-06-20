@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>純前端無感驗證範例</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f6f9;
+            margin: 0;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 320px;
+            text-align: center;
+        }
+        h3 { margin-top: 0; color: #333; }
+        .status-box {
+            margin: 20px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #666;
+            border: 1px solid #e9ecef;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 12px;
+            background-color: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-action:hover { background-color: #0051cb; }
+        .btn-action:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>系統安全檢查</h3>
+    <p style="font-size: 13px; color:#888;">瀏覽器正在背景進行無感安全驗證...</p>
+    
+    <div class="status-box" id="statusMessage">
+        ⏳ 正在評估您的瀏覽器環境...
+    </div>
+
+    <div class="cf-turnstile" 
+         data-sitekey="1x00000000000000000000AA" 
+         data-size="invisible" 
+         data-callback="verifyPassed"
+         data-error-callback="verifyFailed"></div>
+
+    <button id="actionBtn" class="btn-action" disabled>進入主程式</button>
+</div>
+
+<script>
+    const statusMessage = document.getElementById('statusMessage');
+    const actionBtn = document.getElementById('actionBtn');
+    let savedToken = "";
+
+    // 1. 【成功回呼】當 Cloudflare 在背景默默分析完畢，確認非機器人後會自動觸發
+    function verifyPassed(token) {
+        savedToken = token; // 拿到代表過關的加密憑證
+        
+        // 變更 UI 狀態
+        statusMessage.style.color = "#2b7a43";
+        statusMessage.style.backgroundColor = "#eafaf1";
+        statusMessage.style.borderColor = "#a3e2bc";
+        statusMessage.innerText = "✅ 驗證成功！未偵測到異常行為。";
+        
+        // 解鎖按鈕
+        actionBtn.disabled = false;
+        console.log("Cloudflare 驗證憑證:", token);
+    }
+
+    // 2. 【失敗回呼】當環境被判定為惡意腳本或通訊失敗時觸發
+    function verifyFailed() {
+        statusMessage.style.color = "#c92a2a";
+        statusMessage.style.backgroundColor = "#fff5f5";
+        statusMessage.style.borderColor = "#ffc9c9";
+        statusMessage.innerText = "❌ 驗證失敗！偵測到自動化自動控制特徵。";
+        actionBtn.disabled = true;
+    }
+
+    // 3. 按鈕點擊事件
+    actionBtn.addEventListener('click', function() {
+        if (!savedToken) {
+            alert("請先完成驗證！");
+            return;
+        }
+        
+        // 這裡放你純前端通過後，想要執行的核心 JS 業務邏輯
+        alert("🎉 成功通過無感防禦線！順利進入系統。");
+        
+        // 實際應用中，通常會在這裡進行 location.href = "下一頁.html";
+    });
+</script>
+
+</body>
+</html>

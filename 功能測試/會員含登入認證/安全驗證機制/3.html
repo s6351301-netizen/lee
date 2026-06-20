@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>reCAPTCHA v2 傳統勾選驗證</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 340px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 14px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .captcha-group { margin: 20px 0; display: flex; justify-content: center; }
+        .btn { width: 100%; padding: 10px; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn:hover { background: #1557b0; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3 style="margin-top:0; text-align:center;">安全登入 (reCAPTCHA v2)</h3>
+    <form id="recaptchaForm">
+        <div class="form-group">
+            <label>帳號</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>密碼</label>
+            <input type="password" name="password" required>
+        </div>
+
+        <div class="captcha-group"> 
+            <!--原來金鑰 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI              
+            新申請金鑰   6LeumyUtAAAAAD8Rqa0LSunoUZyitgu1Ygg2Qzun
+            新申請密鑰   6LeumyUtAAAAAKvTyutKSiQRLR1cj6hwhHDQhQpY
+            s6301@gmail.com 申請 https://www.google.com/recaptcha/admin/site/757439406/setup
+            data-sitekey 換掉金鑰
+            $secretKey 換掉密鑰            
+            -->
+            <div class="g-recaptcha" data-sitekey="6LeumyUtAAAAAD8Rqa0LSunoUZyitgu1Ygg2Qzun"></div>
+        </div>
+
+        <button type="submit" class="btn">確認登入</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('recaptchaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // 3. 讀取使用者是否有勾選驗證碼（Google 會把 token 塞入這個變數中）
+        const googleResponse = grecaptcha.getResponse();
+
+        if (googleResponse.length === 0) {
+            alert("請先勾選『我不是機器人』驗證框！");
+            return;
+        }
+
+        const payload = {
+            username: e.target.username.value,
+            password: e.target.password.value,
+            captchaToken: googleResponse
+        };
+
+        // 4. 將資料透過 AJAX 發送給後端 PHP
+        fetch('verify_v2.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("🎉 登入成功！Google 驗證與帳密皆正確。");
+            } else {
+                alert("❌ 驗證失敗：" + data.message);
+                // 失敗時重置驗證碼框，讓使用者重新勾選
+                grecaptcha.reset();
+            }
+        })
+        .catch(err => console.error("連線錯誤:", err));
+    });
+</script>
+
+</body>
+</html>

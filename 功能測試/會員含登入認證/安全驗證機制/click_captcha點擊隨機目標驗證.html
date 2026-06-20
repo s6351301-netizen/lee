@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>點擊順序驗證範例</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+        }
+        .captcha-container {
+            width: 340px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            user-select: none;
+        }
+        .title {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        /* 提示文字區塊 */
+        .prompt-box {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 4px solid #409eff;
+        }
+        .highlight-text {
+            color: #f56c6c;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        /* 畫布區域 */
+        .canvas-wrapper {
+            position: relative;
+            width: 300px;
+            height: 200px;
+            margin-bottom: 15px;
+            cursor: crosshair;
+        }
+        #captchaCanvas {
+            background: #eef2f7;
+            border-radius: 8px;
+            border: 1px solid #dcdfe6;
+        }
+        /* 點擊痕跡（小圓點數字） */
+        .click-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(245, 108, 108, 0.9);
+            color: #fff;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none; /* 讓圓點不阻擋點擊事件 */
+            transform: translate(-50%, -50%);
+            animation: pop 0.2s ease-out;
+        }
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        /* 按鈕區 */
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        .btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-refresh {
+            background: #e4e7eb;
+            color: #606266;
+        }
+        .btn-refresh:hover { background: #dcdfe6; }
+        .btn-submit {
+            background: #409eff;
+            color: #fff;
+            font-weight: bold;
+        }
+        .btn-submit:hover { background: #66b1ff; }
+    </style>
+</head>
+<body>
+
+<div class="captcha-container">
+    <h3 class="title">安全驗證</h3>
+    <div class="prompt-box">
+        請依序點擊：<span id="promptText" class="highlight-text">正在載入...</span>
+    </div>
+    
+    <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="captchaCanvas" width="300" height="200"></canvas>
+        </div>
+
+    <div class="btn-group">
+        <button class="btn btn-refresh" id="refreshBtn">換一張</button>
+        <button class="btn btn-submit" id="submitBtn">確認驗證</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('captchaCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    const promptTextEl = document.getElementById('promptText');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // 隨機字庫（用來干擾與命題）
+    const wordBank = "台灣科技創新安全驗證密碼瀏覽器防禦機器人黑客阻擋資訊工程".split("");
+    
+    let targetWords = [];  // 正確答案字組（有順序）
+    let allWordsOnCanvas = []; // 畫布上所有字的位置資訊
+    let userClicks = [];   // 使用者點擊的座標紀錄
+
+    // 初始化與重新整理
+    function initCaptcha() {
+        userClicks = [];
+        allWordsOnCanvas = [];
+        // 清除舊的點擊標籤圓點
+        document.querySelectorAll('.click-marker').forEach(el => el.remove());
+
+        // 1. 隨機挑選 4 個字作畫面上顯示，前 3 個字作為題目答案
+        const shuffled = [...wordBank].sort(() => 0.5 - Math.random());
+        const chosenWords = shuffled.slice(0, 4); 
+        targetWords = chosenWords.slice(0, 3); // 前三個是標準答案
+
+        // 2. 更新提示文字 UI
+        promptTextEl.innerText = targetWords.join('、');
+
+        // 3. 繪製背景與干擾線
+        drawBackground();
+
+        // 4. 將這 4 個字亂數隨機渲染到 Canvas 上
+        chosenWords.forEach((word) => {
+            let x, y, isOverlap;
+            // 迴圈確保字與字之間不會靠得太近疊在一起
+            do {
+                isOverlap = false;
+                x = Math.floor(Math.random() * 220) + 40; // 避開邊緣
+                y = Math.floor(Math.random() * 120) + 50;
+                
+                for (let placed of allWordsOnCanvas) {
+                    let dist = Math.sqrt(Math.pow(placed.x - x, 2) + Math.pow(placed.y - y, 2));
+                    if (dist < 50) isOverlap = true; // 距離太近就重算座標
+                }
+            } while (isOverlap);
+
+            const fontSize = Math.floor(Math.random() * 10) + 28; // 隨機大小 28px~38px
+            const angle = (Math.random() * 60 - 30) * Math.PI / 180; // 隨機旋轉角度 -30~+30 度
+
+            allWordsOnCanvas.push({ word, x, y, size: fontSize });
+            drawWord(word, x, y, fontSize, angle);
+        });
+    }
+
+    // 繪製背景干擾
+    function drawBackground() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 背景微弱隨機線條
+        for (let i = 0; i < 5; i++) {
+            ctx.strokeStyle = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255}, 0.3)`;
+            ctx.lineWidth = Math.random() * 2 + 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.stroke();
+        }
+        // 背景隨機噪點
+        for (let i = 0; i < 30; i++) {
+            ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.15})`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random()*2, 0, 2*Math.PI);
+            ctx.fill();
+        }
+    }
+
+    // 繪製單個文字（包含旋轉與隨機顏色）
+    function drawWord(text, x, y, size, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.font = `bold ${size}px "Microsoft JhengHei", sans-serif`;
+        ctx.fillStyle = `rgba(${Math.floor(Math.random()*150)}, ${Math.floor(Math.random()*150)}, ${Math.floor(Math.random()*150)}, 0.9)`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
+    }
+
+    // 監聽點擊畫布事件
+    canvas.addEventListener('mousedown', function(e) {
+        if (userClicks.length >= targetWords.length) return; // 點滿了就不紀錄
+
+        // 取得點擊相對於 Canvas 的相對座標
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // 儲存點擊座標
+        userClicks.push({ x: clickX, y: clickY });
+
+        // 畫面上新增一個紅色數字標籤
+        const marker = document.createElement('div');
+        marker.className = 'click-marker';
+        marker.style.left = (e.clientX - rect.left) + 'px';
+        marker.style.top = (e.clientY - rect.top) + 'px';
+        marker.innerText = userClicks.length;
+        canvasWrapper.appendChild(marker);
+    });
+
+    // 模擬後端驗證邏輯
+    submitBtn.addEventListener('click', function() {
+        if (userClicks.length < targetWords.length) {
+            alert(`請完成所有點擊！您還需要點擊 ${targetWords.length - userClicks.length} 個目標。`);
+            return;
+        }
+
+        let isAllCorrect = true;
+
+        // 依序檢查每個標準答案的文字
+        for (let i = 0; i < targetWords.length; i++) {
+            const expectedWord = targetWords[i];
+            const userPos = userClicks[i];
+
+            // 找出這個字在畫布上的實際渲染核心座標
+            const actualWordInfo = allWordsOnCanvas.find(item => item.word === expectedWord);
+
+            // 計算使用者點擊與目標中心點的距離 (勾股定理)
+            const dist = Math.sqrt(Math.pow(userPos.x - actualWordInfo.x, 2) + Math.pow(userPos.y - actualWordInfo.y, 2));
+
+            // 設定點擊容差半徑（字體大小範圍內都算對，這裡設定 28 像素）
+            if (dist > 28) {
+                isAllCorrect = false;
+                break;
+            }
+        }
+
+        if (isAllCorrect) {
+            alert("🎉 驗證成功！點擊順序與位置完全正確。");
+        } else {
+            alert("❌ 驗證失敗！順序錯誤或沒點準文字，請重試。");
+            initCaptcha();
+        }
+    });
+
+    refreshBtn.addEventListener('click', initCaptcha);
+
+    // 網頁載入時初始化
+    window.onload = initCaptcha;
+</script>
+
+</body>
+</html>
