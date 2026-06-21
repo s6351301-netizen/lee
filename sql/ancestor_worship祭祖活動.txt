@@ -42,7 +42,6 @@ CREATE TABLE `ancestor_worship` (
 注意是一個方框一個數字,中間會有"-"做隔開,再撈取資料與寫入資料時要特別"-"的區隔.
 寫入`ancestor_worship`資料表的`zip_code`欄位(需寫入完整資料,如"100-024").
 
-
 5.在本人後面接一個文字框(但沒有邊框),將`account_members_view`撈出`new_member`和`name`值寫入此文字框內,
   前面些寫`new_member`再接著`name`欄位,且姓名要變成黑色粗體字.
   將值寫入`ancestor_worship`資料表的`new_member`和`name`欄位.
