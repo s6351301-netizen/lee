@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新北市泰山職訓打卡地圖-寶可夢樹木比對</title>
+    <title>新北市泰山職訓打卡地圖-寶可夢</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body {
@@ -61,7 +61,7 @@
             cursor: not-allowed;
         }
         
-        /* 手機鏡頭畫面遮罩層 */
+        /* 手機鏡頭畫面遮罩層 - 完全乾淨 */
         #camera-view {
             display: none;
             position: fixed;
@@ -107,16 +107,16 @@
             border-radius: 12px;
             margin: 20px 0;
             position: relative;
-            overflow: hidden; 
+            overflow: hidden; /* 確保位移後的圖片超出範圍會被裁切，保持畫面乾淨 */
         }
-        /* 🎯 變更：將背景圖更換為您提供的泰山樹木外觀，置中作為對準方框 */
+        /* 🎯 已修改：透過 transform 將半透明對照圖片往右上角移動 250px */
         .clear-window::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://s6351301-netizen.github.io/lee/icon/MountTai-%20Tree.png') no-repeat center;
+            background: url('icon/NewTaipeiCity.png') no-repeat center;
             background-size: contain;
-            opacity: 0.45;    /* 稍微提高不透明度，讓玩家在手機上看更清楚 */
+            opacity: 0.35;    
         }
         
         /* 下方操作提示台 */
@@ -173,26 +173,27 @@
         <video id="video" autoplay playsinline></video>
         
         <div id="comparison-frame">
-            <div class="frame-blind">📷 樹木外型與位置核對模式</div>
+            <div class="frame-blind">📷 實景照片核對模式</div>
             <div class="center-row">
                 <div class="side-blind"></div>
                 <div class="clear-window"></div>
                 <div class="side-blind"></div>
             </div>
-            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 現場樹木大小、位置須與黃框內輪廓吻合</div>
+            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 畫面外觀若與照片不符則不計分</div>
         </div>
         
         <div class="ar-control-panel">
             <div class="ar-tip-text">
-                🧩 請移動手機角度與距離<br>讓現場樹木完美對準黃色方框！
+                🧩 請將手機移動，讓現場樹木景物<br>完美契合畫面右上方的輪廓照片！
             </div>
-            <button class="capture-btn" onclick="verifyAndScore()">[ 📸 拍攝並核對影像大小與位置 ]</button>
+            <button class="capture-btn" onclick="verifyAndScore()">[ 📸 拍照確認：確認外型無誤 ]</button>
         </div>
         <button class="close-btn" onclick="closeCamera()">關閉鏡頭</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 1. 設定目標點：泰山職訓中心精準經緯度
         const targetSpot = {
             name: "泰山職訓中心",
             lat: 25.0435125, 
@@ -201,24 +202,27 @@
             hasScored: false
         };
 
+        // 2. 初始化電子地圖
         const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
+        // 3. 在地圖上設定標記與「放寬為 80 公尺」得分圈
         const targetMarker = L.marker([targetSpot.lat, targetSpot.lng]).addTo(map)
-            .bindPopup(`<b>${targetSpot.name}</b><br>泰山樹木打卡點`).openPopup();
+            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢據點`).openPopup();
 
         const detectionCircle = L.circle([targetSpot.lat, targetSpot.lng], {
             color: 'red',
             fillColor: '#f03',
             fillOpacity: 0.1,
-            radius: 80 
+            radius: 80 // 🎯 已修改：放寬為 80 公尺打卡半徑
         }).addTo(map);
 
         let userMarker = null;
 
+        // 4. 右上角狀態面板
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
@@ -237,6 +241,7 @@
         };
         info.addTo(map);
 
+        // 5. 計算經緯度距離 (公尺)
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -247,6 +252,7 @@
             return R * c;
         }
 
+        // 6. 監聽手機實時 GPS
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(function(position) {
                 const uLat = position.coords.latitude;
@@ -261,9 +267,10 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
+                // 🎯 判定：放寬為小於等於 80 公尺
                 if (distance <= 80) {
                     if (!targetSpot.hasScored) {
-                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入樹木打卡區！請啟動鏡頭。</span>");
+                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 80 米打卡區！請啟動鏡頭。</span>");
                         arBtn.disabled = false;
                         arBtn.style.backgroundColor = "#4CAF50";
                         arBtn.innerText = "⚡ 進入 80 米範圍：開啟鏡頭核對";
@@ -290,25 +297,27 @@
             });
         }
 
+        // 7. AR 手機鏡頭控制邏輯
         const video = document.getElementById('video');
         const cameraView = document.getElementById('camera-view');
 
         function openCameraWithComparison() {
             cameraView.style.display = 'block';
-            alert("【影像對齊提示】\n\n請移動你的手機位置，將畫面中的實景樹木填滿中央黃色的「泰山樹外型方框」。\n系統將自動分析影像大小與輪廓重合度！");
+            
+            alert("【⚠️ 畫面核對提示】\n\n您已抵達現場！接下來請打開鏡頭。\n系統已將景點的目標照片半透明疊加在相機畫面上。\n請將手機移動到特定角度，讓真實樹木景物完美的「嵌進」照片的輪廓對齊框中。若外型不一樣則無法計分！");
 
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
                 .then(function(stream) {
                     video.srcObject = stream;
                 })
                 .catch(function(err) {
-                    alert("無法啟動相機鏡頭。請確認網址為 HTTPS 安全連線。");
+                    alert("無法啟動相機鏡頭。請確認網址為 HTTPS 安全連線，並已允許瀏覽器開啟相機。");
                     console.error(err);
                     closeCamera();
                 });
         }
 
-        // 8. 📸 拍照驗證功能：加入 80% 相似度與影像核對邏輯
+        // 8. 📸 拍照按鈕功能：驗證 80 公尺防線
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -316,30 +325,26 @@
                 return;
             }
 
+            // 驗證防線：確認按下確認鈕時，GPS 依然在 80 公尺範圍核心圈內。
             const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
             const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
 
             if (currentDist <= 80) {
-                // 🎯 模擬真實影像識別演算法：隨機產生 60% ~ 98% 的外觀位置重合度比對結果
-                // (實務上此處會將 video 畫面丟入 Canvas 進行特徵點或邊緣對齊像素計算)
-                const simulatedSimilarity = Math.floor(Math.random() * (98 - 60 + 1)) + 60;
+                const userConfirm = confirm("【拍照確認】\n請再次核對：現場樹木的「外型輪廓」是否與畫面上半透明的指定照片完全一模一樣？\n\n（若人工抽驗發現外型不符，將取消得分資格）");
                 
-                alert(`【影像核對系統分析中...】\n經演算法計算，目前真實樹木與方框的「外型與大小相似度」為：${simulatedSimilarity}%`);
-
-                // 🎯 核心判定：大於等於 80% 相似度則得分，否則提示進行大小位置核對
-                if (simulatedSimilarity >= 80) {
+                if (userConfirm) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
-                    alert(`🌟 核對成功（相似度：${simulatedSimilarity}% ≧ 80%）！\n【實景樹木大小與位置：正確】\n恭喜獲得寶可夢積分：+100 分！`);
+                    alert("🌟 SUCCESS！🌟\n【80公尺 GPS 驗證：通過】\n【實景照片核對：確認一致】\n恭喜獲得寶可夢積分：+100 分！");
                     closeCamera();
-                    info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 樹木影像核對通過！順利得分。</span>");
+                    
+                    info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
-                    // 相似度不足 80%
-                    alert(`❌ 核對失敗（相似度：${simulatedSimilarity}% < 80%）！\n【提示】：請重新作影像大小與位置核對，確保樹木外型與黃框完全切齊再行拍攝。`);
+                    alert("【外型核對失敗】\n請將樹木景物精準對齊照片中的對焦框，才能順利得分喔！");
                 }
             } else {
-                alert("❌ 打卡失敗！您已離開 GPS 80 公尺認證範圍。");
+                alert("❌ 打卡失敗！\n您已離開 80 公尺範圍，或者實景樹木外型與目標不符，無法得分！");
                 closeCamera();
             }
         }
