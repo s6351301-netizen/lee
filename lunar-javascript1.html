@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>李氏宗親會 台灣黃曆萬年曆 (含遠祖紀念日)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.7.4/lunar.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #A82024;
+            --bg-color: #FDFBF7;
+            --text-dark: #2B2B2B;
+            --border-color: #E6DFD3;
+            --weekend-color: #D32F2F;
+            --ancestor-color: #FF8F00; /* 祖先紀念日暖橘色 */
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); padding: 20px; }
+        header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px double var(--primary-color); }
+        header h1 { color: var(--primary-color); font-size: 2rem; margin-bottom: 10px; }
+        .year-selector-zone { margin: 10px 0; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 1.1rem; }
+        .year-select { padding: 5px 15px; font-size: 1.1rem; border: 2px solid var(--primary-color); border-radius: 6px; color: var(--primary-color); font-weight: bold; cursor: pointer; }
+        .calendar-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 25px; max-width: 1400px; margin: 0 auto; }
+        .month-box { background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 10px rgba(168, 32, 36, 0.05); overflow: hidden; }
+        .month-title { background-color: var(--primary-color); color: #ffffff; text-align: center; padding: 10px 0; font-size: 1.25rem; font-weight: bold; }
+        .week-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; background-color: #F4EFE6; font-weight: bold; font-size: 0.85rem; padding: 6px 0; }
+        .week-header div:nth-child(1), .week-header div:nth-child(7) { color: var(--weekend-color); }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .day-cell { min-height: 75px; border-bottom: 1px solid #F0EAE1; border-right: 1px solid #F0EAE1; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; }
+        .day-cell:nth-child(7n) { border-right: none; }
+        .day-cell.empty { background-color: #FAF8F5; cursor: default; }
+        .solar-num { font-size: 1.1rem; font-weight: 700; color: #333; }
+        .is-weekend .solar-num { color: var(--weekend-color); }
+        .lunar-txt { font-size: 0.72rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .lunar-txt.jieqi { color: #1B5E20; font-weight: bold; }
+        .lunar-txt.festival { color: #B71C1C; font-weight: bold; }
+        /* 祖先特殊日樣式 */
+        .lunar-txt.ancestor { color: #E65100; font-weight: bold; background: #FFF3E0; border-radius: 2px; padding: 0 2px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #FFF; width: 100%; max-width: 500px; border-radius: 12px; border: 3px solid var(--primary-color); overflow: hidden; }
+        .modal-header { background: var(--primary-color); color: #FFF; padding: 15px; text-align: center; position: relative; }
+        .modal-close { position: absolute; right: 15px; top: 12px; font-size: 1.5rem; color: #FFF; cursor: pointer; }
+        .modal-body { padding: 20px; max-height: 75vh; overflow-y: auto; }
+        .info-row { display: flex; margin-bottom: 10px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; }
+        .info-label { width: 90px; font-weight: bold; color: var(--primary-color); }
+        .yi-zhi { display: flex; margin-top: 15px; gap: 10px; }
+        .yi-box, .ji-box { flex: 1; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; }
+        .yi-box { background: #E8F5E9; color: #2E7D32; }
+        .ji-box { background: #FFEBEE; color: #C62828; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>李氏宗親會 萬年曆與先祖紀念表</h1>
+    <div class="year-selector-zone">
+        <label for="year-picker">請選擇年份：</label>
+        <select id="year-picker" class="year-select" onchange="renderCalendar(this.value)">
+            <option value="1742">西元 1742 年 (清乾隆七年)</option>
+            <option value="2026" selected>西元 2026 年 (民國 115 年)</option>
+            <option value="2027">西元 2027 年 (民國 116 年)</option>
+        </select>
+    </div>
+    <p id="year-details">請選擇年份查看曆法與祖先忌日</p>
+</header>
+
+<div class="calendar-container" id="calendar-grid"></div>
+
+<div class="modal" id="details-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h3 id="m-title">日期</h3>
+        </div>
+        <div class="modal-body">
+            <div class="info-row"><div class="info-label">時代年號</div><div class="info-val" id="m-minguo"></div></div>
+            <div class="info-row"><div class="info-label">農曆日期</div><div class="info-val" id="m-lunar"></div></div>
+            <div class="info-row"><div class="info-label">紀念事項</div><div class="info-val" id="m-bazi" style="color:#D32F2F; font-weight:bold;">無</div></div>
+            <div class="yi-zhi">
+                <div class="yi-box">宜<div>祭祀、祈福、開光</div></div>
+                <div class="ji-box">忌<div>詞訟、安葬</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const weekDaysShort = ["日", "一", "二", "三", "四", "五", "六"];
+
+    // 🎯 1. 科學例外清單：手動定義歷史上祖先的生日或忌日（西元對照表）
+    // 您可以在這裡無限新增任意古代日期的祖先紀念日
+    const ancestorDates = {
+        "1742-5-20": { name: "武略公誕辰", lunar: "清乾隆七年 五月十六日", era: "清朝 乾隆七年 (壬戌年)" },
+        "1742-11-15": { name: "一世祖忌日", lunar: "清乾隆七年 十月中旬", era: "清朝 乾隆七年 (壬戌年)" },
+        "2026-6-22": { name: "李氏宗祠大典", lunar: "農曆 五月初八", era: "民國 115 年" }
+    };
+
+    function getTaiwanFestival(solar, lunar) {
+        if (!lunar) return null; // 古代日期不跑普通節日
+        const m = solar.getMonth(); const d = solar.getDay();
+        const lm = lunar.getMonth(); const ld = lunar.getDay();
+        if (m === 1 && d === 1) return "元旦";
+        if (m === 2 && d === 28) return "和平紀念";
+        if (m === 10 && d === 10) return "國慶日";
+        if (lm === 12 && ld === 30) return "除夕";
+        if (lm === 1 && ld === 1) return "春節";
+        if (lm === 5 && ld === 5) return "端午節";
+        if (lm === 8 && ld === 15) return "中秋節";
+        return null;
+    }
+
+    function renderCalendar(targetYear) {
+        targetYear = parseInt(targetYear);
+        const container = document.getElementById('calendar-grid');
+        container.innerHTML = '';
+
+        // 設定標題年號說明
+        if (targetYear === 1742) {
+            document.getElementById('year-details').innerText = `歲次 壬戌年 · 清朝乾隆七年 · 祖先遷台與誕辰文獻考`;
+        } else {
+            document.getElementById('year-details').innerText = `歲次 萬年曆 · 民國 ${targetYear - 1911} 年 · 台灣傳統黃曆`;
+        }
+
+        for (let month = 1; month <= 12; month++) {
+            const monthBox = document.createElement('div');
+            monthBox.className = 'month-box';
+
+            const monthTitle = document.createElement('div');
+            monthTitle.className = 'month-title';
+            monthTitle.innerText = targetYear === 1742 ? `清乾隆7年 · ${month} 月` : `民國 ${targetYear - 1911} 年 · ${month} 月`;
+            monthBox.appendChild(monthTitle);
+
+            const weekHeader = document.createElement('div');
+            weekHeader.className = 'week-header';
+            weekDaysShort.forEach(d => { const div = document.createElement('div'); div.innerText = d; weekHeader.appendChild(div); });
+            monthBox.appendChild(weekHeader);
+
+            const daysGrid = document.createElement('div');
+            daysGrid.className = 'days-grid';
+
+            const firstDayIndex = new Date(targetYear, month - 1, 1).getDay();
+            const totalDays = new Date(targetYear, month, 0).getDate();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div'); emptyCell.className = 'day-cell empty'; daysGrid.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'day-cell';
+                
+                const currentWeekDay = (firstDayIndex + day - 1) % 7;
+                if (currentWeekDay === 0 || currentWeekDay === 6) cell.classList.add('is-weekend');
+
+                const solarNumDiv = document.createElement('div');
+                solarNumDiv.className = 'solar-num';
+                solarNumDiv.innerText = day;
+                cell.appendChild(solarNumDiv);
+
+                const lunarTxtDiv = document.createElement('div');
+                lunarTxtDiv.className = 'lunar-txt';
+
+                // 🎯 核心攔截邏輯：檢查當天是否為祖先特殊日子？
+                const dateKey = `${targetYear}-${month}-${day}`;
+                
+                if (ancestorDates[dateKey]) {
+                    // 1. 如果命中祖先節日，直接顯示自訂內容，不跑一般套件
+                    lunarTxtDiv.innerText = ancestorDates[dateKey].name;
+                    lunarTxtDiv.classList.add('ancestor');
+                    
+                    cell.onclick = () => {
+                        document.getElementById('m-title').innerText = `西元 ${targetYear}年${month}月${day}日`;
+                        document.getElementById('m-minguo').innerText = ancestorDates[dateKey].era;
+                        document.getElementById('m-lunar').innerText = ancestorDates[dateKey].lunar;
+                        document.getElementById('m-bazi').innerText = `★ ${ancestorDates[dateKey].name} (宗族重要祭祀日)`;
+                        document.getElementById('details-modal').style.display = 'flex';
+                    };
+                } else if (targetYear < 1900) {
+                    // 2. 如果是 1742 年的其他普通日子，因為超越套件範圍，顯示簡單國曆格即可
+                    lunarTxtDiv.innerText = "乾隆年間";
+                    cell.onclick = () => {
+                        document.getElementById('m-title').innerText = `西元 ${targetYear}年${month}月${day}日`;
+                        document.getElementById('m-minguo').innerText = `清朝 乾隆七年`;
+                        document.getElementById('m-lunar').innerText = `歷史唯物資料`;
+                        document.getElementById('m-bazi').innerText = `非祖先指定祭祀日`;
+                        document.getElementById('details-modal').style.display = 'flex';
+                    };
+                } else {
+                    // 3. 1900年後的現代，正常啟動台灣黃曆與 lunar-javascript 套件
+                    const solar = Solar.fromYmd(targetYear, month, day);
+                    const lunar = solar.getLunar();
+                    const twFestival = getTaiwanFestival(solar, lunar);
+                    const jieQi = lunar.getJieQi();
+
+                    if (twFestival) {
+                        lunarTxtDiv.innerText = twFestival; lunarTxtDiv.classList.add('festival');
+                    } else if (jieQi) {
+                        lunarTxtDiv.innerText = jieQi; lunarTxtDiv.classList.add('jieqi');
+                    } else {
+                        lunarTxtDiv.innerText = lunar.getDay() === 1 ? lunar.getMonthInChinese() + '月' : lunar.getDayInChinese();
+                    }
+
+                    cell.onclick = () => {
+                        document.getElementById('m-title').innerText = `西元 ${targetYear}年${month}月${day}日`;
+                        document.getElementById('m-minguo').innerText = `民國 ${targetYear - 1911} 年`;
+                        document.getElementById('m-lunar').innerText = `農曆 ${lunar.getYearInGanZhi()}年 ${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`;
+                        document.getElementById('m-bazi').innerText = "常規日子";
+                        document.getElementById('details-modal').style.display = 'flex';
+                    };
+                }
+
+                cell.appendChild(lunarTxtDiv);
+                daysGrid.appendChild(cell);
+            }
+            monthBox.appendChild(daysGrid);
+            container.appendChild(monthBox);
+        }
+    }
+
+    function closeModal() { document.getElementById('details-modal').style.display = 'none'; }
+    window.onclick = function(e) { if (e.target == document.getElementById('details-modal')) closeModal(); }
+
+    renderCalendar(2026); // 預設停在2026
+</script>
+
+</body>
+</html>
