@@ -53,10 +53,18 @@ if (isset($_SESSION['name'])) {
         $member_no = !empty($row['new_member']) ? $row['new_member'] : "";
 
         switch ($row['role']) {
-            case 'admin': $role_title = "（管理者）"; break;
-            case 'user': $role_title = "（派下員）"; break;
-            case 'clan': $role_title = "（宗親）"; break;
-            default: $role_title = ""; break;
+            case 'admin':
+                $role_title = "（管理者）";
+                break;
+            case 'user':
+                $role_title = "（派下員）";
+                break;
+            case 'clan':
+                $role_title = "（宗親）";
+                break;
+            default:
+                $role_title = "";
+                break;
         }
     }
     $stmt->close();
@@ -95,7 +103,7 @@ if (isset($_SESSION['name'])) {
                 $p1 = str_split(substr($pure_nums, 0, 3));
                 $p2 = str_split(substr($pure_nums, 3));
             }
-            
+
             for ($i = 0; $i < 3; $i++) {
                 $zip_part1[$i] = isset($p1[$i]) ? $p1[$i] : "";
                 $zip_part2[$i] = isset($p2[$i]) ? $p2[$i] : "";
@@ -105,6 +113,17 @@ if (isset($_SESSION['name'])) {
         $user_real_name = $current_user;
     }
     $stmt_view->close();
+
+
+    // 取得當前系統時間（或你修改後的 PC 時間）
+    $current_year  = (int)date('Y'); // 例如：2033
+    $minguo_year   = $current_year - 1911; // 轉民國年：122 年
+    $current_month = date('n'); // 月份數字
+    $current_day   = date('j'); // 日期數字
+
+    // 轉換為中文星期幾
+    $week_array = array("日", "一", "二", "三", "四", "五", "六");
+    $current_week = $week_array[date('w')];
 }
 
 // ==========================================
@@ -306,7 +325,8 @@ function convertAddressNumbers($addressString)
             width: auto;
             max-height: 180px;
             display: inline-block;
-            margin-top: -65px; /* 收件人姓名 數字越大(例如 -20px) 字就會越往上挪 */
+            margin-top: -65px;
+            /* 收件人姓名 數字越大(例如 -20px) 字就會越往上挪 */
         }
 
         /* 收件人地址 (頂端為 62px) */
@@ -380,8 +400,15 @@ function convertAddressNumbers($addressString)
         }
 
         @keyframes floatMove {
-            0%, 100% { transform: translateX(-50%); }
-            50% { transform: translateX(-50%) translateY(-5px); }
+
+            0%,
+            100% {
+                transform: translateX(-50%);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(-5px);
+            }
         }
 
         .notice-bottom {
@@ -389,11 +416,28 @@ function convertAddressNumbers($addressString)
         }
 
         @keyframes textShake {
-            0%, 90%, 100% { transform: translateX(0); }
-            92% { transform: translateX(-4px); }
-            94% { transform: translateX(4px); }
-            96% { transform: translateX(-2px); }
-            98% { transform: translateX(2px); }
+
+            0%,
+            90%,
+            100% {
+                transform: translateX(0);
+            }
+
+            92% {
+                transform: translateX(-4px);
+            }
+
+            94% {
+                transform: translateX(4px);
+            }
+
+            96% {
+                transform: translateX(-2px);
+            }
+
+            98% {
+                transform: translateX(2px);
+            }
         }
 
         @media screen {
@@ -406,8 +450,13 @@ function convertAddressNumbers($addressString)
         }
 
         @keyframes verticalWrite {
-            0% { max-width: 0px; }
-            100% { max-width: 288px; }
+            0% {
+                max-width: 0px;
+            }
+
+            100% {
+                max-width: 288px;
+            }
         }
 
         /* 郵遞區號動畫 */
@@ -417,19 +466,53 @@ function convertAddressNumbers($addressString)
                 animation: zipDropBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             }
 
-            .recipient-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 0.1s; }
-            .recipient-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 0.3s; }
-            .recipient-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 0.5s; }
-            .recipient-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 0.7s; }
-            .recipient-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 0.9s; }
-            .recipient-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 1.3s; }
+            .recipient-zip .zip-container:first-child .zip-box:nth-child(1) {
+                animation-delay: 0.1s;
+            }
 
-            .sender-zip .zip-container:first-child .zip-box:nth-child(1) { animation-delay: 1.5s; }
-            .sender-zip .zip-container:first-child .zip-box:nth-child(2) { animation-delay: 1.7s; }
-            .sender-zip .zip-container:first-child .zip-box:nth-child(3) { animation-delay: 1.9s; }
-            .sender-zip .zip-container:last-child .zip-box:nth-child(1) { animation-delay: 2.1s; }
-            .sender-zip .zip-container:last-child .zip-box:nth-child(2) { animation-delay: 1.3s; }
-            .sender-zip .zip-container:last-child .zip-box:nth-child(3) { animation-delay: 2.5s; }
+            .recipient-zip .zip-container:first-child .zip-box:nth-child(2) {
+                animation-delay: 0.3s;
+            }
+
+            .recipient-zip .zip-container:first-child .zip-box:nth-child(3) {
+                animation-delay: 0.5s;
+            }
+
+            .recipient-zip .zip-container:last-child .zip-box:nth-child(1) {
+                animation-delay: 0.7s;
+            }
+
+            .recipient-zip .zip-container:last-child .zip-box:nth-child(2) {
+                animation-delay: 0.9s;
+            }
+
+            .recipient-zip .zip-container:last-child .zip-box:nth-child(3) {
+                animation-delay: 1.3s;
+            }
+
+            .sender-zip .zip-container:first-child .zip-box:nth-child(1) {
+                animation-delay: 1.5s;
+            }
+
+            .sender-zip .zip-container:first-child .zip-box:nth-child(2) {
+                animation-delay: 1.7s;
+            }
+
+            .sender-zip .zip-container:first-child .zip-box:nth-child(3) {
+                animation-delay: 1.9s;
+            }
+
+            .sender-zip .zip-container:last-child .zip-box:nth-child(1) {
+                animation-delay: 2.1s;
+            }
+
+            .sender-zip .zip-container:last-child .zip-box:nth-child(2) {
+                animation-delay: 1.3s;
+            }
+
+            .sender-zip .zip-container:last-child .zip-box:nth-child(3) {
+                animation-delay: 2.5s;
+            }
 
             .zip-hyphen {
                 opacity: 0;
@@ -438,13 +521,31 @@ function convertAddressNumbers($addressString)
         }
 
         @keyframes zipDropBounce {
-            0% { opacity: 0; transform: translateY(-40px) scale(0.7); }
-            60% { opacity: 1; transform: translateY(5px) scale(1.05); }
-            80% { transform: translateY(-2px) scale(0.98); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+            0% {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.7);
+            }
+
+            60% {
+                opacity: 1;
+                transform: translateY(5px) scale(1.05);
+            }
+
+            80% {
+                transform: translateY(-2px) scale(0.98);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
-        @keyframes fadeInHyphen { to { opacity: 1; } }
+        @keyframes fadeInHyphen {
+            to {
+                opacity: 1;
+            }
+        }
 
         /* 列印保護 */
         @media print {
@@ -558,6 +659,17 @@ function convertAddressNumbers($addressString)
                         <div class="postcard-face" style="margin-top: 5px; margin-right: 5px;">
                             <div class="back-content-spec vertical-text-mode">
                                 <div class="form-title">報名單</div>
+                               <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.6.12/lunar.js"></script>
+
+<div class="main-text">
+    一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
+    <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
+    &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
+    二、參加人員有本人外還有太太和小孩，<br>
+    &emsp;&emsp;葷食?個素食?個，共計<span class="combine-num">10</span>名。<br>
+    三、若本人無法出席，將授權由_______代理出席。<br>
+</div>
+                                <!--
                                 <div class="main-text">
                                     一、本人願意參加本公業民國<span class="combine-num">115</span>年<span class="combine-num">1</span>月
                                     <span class="combine-num">1</span>日(農曆<span class="combine-num">114</span><br>
@@ -567,6 +679,7 @@ function convertAddressNumbers($addressString)
                                     &emsp;&emsp;葷食?個素食?個，共計<span class="combine-num">10</span>名。<br>
                                     三、若本人無法出席，將授權由_______代理出席。<br>
                                 </div>
+                                -->
                                 <div class="notice-bottom">
                                     *請盡速回函以便礁定人數，訂購餐盒，謝謝！<br>
                                 </div>
@@ -677,6 +790,60 @@ function convertAddressNumbers($addressString)
             index = (index + 1) % images.length;
         }, 1000);
     </script>
+
+    
+    <script>
+(function() {
+    // 1. 抓取目前電腦當天的西元日期 (不論使用者改成哪一天)
+    const today = new Date(); 
+    
+    // 2. 使用套件將當天西元日期轉換成正確的農曆物件
+    const currentLunar = Lunar.fromDate(today);
+    
+    // 取得當天對應的農曆年份 (例如 2054 或是 2055)
+    let targetLunarYear = currentLunar.getYear(); 
+
+    // 3. 建立「當前農曆年 11 月 13 日」的物件，用來比對是否過期
+    // Lunar.fromYmd(年, 月, 日)
+    let targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
+    
+    // 將該農曆日期轉回西元 Date 物件
+    let targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
+
+    // 🎯 核心科學判斷：如果電腦今天日期，已經超過了當前農曆年的 11 月 13 日
+    if (today > targetSolarObj) {
+        // 代表今年的大會已經辦完了！自動把農曆年加 1 年，尋找下一屆
+        targetLunarYear = targetLunarYear + 1;
+        targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
+        targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
+    }
+
+    // 4. 從最終鎖定的西元日期物件中，精準解析年月日與星期
+    const finalSolarYear  = targetSolarObj.getFullYear();
+    const finalSolarMonth = targetSolarDateParser(targetSolarObj.getMonth() + 1); // 月份
+    const finalSolarDay   = targetSolarDateParser(targetSolarObj.getDate());      // 日期
+    
+    // 5. 科學公式換算民國年：西元年 - 1911
+    const minguoSolarYear = finalSolarYear - 1911; 
+    const minguoLunarYear = targetLunarYear - 1911;
+
+    // 6. 取得精準的星期幾
+    const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
+    const finalSolarWeek = weekDays[targetSolarObj.getDay()];
+
+    // 7. 將真正經由科學換算、無硬編碼的資料渲染至網頁
+    document.getElementById('cal_solar_year').innerText  = minguoSolarYear;   // 西曆民國年
+    document.getElementById('cal_solar_month').innerText = finalSolarMonth;   // 西曆月
+    document.getElementById('cal_solar_day').innerText   = finalSolarDay;     // 西曆日
+    document.getElementById('cal_lunar_year').innerText  = minguoLunarYear;   // 農曆民國年
+    document.getElementById('cal_solar_week').innerText  = finalSolarWeek;    // 星期
+
+    // 輔助補零函式
+    function targetSolarDateParser(num) {
+        return num;
+    }
+})();
+</script>
 </body>
 
 </html>

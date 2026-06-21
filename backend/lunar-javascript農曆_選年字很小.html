@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>台灣黃曆萬年曆 (完整功能版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
+    <style>
+        :root { --primary-color: #A82024; --bg-color: #FDFBF7; --weekend-color: #D32F2F; --jieqi-color: #1B5E20; --festival-color: #B71C1C; }
+        body { background: var(--bg-color); padding: 20px; font-family: "Microsoft JhengHei", sans-serif; }
+        .calendar-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .month-box { background: #fff; border: 1px solid #ccc; padding: 10px; border-radius: 8px; }
+        .month-title { background: var(--primary-color); color: #fff; text-align: center; padding: 5px; font-weight: bold; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.9rem; }
+        .day-cell { height: 65px; border: 1px solid #eee; padding: 2px; }
+        .solar-num { font-weight: bold; }
+        .lunar-txt { font-size: 0.75rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .is-weekend { color: var(--weekend-color); }
+        .jieqi { color: var(--jieqi-color); font-weight: bold; }
+        .festival { color: var(--festival-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>台灣黃曆萬年曆</h1>
+<select id="year-picker" class="year-select"></select>
+<div class="calendar-container" id="calendar-grid"></div>
+
+<script>
+    const yearPicker = document.getElementById('year-picker');
+    for (let y = 2020; y <= 2055; y++) {
+        let opt = document.createElement('option');
+        opt.value = y;
+        opt.text = `西元 ${y} 年 (民國 ${y-1911} 年)`;
+        yearPicker.appendChild(opt);
+    }
+
+    function renderCalendar(y) {
+        y = parseInt(y);
+        const container = document.getElementById('calendar-grid');
+        container.innerHTML = '';
+        
+        for (let m = 1; m <= 12; m++) {
+            const monthBox = document.createElement('div');
+            monthBox.className = 'month-box';
+            monthBox.innerHTML = `<div class="month-title">${m} 月</div><div class="days-grid" id="m${m}"></div>`;
+            container.appendChild(monthBox);
+            
+            const grid = document.getElementById(`m${m}`);
+            const firstDay = new Date(y, m - 1, 1).getDay();
+            const daysInMonth = new Date(y, m, 0).getDate();
+            
+            for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+            
+            for (let d = 1; d <= daysInMonth; d++) {
+                const solar = Solar.fromYmd(y, m, d);
+                const lunar = solar.getLunar();
+                const cell = document.createElement('div');
+                cell.className = 'day-cell';
+                
+                // 優先級：台灣國定假日 > 二十四節氣 > 農曆節日 > 初一/日期
+                let label = lunar.getDayInChinese();
+                let className = 'lunar-txt';
+                
+                // 1. 台灣節日判斷
+                const holidays = {"1-1":"元旦", "2-28":"228紀念", "4-4":"兒童節", "5-1":"勞動節", "10-10":"國慶日"};
+                if (holidays[`${m}-${d}`]) { label = holidays[`${m}-${d}`]; className += ' festival'; }
+                else if (lunar.getJieQi()) { label = lunar.getJieQi(); className += ' jieqi'; }
+                else if (lunar.getFestivals().length > 0) { label = lunar.getFestivals()[0]; className += ' festival'; }
+                else if (lunar.getDay() === 1) { label = lunar.getMonthInChinese() + '月'; }
+
+                cell.innerHTML = `<div class="solar-num ${new Date(y,m-1,d).getDay()%6===0?'is-weekend':''}">${d}</div><div class="${className}">${label}</div>`;
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    yearPicker.addEventListener('change', (e) => renderCalendar(e.target.value));
+    renderCalendar(2026);
+</script>
+</body>
+</html>
