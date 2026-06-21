@@ -1,0 +1,154 @@
+CREATE TABLE `ancestor_worship` (
+  `worship_id` INT NOT NULL AUTO_INCREMENT COMMENT '報名ID',
+  `member_id` INT NULL COMMENT '會員id',
+  `new_member` INT NULL COMMENT '會員編號',
+  `name` VARCHAR(50) NULL COMMENT '姓名',
+  `address` varchar(255)NULL COMMENT '地址',
+  `zip_code` text NULL COMMENT '郵遞區號',
+  `attendance_date` DATE NULL COMMENT '祭祖日(西元)',
+  `attendance_date_solar` DATE NULL COMMENT '祭祖日(國曆)',
+  `attendance_date_lunar` VARCHAR(20) NULL COMMENT '祭祖日(農曆)',
+  `expected_attendance` VARCHAR(10) NULL COMMENT '預計出席(出席/代理)',
+  `actual_attendance` VARCHAR(10) NULL COMMENT '實際出席(本人/代理/無出席)',
+  `companion_info` VARCHAR(100) NULL COMMENT '攜伴內容(太太和小孩)',
+  `meat_count` INT NULL COMMENT '葷食數量',
+  `veg_count` INT NULL COMMENT '素食數量',
+  `total_people` INT NULL COMMENT '總人數',  
+  `proxy_member_id` INT NULL COMMENT '代理人ID',
+  `proxy_new_member` INT NULL COMMENT '代理人會員編號',
+  `proxy_member_name` VARCHAR(50) NULL COMMENT '代理人姓名',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  `update_time` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最後更新時間',
+  `updater_name-id` VARCHAR(50) NULL COMMENT '更新者id',
+  `updater_name` VARCHAR(50) NULL COMMENT '更新者姓名',
+  `remark` TEXT NULL COMMENT '備註',
+  PRIMARY KEY (`worship_id`),
+  INDEX (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='祭祖活動';
+
+
+採用 PHP 嵌入式語法 與 AJAX 查詢代理人 的方式來實現。
+1.由登入的session_start()與`account_members_view`檢視表核對,
+帶出"姓名"寫在"李美玲"位置(文字框但沒有邊框),將值寫入`ancestor_worship`資料表的`name`欄位.
+
+2.性別位置(文字框但沒有邊框)由`account_members_view`檢視表核對"account_gender"值.
+判斷女性顯示為"小姐"或男性顯示為"先生".
+
+3.地址位置(文字框但沒有邊框)"臺北市中正區重慶南路一段123號5樓之12"
+由`account_members_view`檢視表`address`值帶出,
+寫入`ancestor_worship`資料表的`address`欄位.
+
+4.右上角郵遞區號"100-024"位置由`account_members_view`檢視表`zip_code`值帶出,
+注意是一個方框一個數字,中間會有"-"做隔開,再撈取資料與寫入資料時要特別"-"的區隔.
+寫入`ancestor_worship`資料表的`zip_code`欄位(需寫入完整資料,如"100-024").
+
+
+5.在本人後面接一個文字框(但沒有邊框),將`account_members_view`撈出`new_member`和`name`值寫入此文字框內,
+  前面些寫`new_member`再接著`name`欄位,且姓名要變成黑色粗體字.
+  將值寫入`ancestor_worship`資料表的`new_member`和`name`欄位.
+
+6.以下日期使用PHP的php-lunar程式判斷寫出來,不留給人填寫資料:
+因祭祖日期全部都是固定在中華民國的每年農曆11月13日,因此要先判斷今天日期是否已超過今年農曆11月13日.
+若已經超過今年農曆11月13日,直接顯示中華民國的下一年度農曆11月13日,且還要寫出星期幾.
+在農曆年月日前面,多一個隱藏欄位,寫還沒做運算的西元年月日,
+此值要寫入`ancestor_worship`資料表的`attendance_date`欄位.
+若沒有超過今年農曆11月13日,直接顯示中華民國的今年度農曆11月13日,且還要寫出星期幾.
+如民國115年1月 1日(農曆114年11月13日)星期四.
+雖然可用JavaScript：有開源套件如 chinese-lunar、moment-lunar，可直接在前端轉換日期。
+但因沒有給人填寫資料,只能用PHP：可用 php-lunar 或自行撰寫演算法，常見於台灣的表單系統。
+最後經過運算過的日期,寫入`ancestor_worship`資料表的`attendance_date_solar`填'祭祖日(國曆)'欄位,
+和`attendance_date_lunar`填'祭祖日(農曆)'欄位.
+
+7.參加人員有一個文字框(但沒有邊框)和2個情境，第一個情境,只有本人出席,寫出＂本人無攜伴，＂,
+第2個情境是除本人外還有攜伴，欄位寫出＂除本人外攜伴?，＂而?就是要填攜伴的人名，
+將此?填寫攜伴的人名寫入`ancestor_worship`資料表的`companion_info`欄位。
+
+8.共計＂?＂名這是一個文字框(但沒有邊框),主要是填入數字。
+將此?寫入`ancestor_worship`資料表的`total_people`欄位。
+
+9.授權由?代理,有1個文字框(但沒有邊框),在此輸入文字或數字都可以,做`new_member`和`name`2個欄位的模糊查詢.
+要做一個AJAX當輸入文字或數字時,會去`account_members_view`撈出`new_member`和`name`做模糊查詢.
+若發生同姓名時,要跳出新視窗,把ID,第?房,第?代,姓名,以表格且前面有勾選項目全列出來,
+按"確認"送出後將值傳送給文字框(但沒有邊框).
+代理人位置顯示方式為`new_member`接著`name`,如"2李美麗".
+將此?代理人寫入`ancestor_worship`資料表,數字寫入`proxy_new_member`欄位,文字寫入`proxy_member_name`欄位。
+而`ancestor_worship`資料表`proxy_member_id`欄位,
+由`account_members_view`撈出`new_member`對應的member_id寫入.
+
+10.所有有方框的文字全部統一都是"直式"書寫,特別注意原來HTML語法"文字"書寫格式不能改變.
+
+11.以上欄位功能都見查無誤後,才用"送出"按鈕把表單要插入的值寫到資料表裡面去.
+
+-- 替換檢視表以便查看 `account_members_view`
+-- (請參考以下實際畫面)
+--
+CREATE TABLE `account_members_view` (
+`account_id` int(11)
+,`account_new_member` varchar(50)
+,`account_old_member` varchar(50)
+,`account_name` varchar(50)
+,`account_gender` varchar(10)
+,`account_email` varchar(255)
+,`password` varchar(255)
+,`role` enum('admin','user','clan')
+,`join_date` timestamp
+,`account_status` varchar(20)
+,`discontinued_date` date
+,`account_remarks` varchar(255)
+,`menu_id` varchar(10)
+,`created_at` datetime
+,`updated_at` datetime
+,`member_id` int(11)
+,`receive_date` date
+,`member_old_member` varchar(50)
+,`member_new_member` varchar(50)
+,`generation` int(11)
+,`emperor_shizu` int(11)
+,`number_of_houses` int(11)
+,`member_name` varchar(50)
+,`member_gender` varchar(10)
+,`id_card_num` varchar(20)
+,`birthday` date
+,`placeOfBirth` varchar(100)
+,`education` varchar(100)
+,`experience` text
+,`address` varchar(255)
+,`zip_code` text
+,`mobile_phone` varchar(20)
+,`home_phone` varchar(20)
+,`company_phone` varchar(20)
+,`member_email` varchar(100)
+,`introducer` varchar(50)
+,`SendSubordinates` text
+,`living_status` enum('存','亡','未知')
+,`member_status` tinyint(1)
+,`member_remarks` text
+,`update_time` datetime
+,`last_updater` varchar(50)
+);
+
+
+
+以下語法做修正與新功能:
+1.將明信片的右邊與左邊合併起來變成一張表格所有無邊框無顏色,屬於透明.
+2.在報名單最下方,多一個送出按鈕.
+3.在整個版面右手邊,是另外一張表格.CSS是模仿明信片那張表格也是透明.
+在此右邊表格內,寫入以下操做說明:
+A.收件者願意參與活動,在明信片左手邊確認系統自動代出資訊是否有錯誤.
+填寫除了本人出席外,是否有攜伴參加,若有需要填「陪伴者」的家庭稱謂.
+統計當天要參與總人數,做填入.
+再送出表單前,請確認所有資料無任何錯誤.
+若無錯誤,直接在"送出"按紐點送出即可.
+若有錯誤,回到"會員基本資料"做修改後再回到此畫面確認資料無誤,再點"送出"報名.
+B.若無法出席,確認報名資料為正確後,點選要代理出席的人(僅限有會員編號的人).
+
+A.收件者等相關資料,固定是登入後由系統代出.
+B.寄件者固定是由祭祀公業管理員寄發
+C.祭祖時間固定是每年農曆11月13日,由程式判斷寫出日期與星期.
+D.
+
+
+2.在授權由"?"寫一個文字標籤(直式文字)旁邊會有查詢按鈕,跳出新視窗.
+有4個可輸入文字標籤,第?大房,大甲?代,編號?,姓名?
+當輸入
+代出席下面,有一個文字標籤.

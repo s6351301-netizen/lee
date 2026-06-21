@@ -425,19 +425,14 @@
             text-align: right;       /* 讓按鈕在容器內靠右對齊 */
             box-sizing: border-box;
         }
-        .submit-btn {
-            background-color: #e0e0e0; /* 淺灰色背景 */
-            color: #1a1a1a;          /* 深黑色文字 */
-            border: 1px solid #b5b5b5;
-            font-size: 14px;
-            font-family: "Microsoft JhengHei", sans-serif;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-            transition: background-color 0.2s;
-            width: 15%;              /* 修改：送出按鈕寬度改為80% */
-            box-sizing: border-box;
+        .submit-btn {       
+           border: 1px solid #b5b5b5;
+           font-size: 18px;
+           font-family: "Microsoft JhengHei", sans-serif;
+           font-weight: bold;
+           border-radius: 8px;
+           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+           width: 15%;
         }
         .submit-btn:hover {
             background-color: #d4d4d4; /* 懸停時略微加深 */
@@ -458,7 +453,7 @@
             vertical-align: top;
         }
         .instruction-box {
-            width: 320px;
+            width: 350px;
             font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
             color: #333333;
             font-size: 14px;
@@ -485,9 +480,7 @@
 </head>
 
 <body>
-
     <div class="postcard-twin-container">
-
         <table class="transparent-table">
             <tr>
                 <td>
@@ -499,15 +492,13 @@
                                 <span class="combine-num">1</span>日(農曆<span class="combine-num">114</span><br>
                                 &emsp;&emsp;年<span class="combine-num">11</span>月<span
                                     class="combine-num">13</span>日)星期四，會員大會(祭祖並聚餐)。<br>
-                                二、參加人員有本人外還有太太和小孩，共計<span class="combine-num">10</span>名。<br>
+                                二、參加人員有本人外還有太太和小孩，<br>
+                                    &emsp;&emsp;葷食?個素食?個，共計<span class="combine-num">10</span>名。<br>                                    
                                 三、若本人無法出席，將授權由_______代理出席。<br>
                             </div>
                             <div class="notice-bottom">
                                 *請盡速回函以便礁定人數，訂購餐盒，謝謝！<br>
-                            </div>
-                            <div class="submit-container">
-                                <button type="button" class="submit-btn" onclick="alert('報名表單已送出！')">送出</button>
-                            </div>
+                            </div>                            
                         </div>
                     </div>
                 </td>
@@ -560,6 +551,9 @@
                             &emsp;&emsp;&emsp;&emsp;臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span
                                 class="combine-num">45</span>號
                         </div>
+                        <div class="submit-container">
+                                <button type="button" class="submit-btn" onclick="alert('報名表單已送出！')">送出</button>
+                            </div>
                     </div>
                 </td>
             </tr>
@@ -572,17 +566,17 @@
                         <h2>祭祖活動出席統計<br>(3x5 英吋迷你尺寸明信片)</h2>                        
                         <h3 style="margin-top: 15px;">系統操作說明</h3>                        
                         <div class="instruction-item" style="margin-top: 10px;">
-                            <strong>A. 收件者願意參與活動：</strong><br>
-                            1.先確認資訊是否有錯誤。<br>
-                              有錯誤，到"會員基本資料"修改後，再回來確認資料。<br>
-                            2.要攜伴參加者，需要填「攜伴」的名字或家庭稱謂。<br>
-                            3.統計總人數做填入，並寫葷食與素食的數量。<br>
-                            4.確認所有資料無錯誤，再"送出"按紐點送出即可。                            
+                            <strong>A. 願意出席活動：</strong><br>
+                            1.確認資料是否有錯誤。<br>
+                              有誤，至"會員基本資料"修改，再回來填寫資料。<br>
+                            2.攜伴參加者，填「攜伴」名字或家庭稱謂。<br>
+                            3.填入總人數做，註明葷食與素食數量。<br>
+                            4.確認無錯，按"送出"按紐即可。                            
                         </div>
                         <div class="instruction-item">
-                            <strong>B. 若無法出席：</strong><br>
-                            確認報名資料為正確，若有錯誤至"會員基本資料"修改。<br>
-                            填寫要代理出席的人(限有會員編號的人)再"送出"。
+                            <strong>B. 無法出席：</strong><br>
+                            確認資料正確，有誤至"會員基本資料"修改。<br>
+                            填寫代理出席者(限有會員編號的人)再"送出"。
                         </div>
                     </div>
                 </td>

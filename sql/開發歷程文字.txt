@@ -1,3 +1,26 @@
+CREATE TABLE `ancestor_worship` (
+  `worship_id` INT NOT NULL AUTO_INCREMENT COMMENT '報名ID',
+  `member_id` INT NULL COMMENT '會員id',
+  `new_member` INT NULL COMMENT '會員編號',
+  `name` VARCHAR(50) NULL COMMENT '姓名',
+  `attendance_date` DATE NULL COMMENT '祭祖日期',
+  `expected_attendance` VARCHAR(10) NULL COMMENT '預計出席(出席/代理)',
+  `actual_attendance` VARCHAR(10) NULL COMMENT '實際出席(本人/代理/無出席)',
+  `companion_info` VARCHAR(100) NULL COMMENT '攜伴內容(太太和小孩)',
+  `meat_count` INT NULL COMMENT '葷食數量',
+  `veg_count` INT NULL COMMENT '素食數量',
+  `total_people` INT NULL COMMENT '總人數',  
+  `proxy_member_id` INT NULL COMMENT '代理人ID',
+  `proxy_new_member` INT NULL COMMENT '代理人會員編號',
+  `proxy_member_name` VARCHAR(50) NULL COMMENT '代理人姓名',
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  `remark` TEXT NULL COMMENT '備註',
+  PRIMARY KEY (`worship_id`),
+  INDEX (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='祭祖活動';
+
+
+
 1.由登入的session_start()與new_member兩個核對值帶出"姓名"寫在"李美玲"由性別判斷女性為"小姐"或男性為"先生".
 2.地址"臺北市中正區重慶南路一段123號5樓之12"改為登入的session_start();值帶出"姓名"的對應"地址"欄位.
 3.郵遞區號是登入的session_start();值帶出"姓名"的對應"郵遞區號"欄位.
