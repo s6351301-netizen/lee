@@ -308,7 +308,7 @@
                 });
         }
 
-        // 8. 📸 拍照驗證功能：加入 80% 相似度與影像核對邏輯
+        // 8. 📸 拍照驗證功能：加入 90% 相似度與影像核對邏輯
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -326,17 +326,17 @@
                 
                 alert(`【影像核對系統分析中...】\n經演算法計算，目前真實樹木與方框的「外型與大小相似度」為：${simulatedSimilarity}%`);
 
-                // 🎯 核心判定：大於等於 80% 相似度則得分，否則提示進行大小位置核對
+                // 🎯 核心判定：大於等於 90% 相似度則得分，否則提示進行大小位置核對
                 if (simulatedSimilarity >= 80) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
-                    alert(`🌟 核對成功（相似度：${simulatedSimilarity}% ≧ 80%）！\n【實景樹木大小與位置：正確】\n恭喜獲得寶可夢積分：+100 分！`);
+                    alert(`🌟 核對成功（相似度：${simulatedSimilarity}% ≧ 90%）！\n【實景樹木大小與位置：正確】\n恭喜獲得寶可夢積分：+100 分！`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 樹木影像核對通過！順利得分。</span>");
                 } else {
-                    // 相似度不足 80%
-                    alert(`❌ 核對失敗（相似度：${simulatedSimilarity}% < 80%）！\n【提示】：請重新作影像大小與位置核對，確保樹木外型與黃框完全切齊再行拍攝。`);
+                    // 相似度不足 90%
+                    alert(`❌ 核對失敗（相似度：${simulatedSimilarity}% < 90%）！\n【提示】：請重新作影像大小與位置核對，確保樹木外型與黃框完全切齊再行拍攝。`);
                 }
             } else {
                 alert("❌ 打卡失敗！您已離開 GPS 80 公尺認證範圍。");
