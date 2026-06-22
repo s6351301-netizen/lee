@@ -185,7 +185,7 @@
         
         <div class="ar-control-panel">
             <div class="ar-tip-text">
-                🧩 請將手機移動，讓現場樹木景物<br>完美契合畫面右上方的輪廓照片！
+                🧩 請將手機移動，讓現場樹木景物<br>完美契合畫面中央的輪廓照片！
             </div>
             <button class="capture-btn" onclick="verifyAndScore()">[ 📸 拍照確認：確認外型無誤 ]</button>
         </div>
@@ -330,7 +330,7 @@
                 });
         }
 
-        // 🎯 核心精確度分析引擎
+        // 🎯 升級版：具備中央裁剪與紙張防禦機制的精確度分析引擎
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -345,49 +345,73 @@
                 const canvas = document.getElementById('hidden-canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // 設定採樣網格解析度，用於進行影像特徵採集
-                canvas.width = 160;
-                canvas.height = 160;
+                // 1. 取得真實視訊影片的解析度
+                const vW = video.videoWidth;
+                const vH = video.videoHeight;
                 
-                // 擷取黃色方框部分的對齊畫面
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // 2. 🎯 精準控制：計算中央黃框在實際視訊中的座標與大小（只抓中央 50% 區域，排除四周背景干擾）
+                const cropW = vW * 0.5;
+                const cropH = vH * 0.5;
+                const cropX = (vW - cropW) / 2;
+                const cropY = (vH - cropH) / 2;
+
+                canvas.width = 100;
+                canvas.height = 100;
+                
+                // 🎯 僅將中央黃框內的影像渲染至 Canvas 進行分析
+                ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
                 const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
-                let matchPoints = 0;
-                let totalTargetPoints = 0;
+                let greenPoints = 0;
+                let paperOrWhitePoints = 0;
+                const totalPixels = canvas.width * canvas.height;
 
-                // 樹木輪廓特徵模型（基於樹冠與主幹分佈區間建立的幾何遮罩）
-                // 排除白紙、天空或單純幾何矩形，判定主要成像區域的綠色通道分佈率
+                // 3. 🎯 嚴格的防偽與特徵比對迴圈
                 for (let i = 0; i < frameData.length; i += 4) {
                     const r = frameData[i];
                     const g = frameData[i+1];
                     const b = frameData[i+2];
 
-                    // 定義樹木特徵：綠色濃度（G 顯著大於 R 和 B，排除白色、灰色紙張）
-                    const isGreenish = (g > r * 1.1) && (g > b * 1.1) && (g > 40);
+                    // 檢查是否為紙張/無彩色系（R、G、B 非常接近，差值在 15 以內）
+                    const isMonochrome = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
                     
-                    // 核心遮罩範圍像素點加權
-                    totalTargetPoints++;
-                    if (isGreenish) {
-                        matchPoints++;
+                    // 嚴格定義植物的「真實葉綠素色調」：綠色必須顯著大於紅藍，且不能是灰白紙張
+                    const isRealTreeGreen = (g > r * 1.25) && (g > b * 1.15) && (g > 35) && !isMonochrome;
+
+                    if (isRealTreeGreen) {
+                        greenPoints++;
+                    }
+                    if (isMonochrome && (r > 150)) {
+                        paperOrWhitePoints++; // 紀錄疑似紙張或死白物件的像素點
                     }
                 }
 
-                // 計算精確相似度
-                const precisionScore = Math.min(100, Math.round((matchPoints / (totalTargetPoints * 0.35)) * 100));
+                // 4. 🎯 相似度與位置、大小複合運算公式
+                const greenRatio = greenPoints / totalPixels; 
+                const paperRatio = paperOrWhitePoints / totalPixels; 
 
+                // 換算精確度分數（設定黃框中央必須有 30% 面積覆蓋為正確的樹葉分佈區）
+                let precisionScore = Math.round((greenRatio / 0.30) * 100);
+                
+                // 如果畫面中央有超過 40% 的面積被偵測出是無彩色的紙張/牆壁，實施倒扣懲罰
+                if (paperRatio > 0.40) { 
+                    precisionScore -= Math.round((paperRatio * 60)); 
+                }
+                precisionScore = Math.max(0, Math.min(100, precisionScore));
+
+                // 5. 檢核條件判定
                 if (precisionScore >= 80) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
                     saveScoreToHistory(100);
                     
-                    alert(`🌟 核對成功！\n精確度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
+                    alert(`🌟 核對成功！\n經精確影像核對，樹木相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
-                    // 精確度低於 80% 時（例如拿白紙或對錯位置），強制失敗並提示核對
-                    alert(`❌ 核對失敗（當前核對精確度：${precisionScore}%）\n畫面不符合樹木外觀與色彩特徵，請務必重新作影像大小與位置核對！`);
+                    // 低於 80% 門檻時拒絕得分，強制退回核對
+                    alert(`❌ 核對失敗（目前核對精確度：${precisionScore}%）\n\n【原因判定】：偵測到畫面多為紙張、白牆或非植物色彩。\n請務必移動手機，重新作影像大小與位置核對！`);
                 }
             } else {
                 alert("❌ 打卡失敗！您已離開 80 公尺範圍。");
