@@ -127,25 +127,12 @@ if (isset($_SESSION['name'])) {
 }
 
 // ==========================================
-// 當點擊送出表單時，寫入 ancestor_worship 資料表
+// 当点击送出表单时，写入 ancestor_worship 资料表
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_submit'])) {
     $post_name = isset($_POST['worship_name']) ? $_POST['worship_name'] : '';
     $post_address = isset($_POST['worship_address']) ? $_POST['worship_address'] : '';
     $post_zip = isset($_POST['worship_zip']) ? $_POST['worship_zip'] : '';
-
-    // 【1. 新增】接收攜伴資訊（字串）
-    $companion_info     = isset($_POST['companion_info']) ? trim($_POST['companion_info']) : '';
-
-    // 【2. 新增】接收葷食、素食、總人數（強制轉換為整數）
-    $meat_count         = isset($_POST['meat_count']) ? (int)$_POST['meat_count'] : 0;
-    $veg_count          = isset($_POST['veg_count']) ? (int)$_POST['veg_count'] : 0;
-    $total_people       = isset($_POST['total_people']) ? (int)$_POST['total_people'] : 1;
-
-    // 【3. 新增與修改】代理人資訊（精準判斷：如果前端傳來空字串，就給 null 常數，完美對接資料庫 NULL 欄位）
-    $proxy_new_member   = (isset($_POST['proxy_new_member']) && $_POST['proxy_new_member'] !== '') ? (int)$_POST['proxy_new_member'] : null;
-    $proxy_member_name  = isset($_POST['proxy_member_name']) ? trim($_POST['proxy_member_name']) : '';
-    $proxy_member_id    = (isset($_POST['proxy_member_id']) && $_POST['proxy_member_id'] !== '') ? (int)$_POST['proxy_member_id'] : null;
 
     if (!empty($post_zip) && strpos($post_zip, '-') === false) {
         $pure_nums = preg_replace('/[^0-9]/', '', $post_zip);
@@ -155,24 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_submit'])) {
     }
 
     if (!empty($post_name)) {
-        // 擴充 SQL 語句，完整對接 10 個資料表欄位
-        $stmt_ins = $conn->prepare("INSERT INTO ancestor_worship (name, address, zip_code, companion_info, meat_count, veg_count, total_people, proxy_new_member, proxy_member_name, proxy_member_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        // 安全繫結參數 (s=字串, i=整數/可為null)
-        $stmt_ins->bind_param(
-            "ssssiiiiis",
-            $post_name,
-            $post_address,
-            $post_zip,
-            $companion_info,
-            $meat_count,
-            $veg_count,
-            $total_people,
-            $proxy_new_member,
-            $proxy_member_name,
-            $proxy_member_id
-        );
-
+        $stmt_ins = $conn->prepare("INSERT INTO ancestor_worship (name, address, zip_code) VALUES (?, ?, ?)");
+        $stmt_ins->bind_param("sss", $post_name, $post_address, $post_zip);
         if ($stmt_ins->execute()) {
             echo "<script>alert('報名表單資料已成功寫入資料庫！'); window.location.href=window.location.href;</script>";
         } else {
@@ -180,40 +151,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_submit'])) {
         }
         $stmt_ins->close();
     }
-} // 👈 這裡閉合了 POST 表單處理
-
-// ==========================================
-// 🌟 全新新增：AJAX 代理人模糊查詢專用 API（獨立在 POST 區塊外）
-// ==========================================
-if (isset($_GET['ajax_search_proxy'])) {
-    header('Content-Type: application/json; charset=utf-8');
-
-    $search_term = trim($_GET['ajax_search_proxy']);
-    $like_term = "%" . $search_term . "%";
-
-    $stmt_ajax = $conn->prepare("SELECT member_id, new_member, name, branch, generation FROM account_members_view WHERE new_member LIKE ? OR name LIKE ?");
-    $stmt_ajax->bind_param("ss", $like_term, $like_term);
-    $stmt_ajax->execute();
-    $res_ajax = $stmt_ajax->get_result();
-
-    $data = [];
-    while ($r = $res_ajax->fetch_assoc()) {
-        $data[] = [
-            'member_id'   => $r['member_id'],
-            'new_member'  => $r['new_member'],
-            'name'        => $r['name'],
-            'branch'      => $r['branch'],
-            'generation'  => $r['generation']
-        ];
-    }
-    $stmt_ajax->close();
     $conn->close();
-
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit; // 輸出完 JSON 立即中斷，防止污染數據
+    exit;
 }
 
-// 關閉最後的資料庫連線
 $conn->close();
 
 function convertAddressNumbers($addressString)
@@ -415,58 +356,6 @@ function convertAddressNumbers($addressString)
             color: #000000;
             line-height: 25px;
         }
-
-        /* 攜伴下拉選單樣式 */
-#companion_status {
-    border: none;
-    font-family: inherit;
-    font-size: inherit;
-    color: inherit;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-    width: 1.2em;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
-
-/* 姓名輸入方框樣式 */
-#companion_input {
-    display: none;
-    width: 1.2em;
-    height: 5em;
-    border: 1px solid #ccc;
-    outline: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: inherit;
-    padding: 2px;
-    margin: 0;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
-
-/* 葷素食與共計名額的數字輸入區樣式 */
-.count-editable {
-    outline: none;
-    display: -webkit-inline-box;
-    min-width: 1em;
-    text-align: center;
-    line-height: 1;
-    border: none;
-    padding: 0;
-    margin: 0;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
 
         /* =======================================================================
            【左側：明信片背面 - 內文面樣式】
@@ -770,20 +659,16 @@ function convertAddressNumbers($addressString)
                         <div class="postcard-face" style="margin-top: 5px; margin-right: 5px;">
                             <div class="back-content-spec vertical-text-mode">
                                 <div class="form-title">報名單</div>
-                                <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.6.12/lunar.js"></script>
+                               <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.6.12/lunar.js"></script>
 
-                                <div class="main-text">
-                                    一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
-                                    <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
-                                    &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
-                                    二、參加人員有本人外<select id="companion_status"><option value="none">無攜伴</option><option value="has">攜伴</option></select><input type="text" name="companion_input" id="companion_input" placeholder="">
-                                    <input type="hidden" name="companion_info" id="companion_info" value=""><br>
-                                    &emsp;&emsp;，葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個
-                                    ，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。
-                                    
-                                    <br>
-                                    三、若本人無法出席，將授權由<span class="combine-num">編號</span>姓名代理出席。<br>
-                                </div>
+<div class="main-text">
+    一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
+    <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
+    &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
+    二、參加人員有本人外還有太太和小孩，<br>
+    &emsp;&emsp;葷食?個素食?個，共計<span class="combine-num">10</span>名。<br>
+    三、若本人無法出席，將授權由_______代理出席。<br>
+</div>
                                 <!--
                                 <div class="main-text">
                                     一、本人願意參加本公業民國<span class="combine-num">115</span>年<span class="combine-num">1</span>月
@@ -906,102 +791,58 @@ function convertAddressNumbers($addressString)
         }, 1000);
     </script>
 
-
+    
     <script>
-        (function() {
-            // 1. 抓取目前電腦當天的西元日期 (不論使用者改成哪一天)
-            const today = new Date();
-
-            // 2. 使用套件將當天西元日期轉換成正確的農曆物件
-            const currentLunar = Lunar.fromDate(today);
-
-            // 取得當天對應的農曆年份 (例如 2054 或是 2055)
-            let targetLunarYear = currentLunar.getYear();
-
-            // 3. 建立「當前農曆年 11 月 13 日」的物件，用來比對是否過期
-            // Lunar.fromYmd(年, 月, 日)
-            let targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
-
-            // 將該農曆日期轉回西元 Date 物件
-            let targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
-
-            // 🎯 核心科學判斷：如果電腦今天日期，已經超過了當前農曆年的 11 月 13 日
-            if (today > targetSolarObj) {
-                // 代表今年的大會已經辦完了！自動把農曆年加 1 年，尋找下一屆
-                targetLunarYear = targetLunarYear + 1;
-                targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
-                targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
-            }
-
-            // 4. 從最終鎖定的西元日期物件中，精準解析年月日與星期
-            const finalSolarYear = targetSolarObj.getFullYear();
-            const finalSolarMonth = targetSolarDateParser(targetSolarObj.getMonth() + 1); // 月份
-            const finalSolarDay = targetSolarDateParser(targetSolarObj.getDate()); // 日期
-
-            // 5. 科學公式換算民國年：西元年 - 1911
-            const minguoSolarYear = finalSolarYear - 1911;
-            const minguoLunarYear = targetLunarYear - 1911;
-
-            // 6. 取得精準的星期幾
-            const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
-            const finalSolarWeek = weekDays[targetSolarObj.getDay()];
-
-            // 7. 將真正經由科學換算、無硬編碼的資料渲染至網頁
-            document.getElementById('cal_solar_year').innerText = minguoSolarYear; // 西曆民國年
-            document.getElementById('cal_solar_month').innerText = finalSolarMonth; // 西曆月
-            document.getElementById('cal_solar_day').innerText = finalSolarDay; // 西曆日
-            document.getElementById('cal_lunar_year').innerText = minguoLunarYear; // 農曆民國年
-            document.getElementById('cal_solar_week').innerText = finalSolarWeek; // 星期
-
-            // 輔助補零函式
-            function targetSolarDateParser(num) {
-                return num;
-            }
-        })();
-    </script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const statusSelect = document.getElementById('companion_status');
-    const compInput = document.getElementById('companion_input');
-    const compHidden = document.getElementById('companion_info');
+(function() {
+    // 1. 抓取目前電腦當天的西元日期 (不論使用者改成哪一天)
+    const today = new Date(); 
     
-    const meatDisplay = document.getElementById('meat_count_display');
-    const vegDisplay = document.getElementById('veg_count_display');
-    const totalDisplay = document.getElementById('total_people_display');
+    // 2. 使用套件將當天西元日期轉換成正確的農曆物件
+    const currentLunar = Lunar.fromDate(today);
     
-    const meatHidden = document.getElementById('meat_count');
-    const vegHidden = document.getElementById('veg_count');
-    const totalHidden = document.getElementById('total_people');
+    // 取得當天對應的農曆年份 (例如 2054 或是 2055)
+    let targetLunarYear = currentLunar.getYear(); 
 
-    // 1. 純粹控制空白文字方框的顯示與隱藏
-    statusSelect.addEventListener('change', function() {
-        if (this.value === 'has') {
-            compInput.style.display = 'inline-block';
-            compInput.focus();
-        } else {
-            compInput.style.display = 'none';
-            compInput.value = '';
-            compHidden.value = '';
-        }
-    });
+    // 3. 建立「當前農曆年 11 月 13 日」的物件，用來比對是否過期
+    // Lunar.fromYmd(年, 月, 日)
+    let targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
+    
+    // 將該農曆日期轉回西元 Date 物件
+    let targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
 
-    // 2. 使用者打什麼就傳什麼，完全不作任何程式判斷
-    compInput.addEventListener('input', function() {
-        compHidden.value = this.value; 
-    });
+    // 🎯 核心科學判斷：如果電腦今天日期，已經超過了當前農曆年的 11 月 13 日
+    if (today > targetSolarObj) {
+        // 代表今年的大會已經辦完了！自動把農曆年加 1 年，尋找下一屆
+        targetLunarYear = targetLunarYear + 1;
+        targetLunarObj = Lunar.fromYmd(targetLunarYear, 11, 13);
+        targetSolarObj = new Date(targetLunarObj.getSolar().toYmd() + " 00:00:00");
+    }
 
-    // 3. 葷素食與共計人數：純手動輸入變更，僅同步隱藏表單欄位
-    meatDisplay.addEventListener('input', function() {
-        if(meatHidden) meatHidden.value = this.innerText.trim();
-    });
-    vegDisplay.addEventListener('input', function() {
-        if(vegHidden) vegHidden.value = this.innerText.trim();
-    });
-    totalDisplay.addEventListener('input', function() {
-        if(totalHidden) totalHidden.value = this.innerText.trim();
-    });
-});
+    // 4. 從最終鎖定的西元日期物件中，精準解析年月日與星期
+    const finalSolarYear  = targetSolarObj.getFullYear();
+    const finalSolarMonth = targetSolarDateParser(targetSolarObj.getMonth() + 1); // 月份
+    const finalSolarDay   = targetSolarDateParser(targetSolarObj.getDate());      // 日期
+    
+    // 5. 科學公式換算民國年：西元年 - 1911
+    const minguoSolarYear = finalSolarYear - 1911; 
+    const minguoLunarYear = targetLunarYear - 1911;
+
+    // 6. 取得精準的星期幾
+    const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
+    const finalSolarWeek = weekDays[targetSolarObj.getDay()];
+
+    // 7. 將真正經由科學換算、無硬編碼的資料渲染至網頁
+    document.getElementById('cal_solar_year').innerText  = minguoSolarYear;   // 西曆民國年
+    document.getElementById('cal_solar_month').innerText = finalSolarMonth;   // 西曆月
+    document.getElementById('cal_solar_day').innerText   = finalSolarDay;     // 西曆日
+    document.getElementById('cal_lunar_year').innerText  = minguoLunarYear;   // 農曆民國年
+    document.getElementById('cal_solar_week').innerText  = finalSolarWeek;    // 星期
+
+    // 輔助補零函式
+    function targetSolarDateParser(num) {
+        return num;
+    }
+})();
 </script>
 </body>
 

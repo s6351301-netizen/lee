@@ -3,91 +3,399 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>泰山職訓中心-打卡系統</title>
+    <title>新北市泰山職訓打卡地圖-寶可夢</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
-        #map { width: 100%; height: 100%; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        /* 右上角動態資訊面板 */
+        .info-panel {
+            padding: 12px 15px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            border-left: 5px solid #1a73e8;
+            min-width: 200px;
+        }
+        .info-panel h4 { margin: 0 0 5px 0; color: #333; font-size: 16px; }
+        .info-panel p { margin: 3px 0; color: #666; }
+        .highlight { color: #e81123; font-weight: bold; font-size: 18px; }
         
-        /* 登入視窗 */
-        #login-modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; }
-        input { padding: 15px; border-radius: 5px; border:none; margin: 10px; width: 80%; max-width: 300px; }
-        .btn { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-size: 18px; }
-
-        /* 導覽盤控制區 */
-        #action-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 400px; text-align: center; }
-        #camera-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; }
-        #video { width: 100%; height: 100%; object-fit: cover; }
+        /* 底部操作控制區 */
+        #action-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .btn-history { background-color: #2196F3; }
+        
+        /* 手機鏡頭畫面遮罩層 */
+        #camera-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 2000;
+        }
+        #video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        
+        /* 滿版核對觀景窗 */
+        #comparison-frame {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+        .frame-blind {
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 16px;
+        }
+        .center-row {
+            display: flex;
+            flex-grow: 1;
+            justify-content: space-between;
+        }
+        .side-blind {
+            background: rgba(0, 0, 0, 0.75);
+            width: 10%;
+        }
+        /* 實景比對窗 */
+        .clear-window {
+            border: 4px solid #ffeb3b;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); 
+            flex-grow: 1;
+            border-radius: 12px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden; 
+        }
+        .clear-window::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 105%; height: 105%;
+            background: url('icon/door.png') no-repeat center;
+            background-size: contain;
+            opacity: 0.35;    
+        }
+        
+        /* 下方操作提示台 */
+        .ar-control-panel {
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 340px;
+            text-align: center;
+            z-index: 2100;
+        }
+        .ar-tip-text {
+            color: #00FF00;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #000;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .capture-btn {
+            background-color: #ff3b30;
+            color: white;
+            border: 2px solid white;
+            padding: 14px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            width: 100%;
+        }
+        .close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: rgba(255,255,255,0.8);
+            border: none; padding: 8px 16px; border-radius: 5px;
+            font-size: 14px; font-weight: bold; z-index: 2200;
+        }
     </style>
 </head>
 <body>
 
-    <div id="login-modal">
-        <h2>請輸入您的姓名以開始打卡</h2>
-        <input type="text" id="username" placeholder="請輸入姓名">
-        <button class="btn" onclick="login()">開始訓練</button>
-    </div>
-
     <div id="map"></div>
+
     <div id="action-container">
-        <button id="ar-btn" class="btn" disabled>GPS 定位中...</button>
+        <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
+        <button class="btn btn-history" onclick="viewHistory()">查看歷史數據</button>
+        <div style="margin-top:10px;">
+            <a href="https://maps.app.goo.gl/ryri9sL24DuMB9Ku6" style="color:#fff; text-decoration:none; font-size:12px;">GPS 定位資料來源</a>
+        </div>
     </div>
 
     <div id="camera-view">
         <video id="video" autoplay playsinline></video>
-        <button style="position:absolute; top:20px; right:20px;" onclick="closeCamera()">關閉</button>
-        <button class="btn" style="position:absolute; bottom:50px; width:80%; left:10%;" onclick="verifyAndScore()">📸 拍照確認</button>
+        
+        <div id="comparison-frame">
+            <div class="frame-blind">📷 實景照片核對模式</div>
+            <div class="center-row">
+                <div class="side-blind"></div>
+                <div class="clear-window"></div>
+                <div class="side-blind"></div>
+            </div>
+            <div class="frame-blind" style="padding-bottom:120px;">⚠️ 畫面外觀若與照片不符則不計分</div>
+        </div>
+        
+        <div class="ar-control-panel">
+            <div class="ar-tip-text">
+                🧩 請將手機移動，讓現場景物<br>完美契合畫面中央的輪廓照片！
+            </div>
+            <button class="capture-btn" onclick="verifyAndScore()">[ 📸 拍照確認：確認外型無誤 ]</button>
+        </div>
+        <button class="close-btn" onclick="closeCamera()">關閉鏡頭</button>
     </div>
+
+    <canvas id="hidden-canvas" style="display: none;"></canvas>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
-        let userName = localStorage.getItem('userName');
+        const targetSpot = {
+            name: "泰山職訓中心",
+            lat: 25.0435125, 
+            lng: 121.4192113,
+            score: 0,
+            hasScored: false
+        };
 
-        function login() {
-            const name = document.getElementById('username').value;
-            if(!name) return alert("請輸入姓名");
-            localStorage.setItem('userName', name);
-            userName = name;
-            document.getElementById('login-modal').style.display = 'none';
+        function saveScoreToHistory(score) {
+            const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
+            history.push({
+                date: new Date().toLocaleString(),
+                score: score
+            });
+            localStorage.setItem('gameHistory', JSON.stringify(history));
         }
 
-        if(!userName) document.getElementById('login-modal').style.display = 'flex';
+        function viewHistory() {
+            const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
+            if (history.length === 0) {
+                alert("目前尚無遊戲歷史紀錄。");
+            } else {
+                let report = "【打卡歷史紀錄】\n\n";
+                history.forEach((entry, index) => {
+                    report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
+                });
+                alert(report);
+            }
+        }
 
-        function syncToSheet(score) {
-            fetch(GAS_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: userName, score: score })
+        const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const targetMarker = L.marker([targetSpot.lat, targetSpot.lng]).addTo(map)
+            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢據點`).openPopup();
+
+        const detectionCircle = L.circle([targetSpot.lat, targetSpot.lng], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.1,
+            radius: 80 
+        }).addTo(map);
+
+        let userMarker = null;
+
+        const info = L.control({ position: 'topright' });
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info-panel');
+            this.update(null, "GPS 定位中...");
+            return this._div;
+        };
+        info.update = function (distance, scoreText) {
+            let distStr = distance !== null ? `${distance.toFixed(1)} 公尺` : "未知";
+            this._div.innerHTML = `
+                <h4>訓練家打卡系統</h4>
+                <p>目前得分：<span class="highlight" style="color:green;">${targetSpot.score} 分</span></p>
+                <p>目標景點：<b>${targetSpot.name}</b></p>
+                <p>與目標距離：<span class="highlight">${distStr}</span></p>
+                <p>狀態：${scoreText}</p>
+            `;
+        };
+        info.addTo(map);
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(function(position) {
+                const uLat = position.coords.latitude;
+                const uLng = position.coords.longitude;
+
+                if (!userMarker) {
+                    userMarker = L.circleMarker([uLat, uLng], { radius: 8, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 1 }).addTo(map);
+                } else {
+                    userMarker.setLatLng([uLat, uLng]);
+                }
+
+                const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
+                const arBtn = document.getElementById('ar-btn');
+
+                if (distance <= 80) {
+                    if (!targetSpot.hasScored) {
+                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 80 米打卡區！請啟動鏡頭。</span>");
+                        arBtn.disabled = false;
+                        arBtn.style.backgroundColor = "#4CAF50";
+                        arBtn.innerText = "⚡ 進入 80 米範圍：開啟鏡頭核對";
+                    } else {
+                        info.update(distance, "此據點已完成打卡。");
+                        arBtn.disabled = true;
+                        arBtn.style.backgroundColor = "#cccccc";
+                        arBtn.innerText = "已完成打卡";
+                    }
+                } else {
+                    info.update(distance, "未進入 80 米範圍 (請繼續靠近)");
+                    arBtn.disabled = true;
+                    arBtn.style.backgroundColor = "#cccccc";
+                    arBtn.innerText = "距離太遠（GPS 鎖定中）";
+                }
+
+            }, function(error) {
+                console.error(error);
+                info.update(null, "<span style='color:red;'>請開啟手機高精度 GPS 權限</span>");
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 5000
             });
         }
 
-        const map = L.map('map').setView([25.044229, 121.418815], 17);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        const video = document.getElementById('video');
+        const cameraView = document.getElementById('camera-view');
 
-        const points = [
-            { name: "警衛室", lat: 25.044150, lng: 121.418700, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
-            { name: "大門廣場", lat: 25.044229, lng: 121.418815, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
-            { name: "第一停車場", lat: 25.044000, lng: 121.418300, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" }
-        ];
-
-        // 地圖上建立點位 (點擊開啟街景)
-        points.forEach(p => {
-            L.marker([p.lat, p.lng]).addTo(map)
-                .bindPopup(`<b>${p.name}</b><br><a href="${p.streetView}" target="_blank">查看街景</a>`)
-                .on('click', () => { if(confirm('是否查看街景?')) window.open(p.streetView); });
-        });
+        function openCameraWithComparison() {
+            cameraView.style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    alert("無法啟動相機鏡頭。");
+                    closeCamera();
+                });
+        }
 
         function verifyAndScore() {
-            const score = 100;
-            alert(`🌟 恭喜 ${userName} 打卡成功，獲得 ${score} 分！`);
-            syncToSheet(score);
-            closeCamera();
+            if (targetSpot.hasScored) {
+                alert("此景點已得分，無法重複打卡！");
+                closeCamera();
+                return;
+            }
+
+            const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
+            const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
+
+            if (currentDist <= 80) {
+                const canvas = document.getElementById('hidden-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const vW = video.videoWidth;
+                const vH = video.videoHeight;
+                const cropW = vW * 0.5;
+                const cropH = vH * 0.5;
+                const cropX = (vW - cropW) / 2;
+                const cropY = (vH - cropH) / 2;
+
+                canvas.width = 100;
+                canvas.height = 100;
+                
+                ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+                const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+                let greenPoints = 0;
+                const totalPixels = canvas.width * canvas.height;
+
+                for (let i = 0; i < frameData.length; i += 4) {
+                    const r = frameData[i];
+                    const g = frameData[i+1];
+                    const b = frameData[i+2];
+                    const isTreeGreen = (g > r * 1.1) && (g > b * 1.1) && (g > 30);
+                    if (isTreeGreen) greenPoints++;
+                }
+
+                const greenRatio = greenPoints / totalPixels; 
+                let precisionScore = Math.round((greenRatio / 0.10) * 100);
+                precisionScore = Math.max(0, Math.min(100, precisionScore));
+
+                if (precisionScore >= 50) {
+                    targetSpot.score += 100;
+                    targetSpot.hasScored = true;
+                    saveScoreToHistory(100);
+                    alert(`🌟 核對成功！\n經影像核對，外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
+                    closeCamera();
+                    info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
+                } else {
+                    alert(`❌ 核對失敗（目前核對精確度：${precisionScore}%）\n\n【提示】：請將相機對準現場景物，並嘗試靠近或移動位置，讓景物填入中央黃色框線中。`);
+                }
+            } else {
+                alert("❌ 打卡失敗！您已離開 80 公尺範圍。");
+                closeCamera();
+            }
         }
 
         function closeCamera() {
-            document.getElementById('camera-view').style.display = 'none';
+            cameraView.style.display = 'none';
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
         }
     </script>
 </body>

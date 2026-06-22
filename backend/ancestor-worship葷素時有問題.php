@@ -416,58 +416,6 @@ function convertAddressNumbers($addressString)
             line-height: 25px;
         }
 
-        /* 攜伴下拉選單樣式 */
-#companion_status {
-    border: none;
-    font-family: inherit;
-    font-size: inherit;
-    color: inherit;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-    width: 1.2em;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
-
-/* 姓名輸入方框樣式 */
-#companion_input {
-    display: none;
-    width: 1.2em;
-    height: 5em;
-    border: 1px solid #ccc;
-    outline: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: inherit;
-    padding: 2px;
-    margin: 0;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
-
-/* 葷素食與共計名額的數字輸入區樣式 */
-.count-editable {
-    outline: none;
-    display: -webkit-inline-box;
-    min-width: 1em;
-    text-align: center;
-    line-height: 1;
-    border: none;
-    padding: 0;
-    margin: 0;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
-
         /* =======================================================================
            【左側：明信片背面 - 內文面樣式】
            ======================================================================= */
@@ -776,11 +724,7 @@ function convertAddressNumbers($addressString)
                                     一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
                                     <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
                                     &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
-                                    二、參加人員有本人外<select id="companion_status"><option value="none">無攜伴</option><option value="has">攜伴</option></select><input type="text" name="companion_input" id="companion_input" placeholder="">
-                                    <input type="hidden" name="companion_info" id="companion_info" value=""><br>
-                                    &emsp;&emsp;，葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個
-                                    ，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。
-                                    
+                                    二、參加人員有本人外<select id="companion_status" style="border: none; outline: none; background: transparent; font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none;"><option value="none">無攜伴</option><option value="has">攜伴</option></select>，<input type="text" name="companion_input" id="companion_input" placeholder="請輸入伴隨者姓名" style="display: none; width: 140px; border: none; outline: none; background: transparent; font-family: inherit; font-size: inherit; padding: 0; margin: 0;"><input type="hidden" name="companion_info" id="companion_info" value=""><br>&emsp;&emsp;葷食<span class="combine-num" id="meat_count_display" contenteditable="true" style="outline: none; display: inline-block; min-width: 1ch; text-align: center; -webkit-text-orientation: upright; text-orientation: upright;"></span>個素食<span class="combine-num" id="veg_count_display" contenteditable="true" style="outline: none; display: inline-block; min-width: 1ch; text-align: center; -webkit-text-orientation: upright; text-orientation: upright;"></span>個，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num" id="total_people_display" style="-webkit-text-orientation: upright; text-orientation: upright; display: inline;">1</span>名。
                                     <br>
                                     三、若本人無法出席，將授權由<span class="combine-num">編號</span>姓名代理出席。<br>
                                 </div>
@@ -959,50 +903,79 @@ function convertAddressNumbers($addressString)
             }
         })();
     </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const statusSelect = document.getElementById('companion_status');
+            const compInput = document.getElementById('companion_input');
+            const compHidden = document.getElementById('companion_info');
+            
+            const meatDisplay = document.getElementById('meat_count_display');
+            const vegDisplay = document.getElementById('veg_count_display');
+            
+            const totalHidden = document.getElementById('total_people');
+            const totalDisplay = document.getElementById('total_people_display');
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const statusSelect = document.getElementById('companion_status');
-    const compInput = document.getElementById('companion_input');
-    const compHidden = document.getElementById('companion_info');
-    
-    const meatDisplay = document.getElementById('meat_count_display');
-    const vegDisplay = document.getElementById('veg_count_display');
-    const totalDisplay = document.getElementById('total_people_display');
-    
-    const meatHidden = document.getElementById('meat_count');
-    const vegHidden = document.getElementById('veg_count');
-    const totalHidden = document.getElementById('total_people');
+            // 【功能一】切換下拉選單：無攜伴 vs 攜伴
+            statusSelect.addEventListener('change', function() {
+                if (this.value === 'has') {
+                    compInput.style.display = 'inline-block'; // 顯示無框文字框
+                    compInput.focus();
+                } else {
+                    compInput.style.display = 'none'; // 隱藏文字框
+                    compInput.value = ''; // 清空內容
+                    compHidden.value = '';
+                }
+                calculateAll();
+            });
 
-    // 1. 純粹控制空白文字方框的顯示與隱藏
-    statusSelect.addEventListener('change', function() {
-        if (this.value === 'has') {
-            compInput.style.display = 'inline-block';
-            compInput.focus();
-        } else {
-            compInput.style.display = 'none';
-            compInput.value = '';
-            compHidden.value = '';
-        }
-    });
+            // 【功能二】監聽文字框輸入：將空白或多格切分為「頓號」
+            compInput.addEventListener('input', function() {
+                let rawText = this.value;
+                // 將使用者輸入時常打的空白、逗號、全形空白等，統一清理轉換
+                let names = rawText.split(/[\s,，、]+/).filter(name => name.trim() !== '');
+                
+                // 動態組合成頓號相隔的字串，並塞給隱藏欄位供後台 PHP 儲存
+                if (names.length > 0) {
+                    compHidden.value = "還有" + names.join('、');
+                } else {
+                    compHidden.value = "";
+                }
+                calculateAll();
+            });
 
-    // 2. 使用者打什麼就傳什麼，完全不作任何程式判斷
-    compInput.addEventListener('input', function() {
-        compHidden.value = this.value; 
-    });
+            // 監聽可編輯的葷素食 <span> 內容變更
+            meatDisplay.addEventListener('input', calculateAll);
+            vegDisplay.addEventListener('input', calculateAll);
 
-    // 3. 葷素食與共計人數：純手動輸入變更，僅同步隱藏表單欄位
-    meatDisplay.addEventListener('input', function() {
-        if(meatHidden) meatHidden.value = this.innerText.trim();
-    });
-    vegDisplay.addEventListener('input', function() {
-        if(vegHidden) vegHidden.value = this.innerText.trim();
-    });
-    totalDisplay.addEventListener('input', function() {
-        if(totalHidden) totalHidden.value = this.innerText.trim();
-    });
-});
-</script>
+            // 【功能三】核心計算：精算所有人數連動
+            function calculateAll() {
+                // 1. 計算攜伴人數
+                let compCount = 0;
+                if (statusSelect.value === 'has') {
+                    let names = compInput.value.split(/[\s,，、]+/).filter(name => name.trim() !== '');
+                    compCount = names.length;
+                }
+
+                // 2. 獲取葷食、素食數量
+                let meatCount = parseInt(meatDisplay.innerText.trim()) || 0;
+                let vegCount = parseInt(vegDisplay.innerText.trim()) || 0;
+
+                // 3. 核心邏輯：若「無攜伴」且葷素食皆未填，強制共計 1 名 (即本人)；否則依實際加總
+                let total = 1; // 預設本人為 1
+                if (statusSelect.value === 'none' && meatCount === 0 && vegCount === 0) {
+                    total = 1;
+                } else {
+                    // 若有填寫資料，總人數為 本人(1) + 攜伴人數 + 葷素額外人數
+                    // (如果您這裡的葷素就代表全部人吃什麼，則可依您的業務邏輯調整為 meatCount + vegCount)
+                    total = 1 + compCount + meatCount + vegCount;
+                }
+
+                // 4. 即時同步到前端與 POST 表單
+                totalHidden.value = total;
+                totalDisplay.innerText = total;
+            }
+        });
+    </script>
 </body>
 
 </html>
