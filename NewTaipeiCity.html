@@ -379,7 +379,7 @@
 
                 const greenRatio = greenPoints / totalPixels; 
 
-                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15% 以上正確的綠色樹木外型分佈即可）
+                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15%(下面0.15) 以上正確的綠色樹木外型分佈即可）
                 let precisionScore = Math.round((greenRatio / 0.30) * 100);
                 precisionScore = Math.max(0, Math.min(100, precisionScore));
 
