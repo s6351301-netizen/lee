@@ -18,18 +18,17 @@
         .week-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
         
-        .day-cell { height: 75px; border: 0.5px solid #f9f9f9; padding-top: 5px; font-size: 0.8rem; overflow: hidden; }
-        /* 修改此處：新增 font-weight: bold */
-        .holiday-bg { background-color: #ffcdd2 !important; font-weight: bold; } 
+        .day-cell { height: 75px; border: 0.5px solid #f9f9f9; padding-top: 5px; font-size: 0.8rem; }
+        .holiday-bg { background-color: #ffcdd2 !important; } 
         .weekend-bg { background-color: #e3f2fd !important; }
         
         .solar-num { font-weight: bold; font-size: 0.9rem; }
         .lunar-txt { font-size: 0.75rem; color: #555; }
-        .extra-txt { font-size: 0.65rem; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; cursor: default; }
+        .extra-txt { font-size: 0.65rem; color: #888; margin-top: 2px; }
         
-        footer { margin-top: 40px; max-width: 900px; margin: 40px auto; border-top: 2px solid #ccc; padding-top: 20px; }
+        footer { margin-top: 40px; max-width: 800px; margin: 40px auto; border-top: 2px solid #ccc; padding-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     </style>
 </head>
 <body>
@@ -45,9 +44,9 @@
 <div class="calendar-container" id="calendar-grid"></div>
 
 <footer id="holiday-footer">
-    <h2>年度紀念日與休假日列表</h2>
+    <h2>年度休假日列表</h2>
     <table id="holiday-table">
-        <thead><tr><th>日期區間</th><th>節日名稱</th><th>合計天數</th></tr></thead>
+        <thead><tr><th>日期</th><th>休假日名稱</th><th>休息天數</th></tr></thead>
         <tbody></tbody>
     </table>
 </footer>
@@ -58,24 +57,14 @@
         const calendarGrid = document.getElementById('calendar-grid');
         const yearText = document.getElementById('year-text');
         const tbody = document.querySelector('#holiday-table tbody');
+        const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
         
-        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-        
-        function getWeekDay(dateStr) {
-            const d = new Date(dateStr);
-            return weekDays[d.getDay()];
-        }
-        
-        const HOLIDAYS_2026 = [
-            { start: "2026-01-01", end: "2026-01-01", name: "開國日", days: 1 },
-            { start: "2026-02-17", end: "2026-02-17", name: "除夕", days: 1 },
-            { start: "2026-02-18", end: "2026-02-20", name: "春節", days: 3 },
-            { start: "2026-02-28", end: "2026-02-28", name: "和平日", days: 1 },
-            { start: "2026-04-04", end: "2026-04-05", name: "兒童清明", days: 2 },
-            { start: "2026-05-01", end: "2026-05-01", name: "勞動節", days: 1 },
-            { start: "2026-06-19", end: "2026-06-19", name: "端午節", days: 1 },
-            { start: "2026-09-25", end: "2026-09-25", name: "中秋節", days: 1 },
-            { start: "2026-10-10", end: "2026-10-10", name: "國慶日", days: 1 }
+        const HOLIDAYS = [
+            { date: "01-01", name: "元旦", days: 1 },
+            { date: "02-28", name: "和平紀念日", days: 1 },
+            { date: "04-04", name: "兒童節", days: 1 },
+            { date: "05-01", name: "勞動節", days: 1 },
+            { date: "10-10", name: "國慶日", days: 1 }
         ];
 
         for (let y = 2020; y <= 2055; y++) {
@@ -91,45 +80,50 @@
             tbody.innerHTML = '';
             const year = parseInt(targetYear);
             const firstDay = Lunar.fromYmd(year, 1, 1);
+            
             yearText.innerText = ` 歲次 ${firstDay.getYearInGanZhi()}(${firstDay.getYearShengXiao().replace('马', '馬')})年`;
-
-            HOLIDAYS_2026.forEach(h => {
-                let dateRange = "";
-                if (h.start === h.end) {
-                    dateRange = `${h.start}(${getWeekDay(h.start)})`;
-                } else {
-                    dateRange = `${h.start}(${getWeekDay(h.start)}) ~ ${h.end}(${getWeekDay(h.end)})`;
-                }
-                tbody.innerHTML += `<tr><td>${dateRange}</td><td>${h.name}</td><td>${h.days} 天</td></tr>`;
-            });
 
             for (let m = 1; m <= 12; m++) {
                 const monthBox = document.createElement('div');
                 monthBox.className = 'month-box';
-                monthBox.innerHTML = `<div class="month-title">${m} 月</div><div class="week-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>`;
+                monthBox.innerHTML = `
+                    <div class="month-title">${m} 月</div>
+                    <div class="week-header">
+                        <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+                    </div>
+                `;
+                
                 const daysGrid = document.createElement('div');
                 daysGrid.className = 'days-grid';
-                const firstDateObj = new Date(year, m - 1, 1);
-                const lastDateObj = new Date(year, m, 0);
                 
-                for (let i = 0; i < firstDateObj.getDay(); i++) daysGrid.appendChild(document.createElement('div'));
+                const firstDate = new Date(year, m - 1, 1);
+                const lastDate = new Date(year, m, 0);
                 
-                for (let d = 1; d <= lastDateObj.getDate(); d++) {
+                for (let i = 0; i < firstDate.getDay(); i++) daysGrid.appendChild(document.createElement('div'));
+                
+                for (let d = 1; d <= lastDate.getDate(); d++) {
                     const dateObj = new Date(year, m - 1, d);
-                    const ymd = `${year}-${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                    const holidayInfo = HOLIDAYS_2026.find(h => ymd >= h.start && ymd <= h.end);
-                    const isHoliday = !!holidayInfo;
+                    const dayOfWeek = dateObj.getDay();
+                    const dateKey = `${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                    const displayDate = `${year}/${m.toString().padStart(2,'0')}/${d.toString().padStart(2,'0')}(${weekDays[dayOfWeek]})`;
                     
-                    const lunarDay = Solar.fromYmd(year, m, d).getLunar();
-                    const yiList = lunarDay.getDayYi();
-                    const displayText = yiList.length > 0 ? '宜' + yiList.slice(0, 1).join('') : '宜諸事吉';
+                    const holiday = HOLIDAYS.find(h => h.date === dateKey);
+                    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
                     
+                    const lunar = Solar.fromYmd(year, m, d).getLunar();
                     const cell = document.createElement('div');
-                    cell.className = `day-cell ${isHoliday ? 'holiday-bg' : (dateObj.getDay() === 0 || dateObj.getDay() === 6 ? 'weekend-bg' : '')}`;
+                    cell.className = 'day-cell';
+                    if (holiday) {
+                        cell.classList.add('holiday-bg');
+                        tbody.innerHTML += `<tr><td>${displayDate}</td><td>${holiday.name}</td><td>${holiday.days} 天</td></tr>`;
+                    } else if (isWeekend) {
+                        cell.classList.add('weekend-bg');
+                    }
+
                     cell.innerHTML = `
                         <div class="solar-num">${d}</div>
-                        <div class="lunar-txt">${lunarDay.getDayInChinese()}</div>
-                        <div class="extra-txt">${isHoliday ? holidayInfo.name : displayText}</div>
+                        <div class="lunar-txt">${lunar.getDayInChinese()}</div>
+                        <div class="extra-txt">${holiday ? holiday.name : '宜行事'}</div>
                     `;
                     daysGrid.appendChild(cell);
                 }

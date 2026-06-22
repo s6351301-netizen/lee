@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣黃曆萬年曆</title>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #A82024;
+            --bg-color: #FDFBF7;
+            --text-dark: #2B2B2B;
+            --border-color: #E6DFD3;
+            --highlight-color: #FFF3E0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        /* 合併後的年份標題區塊 */
+        .info-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        /* 移除紅框並優化下拉選單 */
+        select {
+            padding: 5px 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            /* 修改邊框顏色 */
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+        }
+
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .month-box {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .month-title {
+            text-align: center;
+            font-weight: bold;
+            padding: 5px;
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .week-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        .day-cell {
+            height: 45px;
+            text-align: center;
+            padding-top: 5px;
+            border: 0.5px solid #f9f9f9;
+        }
+
+        .day-cell.today {
+            background-color: #ffebee;
+            border-radius: 4px;
+        }
+
+        .solar-num {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .lunar-txt {
+            font-size: 0.7rem;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .festival {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>台灣黃曆萬年曆</h1>
+        <div class="info-header">
+            <select id="year-picker"></select>
+            <span id="year-text"></span>
+            <div class="calendar-container" id="calendar-grid">
+            </div>
+        </div>
+    </header>
+
+
+
+    <script>
+        const yearPicker = document.getElementById('year-picker');
+        const calendarGrid = document.getElementById('calendar-grid');
+        const yearText = document.getElementById('year-text');
+        const today = new Date();
+
+        for (let y = 2020; y <= 2055; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = `${y} 年 (民國 ${y - 1911} 年)`;
+            if (y === today.getFullYear()) opt.selected = true;
+            yearPicker.appendChild(opt);
+        }
+
+        function renderCalendar(targetYear) {
+            calendarGrid.innerHTML = '';
+            const year = parseInt(targetYear);
+
+            // 取得農曆歲次
+            const firstDay = Lunar.fromYmd(year, 1, 1);
+            yearText.innerText = `歲次 ${firstDay.getYearInGanZhi()}(${firstDay.getYearShengXiao()})年 `;
+
+            for (let m = 1; m <= 12; m++) {
+                const monthBox = document.createElement('div');
+                monthBox.className = 'month-box';
+                monthBox.innerHTML = `<div class="month-title">${m} 月</div>
+                                  <div class="week-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>`;
+
+                const daysGrid = document.createElement('div');
+                daysGrid.className = 'days-grid';
+
+                const firstDate = new Date(year, m - 1, 1);
+                const lastDate = new Date(year, m, 0);
+
+                for (let i = 0; i < firstDate.getDay(); i++) daysGrid.appendChild(document.createElement('div'));
+
+                for (let d = 1; d <= lastDate.getDate(); d++) {
+                    const solar = Solar.fromYmd(year, m, d);
+                    const lunar = solar.getLunar();
+                    const isToday = (year === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate());
+                    const festival = lunar.getFestivals()[0] || lunar.getOtherFestivals()[0] || "";
+
+                    const cell = document.createElement('div');
+                    cell.className = `day-cell ${isToday ? 'today' : ''}`;
+                    cell.innerHTML = `
+                    <div class="solar-num">${d}</div>
+                    <div class="lunar-txt ${festival ? 'festival' : ''}">${festival || lunar.getDayInChinese()}</div>
+                `;
+                    daysGrid.appendChild(cell);
+                }
+                monthBox.appendChild(daysGrid);
+                calendarGrid.appendChild(monthBox);
+            }
+        }
+
+        yearPicker.addEventListener('change', (e) => renderCalendar(e.target.value));
+        renderCalendar(yearPicker.value);
+    </script>
+</body>
+
+</html>

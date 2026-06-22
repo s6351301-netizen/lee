@@ -19,13 +19,12 @@
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
         
         .day-cell { height: 75px; border: 0.5px solid #f9f9f9; padding-top: 5px; font-size: 0.8rem; overflow: hidden; }
-        /* 修改此處：新增 font-weight: bold */
-        .holiday-bg { background-color: #ffcdd2 !important; font-weight: bold; } 
+        .holiday-bg { background-color: #ffcdd2 !important; } 
         .weekend-bg { background-color: #e3f2fd !important; }
         
         .solar-num { font-weight: bold; font-size: 0.9rem; }
         .lunar-txt { font-size: 0.75rem; color: #555; }
-        .extra-txt { font-size: 0.65rem; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; cursor: default; }
+        .extra-txt { font-size: 0.65rem; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         footer { margin-top: 40px; max-width: 900px; margin: 40px auto; border-top: 2px solid #ccc; padding-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
@@ -58,25 +57,30 @@
         const calendarGrid = document.getElementById('calendar-grid');
         const yearText = document.getElementById('year-text');
         const tbody = document.querySelector('#holiday-table tbody');
+        const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
         
-        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-        
-        function getWeekDay(dateStr) {
-            const d = new Date(dateStr);
-            return weekDays[d.getDay()];
+        // 行政院公告法定放假日計算
+        function getOfficialHolidays(year) {
+            const h = [];
+            // 固定日期
+            h.push({ date: `${year}-01-01`, name: "開國紀念日", days: 1 });
+            h.push({ date: `${year}-02-28`, name: "和平紀念日", days: 1 });
+            h.push({ date: `${year}-04-04`, name: "兒童節", days: 1 });
+            h.push({ date: `${year}-04-05`, name: "民族掃墓節", days: 1 });
+            h.push({ date: `${year}-05-01`, name: "勞動節", days: 1 });
+            h.push({ date: `${year}-10-10`, name: "國慶日", days: 1 });
+            
+            // 農曆日期計算
+            const lunar = (m, d) => Lunar.fromYmd(year, m, d).getSolar().toYmd();
+            h.push({ date: lunar(1, 1), name: "春節", days: 1 });
+            h.push({ date: lunar(1, 2), name: "春節", days: 1 });
+            h.push({ date: lunar(1, 3), name: "春節", days: 1 });
+            h.push({ date: lunar(12, 29) === lunar(1, 1) ? "" : lunar(12, 29), name: "除夕", days: 1 }); // 簡單防呆
+            h.push({ date: lunar(5, 5), name: "端午節", days: 1 });
+            h.push({ date: lunar(8, 15), name: "中秋節", days: 1 });
+            
+            return h.filter(item => item.date !== "");
         }
-        
-        const HOLIDAYS_2026 = [
-            { start: "2026-01-01", end: "2026-01-01", name: "開國日", days: 1 },
-            { start: "2026-02-17", end: "2026-02-17", name: "除夕", days: 1 },
-            { start: "2026-02-18", end: "2026-02-20", name: "春節", days: 3 },
-            { start: "2026-02-28", end: "2026-02-28", name: "和平日", days: 1 },
-            { start: "2026-04-04", end: "2026-04-05", name: "兒童清明", days: 2 },
-            { start: "2026-05-01", end: "2026-05-01", name: "勞動節", days: 1 },
-            { start: "2026-06-19", end: "2026-06-19", name: "端午節", days: 1 },
-            { start: "2026-09-25", end: "2026-09-25", name: "中秋節", days: 1 },
-            { start: "2026-10-10", end: "2026-10-10", name: "國慶日", days: 1 }
-        ];
 
         for (let y = 2020; y <= 2055; y++) {
             const opt = document.createElement('option');
@@ -90,18 +94,9 @@
             calendarGrid.innerHTML = '';
             tbody.innerHTML = '';
             const year = parseInt(targetYear);
+            const HOLIDAYS = getOfficialHolidays(year);
             const firstDay = Lunar.fromYmd(year, 1, 1);
             yearText.innerText = ` 歲次 ${firstDay.getYearInGanZhi()}(${firstDay.getYearShengXiao().replace('马', '馬')})年`;
-
-            HOLIDAYS_2026.forEach(h => {
-                let dateRange = "";
-                if (h.start === h.end) {
-                    dateRange = `${h.start}(${getWeekDay(h.start)})`;
-                } else {
-                    dateRange = `${h.start}(${getWeekDay(h.start)}) ~ ${h.end}(${getWeekDay(h.end)})`;
-                }
-                tbody.innerHTML += `<tr><td>${dateRange}</td><td>${h.name}</td><td>${h.days} 天</td></tr>`;
-            });
 
             for (let m = 1; m <= 12; m++) {
                 const monthBox = document.createElement('div');
@@ -117,20 +112,16 @@
                 for (let d = 1; d <= lastDateObj.getDate(); d++) {
                     const dateObj = new Date(year, m - 1, d);
                     const ymd = `${year}-${m.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                    const holidayInfo = HOLIDAYS_2026.find(h => ymd >= h.start && ymd <= h.end);
-                    const isHoliday = !!holidayInfo;
+                    const holiday = HOLIDAYS.find(h => h.date === ymd);
                     
-                    const lunarDay = Solar.fromYmd(year, m, d).getLunar();
-                    const yiList = lunarDay.getDayYi();
-                    const displayText = yiList.length > 0 ? '宜' + yiList.slice(0, 1).join('') : '宜諸事吉';
-                    
+                    if (holiday) {
+                        const dateStr = `${year}/${m.toString().padStart(2,'0')}/${d.toString().padStart(2,'0')}(${weekDays[dateObj.getDay()]})`;
+                        tbody.innerHTML += `<tr><td>${dateStr}</td><td>${holiday.name}</td><td>${holiday.days} 天</td></tr>`;
+                    }
+
                     const cell = document.createElement('div');
-                    cell.className = `day-cell ${isHoliday ? 'holiday-bg' : (dateObj.getDay() === 0 || dateObj.getDay() === 6 ? 'weekend-bg' : '')}`;
-                    cell.innerHTML = `
-                        <div class="solar-num">${d}</div>
-                        <div class="lunar-txt">${lunarDay.getDayInChinese()}</div>
-                        <div class="extra-txt">${isHoliday ? holidayInfo.name : displayText}</div>
-                    `;
+                    cell.className = `day-cell ${holiday ? 'holiday-bg' : (dateObj.getDay() === 0 || dateObj.getDay() === 6 ? 'weekend-bg' : '')}`;
+                    cell.innerHTML = `<div class="solar-num">${d}</div><div class="lunar-txt">${Solar.fromYmd(year, m, d).getLunar().getDayInChinese()}</div><div class="extra-txt">${holiday ? holiday.name : '宜行事'}</div>`;
                     daysGrid.appendChild(cell);
                 }
                 monthBox.appendChild(daysGrid);
