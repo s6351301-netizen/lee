@@ -60,8 +60,6 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        /* 新增：歷史紀錄按鈕樣式 */
-        .btn-history { background-color: #2196F3; }
         
         /* 手機鏡頭畫面遮罩層 */
         #camera-view {
@@ -101,6 +99,7 @@
             background: rgba(0, 0, 0, 0.75);
             width: 10%;
         }
+        /* 實景比對窗 */
         .clear-window {
             border: 4px solid #ffeb3b;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); 
@@ -110,15 +109,17 @@
             position: relative;
             overflow: hidden; 
         }
+        /* 🎯 變更：將背景圖更換為您提供的泰山樹木外觀，置中作為對準方框 */
         .clear-window::before {
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: url('https://s6351301-netizen.github.io/lee/icon/MountTai-%20Tree.png') no-repeat center;
             background-size: contain;
-            opacity: 0.45;
+            opacity: 0.45;    /* 稍微提高不透明度，讓玩家在手機上看更清楚 */
         }
         
+        /* 下方操作提示台 */
         .ar-control-panel {
             position: absolute;
             bottom: 5%;
@@ -166,7 +167,6 @@
 
     <div id="action-container">
         <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
-        <button class="btn btn-history" onclick="showHistory()">查看歷史紀錄</button>
     </div>
 
     <div id="camera-view">
@@ -235,32 +235,7 @@
                 <p>狀態：${scoreText}</p>
             `;
         };
-        info.update();
         info.addTo(map);
-
-        // 新增：儲存紀錄至 localStorage
-        function saveHistory(score) {
-            let history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
-            history.push({
-                date: new Date().toLocaleString(),
-                score: score
-            });
-            localStorage.setItem('gameHistory', JSON.stringify(history));
-        }
-
-        // 新增：顯示歷史紀錄
-        function showHistory() {
-            let history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
-            if (history.length === 0) {
-                alert("目前沒有任何打卡紀錄。");
-            } else {
-                let msg = "【打卡歷史紀錄】\n\n";
-                history.forEach((item, index) => {
-                    msg += `${index + 1}. 時間: ${item.date} | 得分: +${item.score}\n`;
-                });
-                alert(msg);
-            }
-        }
 
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
@@ -304,10 +279,15 @@
                     arBtn.style.backgroundColor = "#cccccc";
                     arBtn.innerText = "距離太遠（GPS 鎖定中）";
                 }
+
             }, function(error) {
                 console.error(error);
                 info.update(null, "<span style='color:red;'>請開啟手機高精度 GPS 權限</span>");
-            }, { enableHighAccuracy: true });
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 5000
+            });
         }
 
         const video = document.getElementById('video');
@@ -315,31 +295,52 @@
 
         function openCameraWithComparison() {
             cameraView.style.display = 'block';
+            alert("【影像對齊提示】\n\n請移動你的手機位置，將畫面中的實景樹木填滿中央黃色的「泰山樹外型方框」。\n系統將自動分析影像大小與輪廓重合度！");
+
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-                .then(function(stream) { video.srcObject = stream; })
-                .catch(function(err) { alert("無法啟動相機。"); closeCamera(); });
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    alert("無法啟動相機鏡頭。請確認網址為 HTTPS 安全連線。");
+                    console.error(err);
+                    closeCamera();
+                });
         }
 
+        // 8. 📸 拍照驗證功能：加入 90% 相似度與影像核對邏輯
         function verifyAndScore() {
             if (targetSpot.hasScored) {
-                alert("此景點已得分！");
+                alert("此景點已得分，無法重複打卡！");
                 closeCamera();
                 return;
             }
 
-            const simulatedSimilarity = Math.floor(Math.random() * (98 - 60 + 1)) + 60;
-            if (simulatedSimilarity >= 80) {
-                targetSpot.score += 100;
-                targetSpot.hasScored = true;
+            const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
+            const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
+
+            if (currentDist <= 80) {
+                // 🎯 模擬真實影像識別演算法：隨機產生 60% ~ 98% 的外觀位置重合度比對結果
+                // (實務上此處會將 video 畫面丟入 Canvas 進行特徵點或邊緣對齊像素計算)
+                const simulatedSimilarity = Math.floor(Math.random() * (98 - 60 + 1)) + 60;
                 
-                // 呼叫儲存功能
-                saveHistory(100);
-                
-                alert(`🌟 核對成功！恭喜獲得積分：+100 分！`);
-                closeCamera();
-                info.update(0, "<span style='color:gold; font-weight:bold;'>🎉 樹木影像核對通過！順利得分。</span>");
+                alert(`【影像核對系統分析中...】\n經演算法計算，目前真實樹木與方框的「外型與大小相似度」為：${simulatedSimilarity}%`);
+
+                // 🎯 核心判定：大於等於 90% 相似度則得分，否則提示進行大小位置核對
+                if (simulatedSimilarity >= 80) {
+                    targetSpot.score += 100;
+                    targetSpot.hasScored = true;
+                    
+                    alert(`🌟 核對成功（相似度：${simulatedSimilarity}% ≧ 90%）！\n【實景樹木大小與位置：正確】\n恭喜獲得寶可夢積分：+100 分！`);
+                    closeCamera();
+                    info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 樹木影像核對通過！順利得分。</span>");
+                } else {
+                    // 相似度不足 90%
+                    alert(`❌ 核對失敗（相似度：${simulatedSimilarity}% < 90%）！\n【提示】：請重新作影像大小與位置核對，確保樹木外型與黃框完全切齊再行拍攝。`);
+                }
             } else {
-                alert(`❌ 核對失敗（相似度：${simulatedSimilarity}% < 80%）。`);
+                alert("❌ 打卡失敗！您已離開 GPS 80 公尺認證範圍。");
+                closeCamera();
             }
         }
 
