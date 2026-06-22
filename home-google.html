@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泰山職訓中心-打卡系統</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
+        #map { width: 100%; height: 100%; }
+        
+        /* 登入視窗 */
+        #login-modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; }
+        input { padding: 15px; border-radius: 5px; border:none; margin: 10px; width: 80%; max-width: 300px; }
+        .btn { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-size: 18px; }
+
+        /* 導覽盤控制區 */
+        #action-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 400px; text-align: center; }
+        #camera-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; }
+        #video { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+    <div id="login-modal">
+        <h2>請輸入您的姓名以開始打卡</h2>
+        <input type="text" id="username" placeholder="請輸入姓名">
+        <button class="btn" onclick="login()">開始訓練</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="action-container">
+        <button id="ar-btn" class="btn" disabled>GPS 定位中...</button>
+    </div>
+
+    <div id="camera-view">
+        <video id="video" autoplay playsinline></video>
+        <button style="position:absolute; top:20px; right:20px;" onclick="closeCamera()">關閉</button>
+        <button class="btn" style="position:absolute; bottom:50px; width:80%; left:10%;" onclick="verifyAndScore()">📸 拍照確認</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
+        let userName = localStorage.getItem('userName');
+
+        function login() {
+            const name = document.getElementById('username').value;
+            if(!name) return alert("請輸入姓名");
+            localStorage.setItem('userName', name);
+            userName = name;
+            document.getElementById('login-modal').style.display = 'none';
+        }
+
+        if(!userName) document.getElementById('login-modal').style.display = 'flex';
+
+        function syncToSheet(score) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: userName, score: score })
+            });
+        }
+
+        const map = L.map('map').setView([25.044229, 121.418815], 17);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const points = [
+            { name: "警衛室", lat: 25.044150, lng: 121.418700, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
+            { name: "大門廣場", lat: 25.044229, lng: 121.418815, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
+            { name: "第一停車場", lat: 25.044000, lng: 121.418300, streetView: "https://www.google.com/maps/@25.0248047,121.4941039,3a,43.5y,233.04h,80.23t/data=!3m7!1e1!3m5!1sepcZ6mwZM98pl3NBdC7jxA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D9.77099030440155%26panoid%3DepcZ6mwZM98pl3NBdC7jxA%26yaw%3D233.04236095245724!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" }
+        ];
+
+        // 地圖上建立點位 (點擊開啟街景)
+        points.forEach(p => {
+            L.marker([p.lat, p.lng]).addTo(map)
+                .bindPopup(`<b>${p.name}</b><br><a href="${p.streetView}" target="_blank">查看街景</a>`)
+                .on('click', () => { if(confirm('是否查看街景?')) window.open(p.streetView); });
+        });
+
+        function verifyAndScore() {
+            const score = 100;
+            alert(`🌟 恭喜 ${userName} 打卡成功，獲得 ${score} 分！`);
+            syncToSheet(score);
+            closeCamera();
+        }
+
+        function closeCamera() {
+            document.getElementById('camera-view').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
