@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泰山職訓中心 - 智慧導覽系統</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        #status { padding: 15px; background: #fff; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .point-card { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 5px solid #007bff; }
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .locked { background: #ccc; }
+    </style>
+</head>
+<body>
+
+    <h1>泰山職訓中心導覽</h1>
+    <div id="status">正在定位中...請確保已開啟 GPS 權限。</div>
+    <div id="tour-list"></div>
+
+    <script>
+        // 景點資料庫 (精確座標請於現場執行時使用 navigator.geolocation.getCurrentPosition 獲取)
+        const tourPoints = [
+            { id: 0, name: "職訓大門廣場", desc: "簽到入口，今日課程資訊", dist: 0, lat: 25.044229, lng: 121.418815 },
+            { id: 1, name: "行政服務區", desc: "顯示園區導覽地圖與注意事項", dist: 50, lat: 25.044350, lng: 121.419050 },
+            { id: 2, name: "職訓教學長廊", desc: "點擊查看各職類簡介", dist: 100, lat: 25.044500, lng: 121.419300 },
+            { id: 3, name: "實習工場中心", desc: "顯示今日實習開放資訊與警語", dist: 150, lat: 25.044650, lng: 121.419550 },
+            { id: 4, name: "學員休閒中庭", desc: "互動留言板與學員分享區", dist: 200, lat: 25.044800, lng: 121.419800 },
+            { id: 5, name: "多功能體育空間", desc: "抵達終點，領取電子憑證", dist: 250, lat: 25.044950, lng: 121.420050 }
+        ];
+
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function init() {
+            const container = document.getElementById('tour-list');
+            tourPoints.forEach(p => {
+                container.innerHTML += `<div class="point-card" id="point-${p.id}">
+                    <h3>${p.id}. ${p.name}</h3>
+                    <p>${p.desc}</p>
+                    <button id="btn-${p.id}" class="locked" disabled>尚未抵達</button>
+                </div>`;
+            });
+
+            navigator.geolocation.watchPosition((pos) => {
+                const curLat = pos.coords.latitude;
+                const curLng = pos.coords.longitude;
+                document.getElementById('status').innerText = `目前位置：${curLat.toFixed(6)}, ${curLng.toFixed(6)}`;
+
+                tourPoints.forEach(p => {
+                    const d = getDistance(curLat, curLng, p.lat, p.lng);
+                    if (d < 20) { // 誤差範圍 20 公尺內視為抵達
+                        const btn = document.getElementById(`btn-${p.id}`);
+                        btn.innerText = "打卡簽到";
+                        btn.className = "";
+                        btn.disabled = false;
+                        btn.onclick = () => alert(`恭喜您抵達：${p.name}！`);
+                    }
+                });
+            }, (err) => {
+                document.getElementById('status').innerText = "無法取得位置：" + err.message;
+            }, { enableHighAccuracy: true });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

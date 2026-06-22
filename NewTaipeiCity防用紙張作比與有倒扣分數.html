@@ -330,7 +330,7 @@
                 });
         }
 
-        // 🎯 寬容版：純外型相似度檢核引擎（移除扣分項目）
+        // 🎯 升級版：具備中央裁剪與紙張防禦機制的精確度分析引擎
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -345,10 +345,11 @@
                 const canvas = document.getElementById('hidden-canvas');
                 const ctx = canvas.getContext('2d');
                 
+                // 1. 取得真實視訊影片的解析度
                 const vW = video.videoWidth;
                 const vH = video.videoHeight;
                 
-                // 計算中央黃框在實際視訊中的座標與大小（聚焦於黃框內）
+                // 2. 🎯 精準控制：計算中央黃框在實際視訊中的座標與大小（只抓中央 50% 區域，排除四周背景干擾）
                 const cropW = vW * 0.5;
                 const cropH = vH * 0.5;
                 const cropX = (vW - cropW) / 2;
@@ -357,44 +358,60 @@
                 canvas.width = 100;
                 canvas.height = 100;
                 
+                // 🎯 僅將中央黃框內的影像渲染至 Canvas 進行分析
                 ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
                 const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
                 let greenPoints = 0;
+                let paperOrWhitePoints = 0;
                 const totalPixels = canvas.width * canvas.height;
 
-                // 進行高寬容度的樹木色彩比對
+                // 3. 🎯 嚴格的防偽與特徵比對迴圈
                 for (let i = 0; i < frameData.length; i += 4) {
                     const r = frameData[i];
                     const g = frameData[i+1];
                     const b = frameData[i+2];
 
-                    // 寬容的植物綠色比例界定（綠色分量大於紅與藍即可，兼顧戶外背光陰影）
-                    const isTreeGreen = (g > r * 1.1) && (g > b * 1.1) && (g > 30);
+                    // 檢查是否為紙張/無彩色系（R、G、B 非常接近，差值在 15 以內）
+                    const isMonochrome = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
+                    
+                    // 嚴格定義植物的「真實葉綠素色調」：綠色必須顯著大於紅藍，且不能是灰白紙張
+                    const isRealTreeGreen = (g > r * 1.25) && (g > b * 1.15) && (g > 35) && !isMonochrome;
 
-                    if (isTreeGreen) {
+                    if (isRealTreeGreen) {
                         greenPoints++;
+                    }
+                    if (isMonochrome && (r > 150)) {
+                        paperOrWhitePoints++; // 紀錄疑似紙張或死白物件的像素點
                     }
                 }
 
+                // 4. 🎯 相似度與位置、大小複合運算公式
                 const greenRatio = greenPoints / totalPixels; 
+                const paperRatio = paperOrWhitePoints / totalPixels; 
 
-                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15% 以上正確的綠色樹木外型分佈即可）
+                // 換算精確度分數（設定黃框中央必須有 30% 面積覆蓋為正確的樹葉分佈區）
                 let precisionScore = Math.round((greenRatio / 0.30) * 100);
+                
+                // 如果畫面中央有超過 40% 的面積被偵測出是無彩色的紙張/牆壁，實施倒扣懲罰
+                if (paperRatio > 0.40) { 
+                    precisionScore -= Math.round((paperRatio * 60)); 
+                }
                 precisionScore = Math.max(0, Math.min(100, precisionScore));
 
-                // 檢核條件判定（達到 80% 即過關）
+                // 5. 檢核條件判定
                 if (precisionScore >= 80) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
                     saveScoreToHistory(100);
                     
-                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
+                    alert(`🌟 核對成功！\n經精確影像核對，樹木相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
-                    alert(`❌ 核對失敗（目前核對精確度：${precisionScore}%）\n\n【提示】：請將相機對準現場綠色樹木，並嘗試靠近或移動位置，讓樹木填入中央黃色框線中。`);
+                    // 低於 80% 門檻時拒絕得分，強制退回核對
+                    alert(`❌ 核對失敗（目前核對精確度：${precisionScore}%）\n\n【原因判定】：偵測到畫面多為紙張、白牆或非植物色彩。\n請務必移動手機，重新作影像大小與位置核對！`);
                 }
             } else {
                 alert("❌ 打卡失敗！您已離開 80 公尺範圍。");

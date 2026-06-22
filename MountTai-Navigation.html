@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>泰山職訓中心 - 圓形導覽盤</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; font-family: sans-serif; }
+        /* 圓形容器 */
+        #circle-container { position: relative; width: 300px; height: 300px; border: 4px dashed #999; border-radius: 50%; margin: 50px auto; }
+        .point { position: absolute; width: 40px; height: 40px; background: #007bff; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 2px solid #fff; }
+        /* 下方說明框 */
+        #info-box { width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <h3 id="status">定位中...</h3>
+    <div id="circle-container"></div>
+    <div id="info-box">
+        <h2 id="title">歡迎進入職訓中心</h2>
+        <p id="desc">請移動您的位置以解鎖各個導覽點。</p>
+        <button id="action-btn" disabled>尚未抵達目標</button>
+    </div>
+
+    <script>
+        const points = [
+            { name: "大門廣場", desc: "起點：簽到入口，顯示今日課程資訊。", lat: 25.044229, lng: 121.418815 },
+            { name: "行政區", desc: "沿主幹道直行至行政大樓側，注意安全。", lat: 25.044350, lng: 121.419050 },
+            { name: "教學長廊", desc: "穿越行政區後的主要教學步道，查看職類簡介。", lat: 25.044500, lng: 121.419300 },
+            { name: "實習工場", desc: "核心實作區，進入請配戴防護裝備。", lat: 25.044650, lng: 121.419550 },
+            { name: "休閒中庭", desc: "學員交流休憩區，留下您的學習心得。", lat: 25.044800, lng: 121.419800 },
+            { name: "體育空間", desc: "終點：多功能體育空間，完成導覽！", lat: 25.044950, lng: 121.420050 }
+        ];
+
+        // 將點位排列在圓圈上
+        const container = document.getElementById('circle-container');
+        points.forEach((p, i) => {
+            const angle = (i / points.length) * 2 * Math.PI;
+            const x = 150 + 130 * Math.cos(angle) - 20;
+            const y = 150 + 130 * Math.sin(angle) - 20;
+            const div = document.createElement('div');
+            div.className = 'point';
+            div.style.left = x + 'px';
+            div.style.top = y + 'px';
+            div.innerText = i;
+            div.onclick = () => updateInfo(p);
+            container.appendChild(div);
+        });
+
+        function updateInfo(p) {
+            document.getElementById('title').innerText = p.name;
+            document.getElementById('desc').innerText = p.desc;
+        }
+
+        // GPS 監聽邏輯（此處省略距離計算細節，與前述相同）
+        navigator.geolocation.watchPosition((pos) => {
+            document.getElementById('status').innerText = "系統已就緒，請在園區內移動";
+            // 當靠近某點時，自動呼叫 updateInfo(points[i])
+        });
+    </script>
+</body>
+</html>
