@@ -18,6 +18,7 @@
             width: 100%;
             height: 100%;
         }
+        /* 右上角動態資訊面板 */
         .info-panel {
             padding: 12px 15px;
             font-size: 14px;
@@ -31,6 +32,7 @@
         .info-panel p { margin: 3px 0; color: #666; }
         .highlight { color: #e81123; font-weight: bold; font-size: 18px; }
         
+        /* 底部操作控制區 */
         #action-container {
             position: absolute;
             bottom: 20px;
@@ -61,6 +63,7 @@
         .btn-history { background-color: #2196F3; }
         .btn-logout { background-color: #ff9800; }
         
+        /* 手機鏡頭畫面遮罩層 */
         #camera-view {
             display: none;
             position: fixed;
@@ -72,6 +75,7 @@
             width: 100%; height: 100%; object-fit: cover;
         }
         
+        /* 滿版核對觀景窗 */
         #comparison-frame {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -97,6 +101,7 @@
             background: rgba(0, 0, 0, 0.75);
             width: 10%;
         }
+        /* 實景比對窗 */
         .clear-window {
             border: 4px solid #ffeb3b;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); 
@@ -115,6 +120,7 @@
             opacity: 0.35;    
         }
         
+        /* 下方操作提示台 */
         .ar-control-panel {
             position: absolute;
             bottom: 5%;
@@ -154,25 +160,23 @@
             border: none; padding: 8px 16px; border-radius: 5px;
             font-size: 14px; font-weight: bold; z-index: 2200;
         }
-        
-        /* 彈出視窗樣式 */
+        /* 訓練家登入視窗 */
         #login-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92); z-index: 9999;
-            display: none; flex-direction: column; justify-content: center; align-items: center; color: white;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
         }
-        #login-modal input { padding: 15px; border-radius: 8px; border: none; margin: 8px; width: 80%; max-width: 300px; font-size: 16px; text-align: center; color: black; }
+        #login-modal input { padding: 15px; border-radius: 8px; border: none; margin: 15px; width: 80%; max-width: 300px; font-size: 16px; text-align: center; color: black; }
     </style>
 </head>
 <body>
 
-    <!-- 訓練家登入系統 (一開啟網頁強制彈出輸入欄位) -->
+    <!-- 訓練家登入系統 -->
     <div id="login-modal">
-        <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
-        <p>請輸入您的基本資料以開始定位打卡</p>
-        <input type="text" id="user-no" placeholder="第一欄：請輸入編號 (座號)">
-        <input type="text" id="username" placeholder="第二欄：請輸入姓名">
-        <button class="btn" style="max-width: 200px; margin-top: 15px;" onclick="loginTrainer()">進入地圖</button>
+        <h2>⚔️ 歡迎來到泰山寶可夢據點-大門正中央大樹</h2>
+        <p>請輸入您的訓練家姓名以開始定位打卡</p>
+        <input type="text" id="username" placeholder="請輸入姓名/暱稱">
+        <button class="btn" style="max-width: 200px;" onclick="loginTrainer()">進入地圖</button>
     </div>
 
     <div id="map"></div>
@@ -180,7 +184,7 @@
     <div id="action-container">
         <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
         <button class="btn btn-history" onclick="viewHistory()">查看歷史數據</button>
-        <button class="btn btn-logout" onclick="logoutTrainer()">更換訓練家姓名/座號</button>
+        <button class="btn btn-logout" onclick="logoutTrainer()">更換訓練家姓名</button>
     </div>
 
     <div id="camera-view">
@@ -209,61 +213,46 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 🎯 請確保此網址為您的最新 GAS 部署網址
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
         
-        let userNo = "";
-        let userName = "";
+        let userName = localStorage.getItem('trainerName') || "";
         let lastSyncStatus = "尚未進行打卡同步"; 
 
+        // 登入驗證
         function loginTrainer() {
-            const noInput = document.getElementById('user-no').value.trim();
             const nameInput = document.getElementById('username').value.trim();
-            
-            if(!noInput) return alert("請輸入有效的編號 (座號)！");
-            if(!nameInput) return alert("請輸入有效的姓名！");
-            
-            // 儲存至瀏覽器快取
-            localStorage.setItem('trainerNo', noInput);
+            if(!nameInput) return alert("請輸入有效的訓練家姓名！");
             localStorage.setItem('trainerName', nameInput);
-            userNo = noInput;
             userName = nameInput;
-            
-            // 隱藏登入視窗並初始化地圖資訊
             document.getElementById('login-modal').style.display = 'none';
-            if (userMarker) {
-                // 觸發一次 GPS 更新更新介面顯示的姓名
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const uLat = position.coords.latitude;
-                    const uLng = position.coords.longitude;
-                    const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
-                    info.update(distance, targetSpot.hasScored ? "此據點已完成打卡。" : "GPS 定位成功");
-                });
+            location.reload(); 
+        }
+
+        // 手動清除快取更換名字
+        function logoutTrainer() {
+            if(confirm("確定要更換訓練家姓名嗎？這將會清除目前的登入狀態。")) {
+                localStorage.removeItem('trainerName');
+                userName = "";
+                document.getElementById('username').value = "";
+                document.getElementById('login-modal').style.display = 'flex';
             }
         }
 
-        function logoutTrainer() {
-            localStorage.removeItem('trainerNo');
-            localStorage.removeItem('trainerName');
-            userNo = "";
-            userName = "";
-            document.getElementById('user-no').value = "";
-            document.getElementById('username').value = "";
+        // 判斷是否需要開啟登入彈窗
+        if (!userName) {
             document.getElementById('login-modal').style.display = 'flex';
+        } else {
+            document.getElementById('login-modal').style.display = 'none';
         }
 
-        // 🔄 強制機制：每次「一打開網頁」就必須重新輸入（不自動抓舊資料）
-        localStorage.removeItem('trainerNo');
-        localStorage.removeItem('trainerName');
-        document.getElementById('login-modal').style.display = 'flex';
-
+        // 遠端試算表資料同步函式
         function syncToSheet(score) {
-            const searchParams = new URLSearchParams();
-            // 🎯 後端傳送參數：包含編號、姓名、成績，以及全新的「據點」
-            searchParams.append('編號', userNo);
-            searchParams.append('姓名', userName);
-            searchParams.append('成績', score);
-            searchParams.append('據點', '大門正中央大樹');
+            const params = new URLSearchParams();
+            // 🎯 關鍵修正：直接以中文「姓名」與「成績」作為參數標題發送，與後端 GAS 完美互通
+            params.append('姓名', userName);
+            params.append('成績', score);
+            params.append('name', userName); // 英文備份欄位
+            params.append('score', score); // 英文備份欄位
 
             lastSyncStatus = "正在嘗試上傳至雲端試算表...";
 
@@ -273,15 +262,15 @@
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: searchParams.toString()
+                body: params.toString()
             })
-            .then(() => {
-                lastSyncStatus = "🟢 數據已成功送出！請刷新試算表確認是否寫入。";
-                console.log('數據已成功發送：', userNo, userName, score, '大門正中央大樹');
+            .then(response => {
+                lastSyncStatus = "🟢 成功上傳至雲端試算表！";
+                console.log('試算表雲端同步成功');
             })
             .catch(error => {
-                lastSyncStatus = "🔴 連線失敗，請檢查網路或 GAS 網址是否填寫正確！";
-                console.error(error);
+                lastSyncStatus = "🔴 上傳失敗，請檢查手機網路或 GAS 部署權限設定！";
+                console.error('同步至 Google 試算表失敗:', error);
             });
         }
 
@@ -308,24 +297,26 @@
             if (history.length === 0) {
                 report = `【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n`;
             } else {
-                report = `【[${userNo}] 訓練家 ${userName} 的歷史紀錄】\n\n`;
+                report = `【訓練家 ${userName} 的歷史紀錄】\n\n`;
                 history.forEach((entry, index) => {
                     report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
                 });
                 report += `\n`;
             }
+            
             report += `☁️ 雲端試算表連線狀態：\n${lastSyncStatus}\n`;
+            
             alert(report);
         }
 
         const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
+        
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // 🎯 地圖標題標記修改：多加入了一行「大門正中央大樹」
         const targetMarker = L.marker([targetSpot.lat, targetSpot.lng]).addTo(map)
-            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢據點<br><span style="color:#d9381e; font-weight:bold;">大門正中央大樹</span>`).openPopup();
+            .bindPopup(`<b>${targetSpot.name}</b><br>寶可夢據點`).openPopup();
 
         const detectionCircle = L.circle([targetSpot.lat, targetSpot.lng], {
             color: 'red',
@@ -335,19 +326,17 @@
         }).addTo(map);
 
         let userMarker = null;
+
         const info = L.control({ position: 'topright' });
         info.onAdd = function (map) {
             this._div = L.DomUtil.create('div', 'info-panel');
-            this.update(null, "請先輸入右側資料進入地圖...");
+            this.update(null, "GPS 定位中...");
             return this._div;
         };
         info.update = function (distance, scoreText) {
             let distStr = distance !== null ? `${distance.toFixed(1)} 公尺` : "未知";
-            let displayNo = userNo || "未輸入";
-            let displayName = userName || "未輸入";
             this._div.innerHTML = `
                 <h4>訓練家打卡系統</h4>
-                <p>帳號：<b>[${displayNo}] ${displayName}</b></p>
                 <p>目前得分：<span class="highlight" style="color:green;">${targetSpot.score} 分</span></p>
                 <p>目標景點：<b>${targetSpot.name}</b></p>
                 <p>與目標距離：<span class="highlight">${distStr}</span></p>
@@ -413,11 +402,6 @@
         const cameraView = document.getElementById('camera-view');
 
         function openCameraWithComparison() {
-            if(!userNo || !userName) {
-                alert("請先完成基本資料輸入！");
-                document.getElementById('login-modal').style.display = 'flex';
-                return;
-            }
             cameraView.style.display = 'block';
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
                 .then(function(stream) {
@@ -476,10 +460,13 @@
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
+                    // 1. 本地存檔
                     saveScoreToHistory(100);
+                    
+                    // 2. 雲端同步上傳
                     syncToSheet(100);
                     
-                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！\n數據已發送至雲端試算表。`);
+                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！\n數據已嘗試同步上傳至 Google 試算表。`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
