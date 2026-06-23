@@ -60,7 +60,7 @@
         .btn:hover { background-color: #45a049; }
 
         /* =========================================================================
-           🧩 以下為滑動拼圖专属樣式 (完美融合深色主體，並加上燈箱浮動效果)
+           🧩 以下為滑動拼圖專屬樣式 (完美融合深色主體，並加上燈箱浮動效果)
            ========================================================================= */
         .captcha-modal {
             display: none;
@@ -142,6 +142,34 @@
         .slider-btn:hover {
             background: #45a049;
         }
+
+        /* =========================================================================
+           🔒 建議變更密碼燈箱專用樣式 (完美整合深色主題佈局)
+           ========================================================================= */
+        .password-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        .password-container {
+            width: 90%;
+            max-width: 360px;
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .password-container h3 { margin-top: 0; color: #ffeb3b; text-align: center; margin-bottom: 5px;}
+        .password-container p.subtitle { color: #bbb; font-size: 13px; text-align: center; margin-bottom: 20px; margin-top: 0; }
+        .readonly-input { background: #333 !important; color: #aaa !important; cursor: not-allowed; }
+        .flex-buttons { display: flex; gap: 10px; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -156,7 +184,7 @@
                 <!-- 🎯 AJAX 姓名動態顯示區 -->
                 <span id="user-name-preview"></span>
             </div>
-            <!-- 當輸入框失去焦點 (onblur) 或手動點選密碼欄時，即時觸發 AJAX 查詢 -->
+            <!-- 當輸入框失去焦點 (onblur) 觸發 AJAX 查詢 -->
             <input type="text" id="user-no" placeholder="例如：01" onblur="checkUserRealtime()">
         </div>
         
@@ -165,11 +193,11 @@
             <input type="password" id="user-password" placeholder="請輸入密碼">
         </div>
         
-        <!-- 🎯 點擊按鈕改為先進入安全驗證過濾器 -->
+        <!-- 🎯 點擊按鈕先進入滑動拼圖防護攔截 -->
         <button class="btn" onclick="triggerCaptcha(event)">驗證並進入地圖</button>
     </div>
 
-    <!-- 🧩 滑動拼圖獨立彈出燈箱區區塊 -->
+    <!-- 🧩 滑動拼圖彈出燈箱 -->
     <div class="captcha-modal" id="captchaModal">
         <div class="captcha-container">
             <h3 style="margin-top:0; color:#ffeb3b; margin-bottom:5px; font-size:18px;">🛡️ 安全驗證</h3>
@@ -188,28 +216,66 @@
         </div>
     </div>
 
+    <!-- 🔒 建議變更密碼燈箱區塊 -->
+    <div class="password-modal" id="passwordModal">
+        <div class="password-container">
+            <h3>🔑 建議變更新密碼</h3>
+            <p class="subtitle">為了您的帳號安全，建議定期修改初始密碼</p>
+            
+            <div class="input-group">
+                <label>編號或座號</label>
+                <input type="text" id="pwd-user-no" class="readonly-input" readonly>
+            </div>
+            <div class="input-group">
+                <label>姓名</label>
+                <input type="text" id="pwd-user-name" class="readonly-input" readonly>
+            </div>
+            <div class="input-group">
+                <label>目前密碼</label>
+                <input type="text" id="pwd-current" class="readonly-input" readonly>
+            </div>
+            <div class="input-group">
+                <label>變更新密碼</label>
+                <input type="password" id="pwd-new" placeholder="混合大小寫英文及數字(4-6字元)">
+            </div>
+            <div class="input-group">
+                <label>再輸入一次新密碼</label>
+                <input type="password" id="pwd-confirm" placeholder="請再次輸入新密碼">
+            </div>
+
+            <button class="btn" onclick="submitNewPassword()">確認變更密碼</button>
+            <div class="flex-buttons">
+                <button class="btn" style="background-color:#555; margin-top:0;" onclick="skipPasswordChange()">下一次再修改</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         
-        // 🎯 網址已完美更新為您的第 5 版最新部署網址
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwc8q_X4_p4ZXcVoDZUxWd3wnaIdqUdhIF6XkL6CCsg5aI7WTjyzVvQD35ueFYTU-_L/exec"; 
+        // 🎯 已完美同步更新為您最新的第 7 版 GAS 網址
+        //const GAS_URL = "https://script.google.com/macros/s/AKfycbwdL-iQ6aU7x_1xsJGbrFmc1kBXUEr4FS-dv_74xNW6TDNhI4gGPAKNJAfAswg5ix55/exec"; 
+          const GAS_URL = "https://script.google.com/macros/s/AKfycbysDvRYqZjHLV-VFfw-XrM3A9Qp1pRuxnnc5zNgURNLFyT6wvDaPSq6ecKmhwEiCZe4/exec";
+
+        // 全域暫存變數
+        let globalTrainerNo = "";
+        let globalTrainerName = "";
+        let globalCurrentPassword = "";
 
         // 🔄 核心 AJAX 功能：即時透過帳號比對試算表並顯示姓名
         function checkUserRealtime() {
             const noInput = document.getElementById('user-no').value.trim();
             const previewSpan = document.getElementById('user-name-preview');
             
-            // 如果使用者清空了帳號欄位，就跟著清空提示字
             if (!noInput) {
                 previewSpan.innerText = "";
                 return;
             }
 
-            // 先顯示正在飛速查詢中
             previewSpan.className = "status-searching";
             previewSpan.innerText = "🔍 查詢中...";
 
             const params = new URLSearchParams();
-            params.append('action', 'checkUser'); // 呼叫第 5 版新增的單純查名動作
+            params.append('action', 'checkUser'); 
             params.append('帳號', noInput);
 
             fetch(GAS_URL, {
@@ -219,11 +285,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 🟢 綠色字體：成功比對到試算表上的訓練家姓名
                     previewSpan.className = "status-success";
                     previewSpan.innerText = `👤 訓練家：${data.name}`;
                 } else {
-                    // 🔴 紅色字體：試算表會員資料分頁找不到此帳號
                     previewSpan.className = "status-fail";
                     previewSpan.innerText = "❌ 查無此帳號/座號";
                 }
@@ -235,7 +299,7 @@
             });
         }
 
-        // 🔐 帳號密碼完整登入驗證功能
+        // 🔐 帳號密碼驗證功能
         function handleLogin() {
             const noInput = document.getElementById('user-no').value.trim();
             const passwordInput = document.getElementById('user-password').value.trim();
@@ -256,14 +320,13 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`歡迎回來，${data.name} 訓練家！`);
-                    
-                    // 快取存檔，讓下一頁地圖可以直接讀取使用
-                    localStorage.setItem('trainerNo', noInput);
-                    localStorage.setItem('trainerName', data.name);
-                    
-                    // 成功登入後跳轉地圖
-                    window.location.href = "NewTaipeiCity.html"; 
+                    // 暫存登入成功後的資料
+                    globalTrainerNo = noInput;
+                    globalTrainerName = data.name;
+                    globalCurrentPassword = passwordInput;
+
+                    // 開啟「建議變更密碼」燈箱
+                    openPasswordModal();
                 } else {
                     alert("❌ 登入失敗：" + data.message);
                 }
@@ -275,7 +338,77 @@
         }
 
         // =========================================================================
-        // 🧩 以下為滑動拼圖核心控制邏輯 (與原有程式碼無衝突，完美介接)
+        // 🔑 密碼變更視窗邏輯與驗證機制
+        // =========================================================================
+        function openPasswordModal() {
+            document.getElementById('pwd-user-no').value = globalTrainerNo;
+            document.getElementById('pwd-user-name').value = globalTrainerName;
+            document.getElementById('pwd-current').value = globalCurrentPassword;
+            document.getElementById('pwd-new').value = "";
+            document.getElementById('pwd-confirm').value = "";
+            document.getElementById('passwordModal').style.display = "flex";
+        }
+
+        // 下一次再修改 (直接進入地圖)
+        function skipPasswordChange() {
+            alert(`已為您保留原密碼，歡迎回來 ${globalTrainerName} 訓練家！`);
+            localStorage.setItem('trainerNo', globalTrainerNo);
+            localStorage.setItem('trainerName', globalTrainerName);
+            window.location.href = "NewTaipeiCity.html";
+        }
+
+        // 提交修改密碼至試算表
+        function submitNewPassword() {
+            const newPwd = document.getElementById('pwd-new').value.trim();
+            const confirmPwd = document.getElementById('pwd-confirm').value.trim();
+
+            if (!newPwd || !confirmPwd) {
+                return alert("請輸入完整的新密碼與確認密碼！");
+            }
+
+            // 密碼複雜度規則：大寫、小寫、數字，長度 4-6 字元
+            const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{4,6}$/;
+
+            if (!passwordRule.test(newPwd)) {
+                return alert("⚠️ 密碼驗證規則說明：\n新密碼必須包含【英文大寫】、【英文小寫】以及【數字】三種混合，且長度必須在 4 到 6 個字元之間。");
+            }
+
+            if (newPwd !== confirmPwd) {
+                return alert("❌ 警告：變更新密碼與再輸入一次新密碼結果不一致！");
+            }
+
+            // 發送指令到第 7 版 GAS 更新密碼
+            const params = new URLSearchParams();
+            params.append('action', 'updatePassword'); 
+            params.append('帳號', globalTrainerNo);
+            params.append('新密碼', newPwd);
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success || data.message === "Success") {
+                    alert("🎉 密碼修改成功！新密碼已同步至會員試算表。");
+                    localStorage.setItem('trainerNo', globalTrainerNo);
+                    localStorage.setItem('trainerName', globalTrainerName);
+                    window.location.href = "NewTaipeiCity.html";
+                } else {
+                    alert("密碼變更失敗：" + data.message);
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                alert("連線異常，即將導向地圖。");
+                localStorage.setItem('trainerNo', globalTrainerNo);
+                localStorage.setItem('trainerName', globalTrainerName);
+                window.location.href = "NewTaipeiCity.html";
+            });
+        }
+
+        // =========================================================================
+        // 🧩 以下為滑動拼圖核心控制邏輯
         // =========================================================================
         const bgCanvas = document.getElementById('bgCanvas');
         const blockCanvas = document.getElementById('blockCanvas');
@@ -286,9 +419,9 @@
         const bgCtx = bgCanvas.getContext('2d');
         const blockCtx = blockCanvas.getContext('2d');
 
-        const r = 9; // 拼圖凸起半徑
-        const w = 40; // 拼圖主體寬度
-        const h = 40; // 拼圖主體高度
+        const r = 9; 
+        const w = 40; 
+        const h = 40; 
         const PI = Math.PI;
 
         let targetX = 0;
@@ -389,11 +522,10 @@
             const isHuman = checkTrailIsHuman(userTrail);
 
             if (isPositionCorrect && isHuman) {
-                // 🟢 驗證成功：關閉驗證碼，放行並執行原有的 handleLogin 登入功能
                 captchaModal.style.display = "none";
                 handleLogin(); 
             } else {
-                alert('❌ 驗證失敗！可能是拼圖沒對準，或偵測到自動化腳本行為。');
+                alert('❌ 驗證失敗！請將拼圖對準，或避免使用自動化外掛。');
                 resetCaptcha();
             }
         }
@@ -414,17 +546,14 @@
             img.src = 'https://picsum.photos/300/180?sig=' + Math.random();
         }
 
-        // 🚀 控制驗證碼彈出的攔截器
         function triggerCaptcha(event) {
             const noInput = document.getElementById('user-no').value.trim();
             const passwordInput = document.getElementById('user-password').value.trim();
             
-            // 如果連帳密都沒填，直接被原有邏輯擋掉，不跳驗證碼
             if (!noInput || !passwordInput) {
                 return alert("請填寫帳號與密碼！");
             }
             
-            // 填寫完畢，開啟滑動拼圖彈窗
             captchaModal.style.display = "flex";
             resetCaptcha();
         }
