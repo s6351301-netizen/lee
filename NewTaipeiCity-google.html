@@ -159,9 +159,24 @@
             border: none; padding: 8px 16px; border-radius: 5px;
             font-size: 14px; font-weight: bold; z-index: 2200;
         }
+        /* 訓練家登入視窗 */
+        #login-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        #login-modal input { padding: 15px; border-radius: 8px; border: none; margin: 15px; width: 80%; max-width: 300px; font-size: 16px; text-align: center; color: black; }
     </style>
 </head>
 <body>
+
+    <!-- 訓練家登入系統 -->
+    <div id="login-modal">
+        <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
+        <p>請輸入您的訓練家姓名以開始定位打卡</p>
+        <input type="text" id="username" placeholder="請輸入姓名/暱稱">
+        <button class="btn" style="max-width: 200px;" onclick="loginTrainer()">進入地圖</button>
+    </div>
 
     <div id="map"></div>
 
@@ -196,6 +211,48 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // 🎯 您的專屬 Google Apps Script Web App 網址已自動配置完成
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
+        
+        let userName = localStorage.getItem('trainerName') || "";
+
+        // 登入驗證
+        function loginTrainer() {
+            const nameInput = document.getElementById('username').value.trim();
+            if(!nameInput) return alert("請輸入有效的訓練家姓名！");
+            localStorage.setItem('trainerName', nameInput);
+            userName = nameInput;
+            document.getElementById('login-modal').style.display = 'none';
+        }
+
+        // 判斷是否需要開啟登入彈窗
+        if (!userName) {
+            document.getElementById('login-modal').style.display = 'flex';
+        } else {
+            document.getElementById('login-modal').style.display = 'none';
+        }
+
+        // 遠端試算表資料同步函式
+        function syncToSheet(score) {
+            const params = new URLSearchParams();
+            params.append('name', userName);
+            params.append('score', score);
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: params.toString()
+            })
+            .then(response => {
+                console.log('試算表雲端同步成功');
+            })
+            .catch(error => {
+                console.error('同步至 Google 試算表失敗，請檢查網路或 GAS 網址權限:', error);
+            });
+        }
+
         const targetSpot = {
             name: "泰山職訓中心",
             lat: 25.0435125, 
@@ -215,13 +272,16 @@
 
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
+            const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT\n資料庫欄位 (Key): gameHistory`;
+
             if (history.length === 0) {
-                alert("目前尚無遊戲歷史紀錄。");
+                alert(`【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n💾 本地存檔位置：\n${storagePathText}`);
             } else {
-                let report = "【打卡歷史紀錄】\n\n";
+                let report = `【訓練家 ${userName} 的歷史紀錄】\n\n`;
                 history.forEach((entry, index) => {
                     report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
                 });
+                report += `\n💾 本地存檔位置：\n${storagePathText}`;
                 alert(report);
             }
         }
@@ -330,7 +390,6 @@
                 });
         }
 
-        // 🎯 寬容版：純外型相似度檢核引擎（移除扣分項目）
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -348,7 +407,6 @@
                 const vW = video.videoWidth;
                 const vH = video.videoHeight;
                 
-                // 計算中央黃框在實際視訊中的座標與大小（聚焦於黃框內）
                 const cropW = vW * 0.5;
                 const cropH = vH * 0.5;
                 const cropX = (vW - cropW) / 2;
@@ -363,34 +421,29 @@
                 let greenPoints = 0;
                 const totalPixels = canvas.width * canvas.height;
 
-                // 進行高寬容度的樹木色彩比對
                 for (let i = 0; i < frameData.length; i += 4) {
                     const r = frameData[i];
                     const g = frameData[i+1];
                     const b = frameData[i+2];
-
-                    // 寬容的植物綠色比例界定（綠色分量大於紅與藍即可，兼顧戶外背光陰影）
                     const isTreeGreen = (g > r * 1.1) && (g > b * 1.1) && (g > 30);
-
-                    if (isTreeGreen) {
-                        greenPoints++;
-                    }
+                    if (isTreeGreen) greenPoints++;
                 }
 
                 const greenRatio = greenPoints / totalPixels; 
-
-                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15%(下面0.15) 以上正確的綠色樹木外型分佈即可）
-                let precisionScore = Math.round((greenRatio / 0.10) * 100);
+                let precisionScore = Math.round((greenRatio / 0.15) * 100);
                 precisionScore = Math.max(0, Math.min(100, precisionScore));
 
-                // 檢核條件判定（達到 80% 即過關）
-                if (precisionScore >= 50) {
+                if (precisionScore >= 80) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
+                    // 1. 本地存檔
                     saveScoreToHistory(100);
                     
-                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！`);
+                    // 2. 雲端同步上傳
+                    syncToSheet(100);
+                    
+                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！\n數據已同步上傳至 Google 試算表。`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
