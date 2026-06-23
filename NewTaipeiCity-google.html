@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新北市泰山職訓打卡地圖-寶可夢</title>
+    <title>新北市泰山職訓寶可夢打卡地圖-大門中央大樹</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body {
@@ -168,7 +168,7 @@
 
     <!-- 訓練家登入系統 (一開啟網頁強制彈出輸入欄位) -->
     <div id="login-modal">
-        <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
+        <h2>⚔️ 歡迎來到泰山寶可夢據點-大門中央大樹</h2>
         <p>請輸入您的基本資料以開始定位打卡</p>
         <input type="text" id="user-no" placeholder="請輸入編號或座號">
         <input type="text" id="username" placeholder="請輸入姓名">
@@ -219,8 +219,8 @@ if (!userNo || !userName) {
     window.location.href = "google-login.html"; 
 }
         // 🎯 已更新為您的第 3 版 GAS 最新部署網址
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyzXILXlGRyOKWFAxcpycRo9rUI9sRItATzgzE4TUvhPuVEdaerzKsU_Dbyw_pJTy1C/exec";
-        
+        //第一頁簽為打卡成績 const GAS_URL = "https://script.google.com/macros/s/AKfycbyzXILXlGRyOKWFAxcpycRo9rUI9sRItATzgzE4TUvhPuVEdaerzKsU_Dbyw_pJTy1C/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzorUQHGMm-05sOgb3IoDuecnvmEI919Qw5dNXKO_xLesqi9sQVF67HAP3_t7pYmyUa/exec";
         let userNo = "";
         let userName = "";
         let lastSyncStatus = "尚未進行打卡同步"; 

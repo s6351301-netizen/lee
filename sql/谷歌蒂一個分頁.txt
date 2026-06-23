@@ -1,0 +1,68 @@
+
+
+寶可夢程式碼.gs  程式碼
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // 鎖定 30 秒安全機制
+    
+    // 1. 確保能抓到參數（相容各式發送端編碼）
+    var params = e.parameter;
+    if (!params || Object.keys(params).length === 0) {
+      if (e.postData && e.postData.contents) {
+        try {
+          params = JSON.parse(e.postData.contents);
+        } catch(err) {
+          params = {};
+          var pairs = e.postData.contents.split('&');
+          for (var i = 0; i < pairs.length; i++) {
+            var pair = pairs[i].split('=');
+            params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+          }
+        }
+      }
+    }
+
+    // 🎯 2. 擷取前端送過來的 4 大核心欄位資料
+    var userNo = params["編號"] || "";
+    var name   = params["姓名"] || "未登入訓練家"; 
+    var spot   = params["據點"] || "未明據點";
+    var score  = params["成績"] || 0;
+    var date   = new Date(); // 打卡時間
+    
+    // 3. 綁定目前試算表的第一張工作表
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheets()[0]; 
+    
+    // 🎯 4. 如果工作表是完全空的，自動建立標準欄位橫列
+    if (sheet.getLastColumn() === 0) {
+      sheet.appendRow(["時間", "編號", "姓名", "據點", "成績"]);
+    }
+    
+    // 5. 動態尋找「時間、編號、姓名、據點、成績」在第一列的對應格子位置
+    var headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+    var dateColIndex  = headers.indexOf("時間") + 1;
+    var noColIndex    = headers.indexOf("編號") + 1;
+    var nameColIndex  = headers.indexOf("姓名") + 1;
+    var spotColIndex  = headers.indexOf("據點") + 1;
+    var scoreColIndex = headers.indexOf("成績") + 1;
+    
+    // 6. 計算要寫入的下一列（強制從第 2 列開始）
+    var nextRow = sheet.getLastRow() + 1;
+    if (nextRow < 2) nextRow = 2; 
+    
+    // 7. 將資料精準填入對應的直欄儲存格
+    if (dateColIndex > 0)  sheet.getRange(nextRow, dateColIndex).setValue(date);
+    if (noColIndex > 0)    sheet.getRange(nextRow, noColIndex).setValue(userNo);
+    if (nameColIndex > 0)  sheet.getRange(nextRow, nameColIndex).setValue(name);
+    if (spotColIndex > 0)  sheet.getRange(nextRow, spotColIndex).setValue(spot);
+    if (scoreColIndex > 0) sheet.getRange(nextRow, scoreColIndex).setValue(score);
+    
+    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+                         
+  } catch (error) {
+    return ContentService.createTextOutput("Error: " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
+  } finally {
+    lock.releaseLock(); // 解鎖安全機制
+  }
+}
