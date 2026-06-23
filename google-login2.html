@@ -1,16 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>泰山寶可夢據點 - 訓練家登入</title>
     <style>
-        html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             font-family: "Microsoft JhengHei", Arial, sans-serif;
-            background: #121212; color: #ffffff;
-            display: flex; justify-content: center; align-items: center;
+            background: #121212;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
+
         .login-container {
             background: rgba(255, 255, 255, 0.05);
             padding: 30px;
@@ -21,10 +30,23 @@
             max-width: 360px;
             text-align: center;
         }
-        h2 { margin-bottom: 5px; color: #ffeb3b; }
-        p { color: #aaa; font-size: 14px; margin-bottom: 25px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        
+
+        h2 {
+            margin-bottom: 5px;
+            color: #ffeb3b;
+        }
+
+        p {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 7%;
+            text-align: left;
+        }
+
         /* 標籤列布局，讓標籤與姓名提示並排 */
         .label-row {
             display: flex;
@@ -32,32 +54,69 @@
             align-items: center;
             margin-bottom: 5px;
         }
-        label { font-size: 14px; color: #ccc; }
-        
+
+        label {
+            font-size: 14px;
+            color: #ccc;
+        }
+
         /* AJAX 姓名動態顯示樣式 */
         #user-name-preview {
             font-size: 14px;
             font-weight: bold;
             transition: color 0.3s;
         }
-        .status-searching { color: #ff9800; } /* 搜尋中：橘色 */
-        .status-success { color: #00ff00; }   /* 找到姓名：綠色 */
-        .status-fail { color: #ff3b30; }      /* 找不到：紅色 */
+
+        .status-searching {
+            color: #ff9800;
+        }
+
+        /* 搜尋中：橘色 */
+        .status-success {
+            color: #00ff00;
+        }
+
+        /* 找到姓名：綠色 */
+        .status-fail {
+            color: #ff3b30;
+        }
+
+        /* 找不到：紅色 */
 
         input {
-            width: 100%; padding: 12px; box-sizing: border-box;
-            border-radius: 8px; border: 1px solid #444;
-            background: #222; color: #fff; font-size: 16px;
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #222;
+            color: #fff;
+            font-size: 16px;
         }
-        input:focus { border-color: #4CAF50; outline: none; }
+
+        input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
         .btn {
-            background-color: #4CAF50; color: white; border: none;
-            padding: 14px; font-size: 18px; font-weight: bold;
-            border-radius: 8px; cursor: pointer; width: 100%;
-            margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             transition: background 0.2s;
         }
-        .btn:hover { background-color: #45a049; }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
 
         /* =========================================================================
            🧩 以下為滑動拼圖專屬樣式 (完美融合深色主體，並加上燈箱浮動效果)
@@ -65,22 +124,27 @@
         .captcha-modal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.85);
             z-index: 9999;
             justify-content: center;
             align-items: center;
         }
+
         .captcha-container {
             width: 300px;
             background: #1e1e1e;
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
             border: 1px solid #333;
             user-select: none;
             text-align: left;
         }
+
         .canvas-area {
             position: relative;
             width: 300px;
@@ -90,18 +154,21 @@
             border-radius: 8px;
             overflow: hidden;
         }
+
         #bgCanvas {
             position: absolute;
             top: 0;
             left: 0;
             z-index: 1;
         }
+
         #blockCanvas {
             position: absolute;
             top: 0;
             left: 0;
             z-index: 2;
         }
+
         .slider-track {
             position: relative;
             width: 300px;
@@ -111,6 +178,7 @@
             border: 1px solid #444;
             box-sizing: border-box;
         }
+
         .slider-text {
             position: absolute;
             width: 100%;
@@ -121,6 +189,7 @@
             color: #aaa;
             z-index: 1;
         }
+
         .slider-btn {
             position: absolute;
             top: -1px;
@@ -130,7 +199,7 @@
             background: #4CAF50;
             color: #fff;
             border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
             cursor: pointer;
             display: flex;
             justify-content: center;
@@ -139,6 +208,7 @@
             font-weight: bold;
             transition: background 0.2s;
         }
+
         .slider-btn:hover {
             background: #45a049;
         }
@@ -149,35 +219,63 @@
         .password-modal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.85);
             z-index: 10000;
             justify-content: center;
             align-items: center;
         }
+
         .password-container {
             width: 90%;
             max-width: 360px;
             background: #1e1e1e;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
             border: 1px solid #444;
             text-align: left;
             box-sizing: border-box;
         }
-        .password-container h3 { margin-top: 0; color: #ffeb3b; text-align: center; margin-bottom: 5px;}
-        .password-container p.subtitle { color: #bbb; font-size: 13px; text-align: center; margin-bottom: 20px; margin-top: 0; }
-        .readonly-input { background: #333 !important; color: #aaa !important; cursor: not-allowed; }
-        .flex-buttons { display: flex; gap: 10px; margin-top: 15px; }
+
+        .password-container h3 {
+            margin-top: 0;
+            color: #ffeb3b;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .password-container p.subtitle {
+            color: #bbb;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 20px;
+            margin-top: 0;
+        }
+
+        .readonly-input {
+            background: #333 !important;
+            color: #aaa !important;
+            cursor: not-allowed;
+        }
+
+        .flex-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="login-container">
         <h2>⚔️ 身份驗證</h2>
         <p>請輸入您的培訓資料以進入寶可夢地圖</p>
-        
+
         <div class="input-group">
             <div class="label-row">
                 <label for="user-no">帳號 或 編號 (座號)</label>
@@ -187,12 +285,12 @@
             <!-- 當輸入框失去焦點 (onblur) 觸發 AJAX 查詢 -->
             <input type="text" id="user-no" placeholder="例如：01" onblur="checkUserRealtime()">
         </div>
-        
+
         <div class="input-group">
             <label for="user-password">密碼</label>
             <input type="password" id="user-password" placeholder="請輸入密碼">
         </div>
-        
+
         <!-- 🎯 點擊按鈕先進入滑動拼圖防護攔截 -->
         <button class="btn" onclick="triggerCaptcha(event)">驗證並進入地圖</button>
     </div>
@@ -202,7 +300,7 @@
         <div class="captcha-container">
             <h3 style="margin-top:0; color:#ffeb3b; margin-bottom:5px; font-size:18px;">🛡️ 安全驗證</h3>
             <p style="font-size:13px; color:#bbb; margin-top:0; margin-bottom:15px;">請拖動滑塊填補拼圖圖塊</p>
-            
+
             <div class="canvas-area">
                 <canvas id="bgCanvas" width="300" height="180"></canvas>
                 <canvas id="blockCanvas" width="300" height="180"></canvas>
@@ -212,7 +310,8 @@
                 <div class="slider-text">向右滑動核對圖案</div>
                 <div class="slider-btn" id="sliderBtn">➔</div>
             </div>
-            <button class="btn" style="padding:8px; font-size:14px; margin-top:15px; background-color:#555;" onclick="closeCaptcha()">取消驗證</button>
+            <button class="btn" style="padding:8px; font-size:14px; margin-top:15px; background-color:#555;"
+                onclick="closeCaptcha()">取消驗證</button>
         </div>
     </div>
 
@@ -221,7 +320,10 @@
         <div class="password-container">
             <h3>🔑 建議變更新密碼</h3>
             <p class="subtitle">為了您的帳號安全，建議定期修改初始密碼</p>
-            
+            <div class="flex-buttons">
+                <button class="btn" style="background-color:#555; margin-top:0;"
+                    onclick="skipPasswordChange()">下一次再修改</button>
+            </div>
             <div class="input-group">
                 <label>編號或座號</label>
                 <input type="text" id="pwd-user-no" class="readonly-input" readonly>
@@ -244,14 +346,12 @@
             </div>
 
             <button class="btn" onclick="submitNewPassword()">確認變更密碼</button>
-            <div class="flex-buttons">
-                <button class="btn" style="background-color:#555; margin-top:0;" onclick="skipPasswordChange()">下一次再修改</button>
-            </div>
+
         </div>
     </div>
 
     <script>
-        
+
         // 🎯 已完美同步更新為您最新的第 7 版 GAS 網址
         //const GAS_URL = "https://script.google.com/macros/s/AKfycbwdL-iQ6aU7x_1xsJGbrFmc1kBXUEr4FS-dv_74xNW6TDNhI4gGPAKNJAfAswg5ix55/exec"; 
         const GAS_URL = "https://script.google.com/macros/s/AKfycbysDvRYqZjHLV-VFfw-XrM3A9Qp1pRuxnnc5zNgURNLFyT6wvDaPSq6ecKmhwEiCZe4/exec";
@@ -265,7 +365,7 @@
         function checkUserRealtime() {
             const noInput = document.getElementById('user-no').value.trim();
             const previewSpan = document.getElementById('user-name-preview');
-            
+
             if (!noInput) {
                 previewSpan.innerText = "";
                 return;
@@ -275,41 +375,41 @@
             previewSpan.innerText = "🔍 查詢中...";
 
             const params = new URLSearchParams();
-            params.append('action', 'checkUser'); 
+            params.append('action', 'checkUser');
             params.append('帳號', noInput);
 
             fetch(GAS_URL, {
                 method: 'POST',
                 body: params
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    previewSpan.className = "status-success";
-                    previewSpan.innerText = `👤 訓練家：${data.name}`;
-                } else {
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        previewSpan.className = "status-success";
+                        previewSpan.innerText = `👤 訓練家：${data.name}`;
+                    } else {
+                        previewSpan.className = "status-fail";
+                        previewSpan.innerText = "❌ 查無此帳號/座號";
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
                     previewSpan.className = "status-fail";
-                    previewSpan.innerText = "❌ 查無此帳號/座號";
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                previewSpan.className = "status-fail";
-                previewSpan.innerText = "⚠️ 連線失敗";
-            });
+                    previewSpan.innerText = "⚠️ 連線失敗";
+                });
         }
 
         // 🔐 帳號密碼驗證功能
         function handleLogin() {
             const noInput = document.getElementById('user-no').value.trim();
             const passwordInput = document.getElementById('user-password').value.trim();
-            
+
             if (!noInput || !passwordInput) {
                 return alert("請填寫帳號與密碼！");
             }
-            
+
             const params = new URLSearchParams();
-            params.append('action', 'login'); 
+            params.append('action', 'login');
             params.append('帳號', noInput);
             params.append('密碼', passwordInput);
 
@@ -317,24 +417,24 @@
                 method: 'POST',
                 body: params
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 暫存登入成功後的資料
-                    globalTrainerNo = noInput;
-                    globalTrainerName = data.name;
-                    globalCurrentPassword = passwordInput;
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 暫存登入成功後的資料
+                        globalTrainerNo = noInput;
+                        globalTrainerName = data.name;
+                        globalCurrentPassword = passwordInput;
 
-                    // 開啟「建議變更密碼」燈箱
-                    openPasswordModal();
-                } else {
-                    alert("❌ 登入失敗：" + data.message);
-                }
-            })
-            .catch(error => {
-                alert("連線失敗，請檢查網路或 GAS 網址！");
-                console.error(error);
-            });
+                        // 開啟「建議變更密碼」燈箱
+                        openPasswordModal();
+                    } else {
+                        alert("❌ 登入失敗：" + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert("連線失敗，請檢查網路或 GAS 網址！");
+                    console.error(error);
+                });
         }
 
         // =========================================================================
@@ -379,7 +479,7 @@
 
             // 發送指令到第 7 版 GAS 更新密碼
             const params = new URLSearchParams();
-            params.append('action', 'updatePassword'); 
+            params.append('action', 'updatePassword');
             params.append('帳號', globalTrainerNo);
             params.append('新密碼', newPwd);
 
@@ -387,24 +487,24 @@
                 method: 'POST',
                 body: params
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success || data.message === "Success") {
-                    alert("🎉 密碼修改成功！新密碼已同步至會員試算表。");
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success || data.message === "Success") {
+                        alert("🎉 密碼修改成功！新密碼已同步至會員試算表。");
+                        localStorage.setItem('trainerNo', globalTrainerNo);
+                        localStorage.setItem('trainerName', globalTrainerName);
+                        window.location.href = "NewTaipeiCity.html";
+                    } else {
+                        alert("密碼變更失敗：" + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("連線異常，即將導向地圖。");
                     localStorage.setItem('trainerNo', globalTrainerNo);
                     localStorage.setItem('trainerName', globalTrainerName);
                     window.location.href = "NewTaipeiCity.html";
-                } else {
-                    alert("密碼變更失敗：" + data.message);
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                alert("連線異常，即將導向地圖。");
-                localStorage.setItem('trainerNo', globalTrainerNo);
-                localStorage.setItem('trainerName', globalTrainerName);
-                window.location.href = "NewTaipeiCity.html";
-            });
+                });
         }
 
         // =========================================================================
@@ -419,20 +519,20 @@
         const bgCtx = bgCanvas.getContext('2d');
         const blockCtx = blockCanvas.getContext('2d');
 
-        const r = 9; 
-        const w = 40; 
-        const h = 40; 
+        const r = 9;
+        const w = 40;
+        const h = 40;
         const PI = Math.PI;
 
         let targetX = 0;
         let targetY = 0;
-        let trail = []; 
+        let trail = [];
         let startTime = 0;
 
         const img = new Image();
-        img.crossOrigin = "Anonymous"; 
-        img.src = 'https://picsum.photos/300/180'; 
-        img.onload = function() {
+        img.crossOrigin = "Anonymous";
+        img.src = 'https://picsum.photos/300/180';
+        img.onload = function () {
             initCaptcha();
         };
 
@@ -461,7 +561,7 @@
             blockCtx.clip();
             blockCtx.drawImage(img, 0, 0, 300, 180);
             const pieceData = blockCtx.getImageData(targetX - 2, targetY - r, w + r * 2, h + r * 2);
-            blockCanvas.width = 300; 
+            blockCanvas.width = 300;
             blockCtx.putImageData(pieceData, 0, targetY - r);
             blockCtx.restore();
             bgCtx.save();
@@ -480,7 +580,7 @@
         function startDrag(e) {
             isDragging = true;
             startTime = new Date().getTime();
-            trail = []; 
+            trail = [];
             const clientX = e.clientX || e.touches[0].clientX;
             startX = clientX;
         }
@@ -523,7 +623,7 @@
 
             if (isPositionCorrect && isHuman) {
                 captchaModal.style.display = "none";
-                handleLogin(); 
+                handleLogin();
             } else {
                 alert('❌ 驗證失敗！請將拼圖對準，或避免使用自動化外掛。');
                 resetCaptcha();
@@ -534,7 +634,7 @@
             if (userTrail.length < 5) return false;
             let yMovements = userTrail.map(p => p.y);
             let yDiff = Math.max(...yMovements) - Math.min(...yMovements);
-            if (yDiff === 0) return false; 
+            if (yDiff === 0) return false;
             return true;
         }
 
@@ -549,11 +649,11 @@
         function triggerCaptcha(event) {
             const noInput = document.getElementById('user-no').value.trim();
             const passwordInput = document.getElementById('user-password').value.trim();
-            
+
             if (!noInput || !passwordInput) {
                 return alert("請填寫帳號與密碼！");
             }
-            
+
             captchaModal.style.display = "flex";
             resetCaptcha();
         }
@@ -563,4 +663,5 @@
         }
     </script>
 </body>
+
 </html>

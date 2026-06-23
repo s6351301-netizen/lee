@@ -23,7 +23,7 @@
         }
         h2 { margin-bottom: 5px; color: #ffeb3b; }
         p { color: #aaa; font-size: 14px; margin-bottom: 25px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group { margin-bottom: 7px; text-align: left; }
         
         /* 標籤列布局，讓標籤與姓名提示並排 */
         .label-row {
@@ -221,7 +221,9 @@
         <div class="password-container">
             <h3>🔑 建議變更新密碼</h3>
             <p class="subtitle">為了您的帳號安全，建議定期修改初始密碼</p>
-            
+            <div class="flex-buttons">
+                <button class="btn" style="background-color:#555; margin-top:0;" onclick="skipPasswordChange()">下一次再修改</button>
+            </div>            
             <div class="input-group">
                 <label>編號或座號</label>
                 <input type="text" id="pwd-user-no" class="readonly-input" readonly>
@@ -244,9 +246,6 @@
             </div>
 
             <button class="btn" onclick="submitNewPassword()">確認變更密碼</button>
-            <div class="flex-buttons">
-                <button class="btn" style="background-color:#555; margin-top:0;" onclick="skipPasswordChange()">下一次再修改</button>
-            </div>
         </div>
     </div>
 
