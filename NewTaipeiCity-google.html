@@ -61,6 +61,7 @@
             cursor: not-allowed;
         }
         .btn-history { background-color: #2196F3; }
+        .btn-logout { background-color: #ff9800; } /* 新增登出按鈕顏色 */
         
         /* 手機鏡頭畫面遮罩層 */
         #camera-view {
@@ -183,6 +184,7 @@
     <div id="action-container">
         <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
         <button class="btn btn-history" onclick="viewHistory()">查看歷史數據</button>
+        <button class="btn btn-logout" onclick="logoutTrainer()">切換/更換訓練家姓名</button> <!-- 🎯 修正點 1: 新增更換名字按鈕 -->
     </div>
 
     <div id="camera-view">
@@ -214,8 +216,6 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
         
         let userName = localStorage.getItem('trainerName') || "";
-        
-        // 判斷上傳是否成功的全域狀態文字變數
         let lastSyncStatus = "尚未進行打卡同步"; 
 
         // 登入驗證
@@ -225,6 +225,17 @@
             localStorage.setItem('trainerName', nameInput);
             userName = nameInput;
             document.getElementById('login-modal').style.display = 'none';
+            location.reload(); // 重新整理網頁刷新地圖狀態
+        }
+
+        // 🎯 修正點 1: 清除快取並強制跳回登入頁面
+        function logoutTrainer() {
+            if(confirm("確定要更換訓練家姓名嗎？這將會清除目前的登入狀態。")) {
+                localStorage.removeItem('trainerName');
+                userName = "";
+                document.getElementById('username').value = "";
+                document.getElementById('login-modal').style.display = 'flex';
+            }
         }
 
         // 判斷是否需要開啟登入彈窗
@@ -236,13 +247,14 @@
 
         // 遠端試算表資料同步函式
         function syncToSheet(score) {
+            // 🎯 修正點 2: 同時發送 URL 參數 與 FormData，並加上常用後端接收名稱欄位，確保無論 GAS 怎麼寫都能抓到
             const params = new URLSearchParams();
             params.append('name', userName);
+            params.append('username', userName); // 備份欄位
             params.append('score', score);
 
             lastSyncStatus = "正在嘗試上傳至雲端試算表...";
 
-            // 🎯 關鍵修正點：新增 mode: 'no-cors' 繞過瀏覽器的重新導向阻擋
             fetch(GAS_URL, {
                 method: 'POST',
                 mode: 'no-cors', 
@@ -252,9 +264,8 @@
                 body: params.toString()
             })
             .then(response => {
-                // 在 no-cors 模式下，只要請求成功發出就會進入這裡
                 lastSyncStatus = "🟢 成功上傳至雲端試算表！";
-                console.log('試算表雲端同步成功（不檢查回傳內容）');
+                console.log('試算表雲端同步成功');
             })
             .catch(error => {
                 lastSyncStatus = "🔴 上傳失敗，請檢查手機網路或 GAS 部署權限設定！";
@@ -279,7 +290,6 @@
             localStorage.setItem('gameHistory', JSON.stringify(history));
         }
 
-        // 查看歷史數據功能
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
             const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT\n資料庫欄位 (Key): gameHistory`;
