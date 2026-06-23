@@ -1,5 +1,150 @@
 
 
+登入驗證修改密碼.gs
+
+登入驗證.gs  程式碼 不含修改密碼
+/**
+ * 萬用打卡與登入後端 API (第 5 版 - 支援前端自動姓名即時查驗)
+ * 支援動作 (action)：
+ * 1. action === "checkUser" -> 單純用帳號/座號查姓名 (前端 AJAX 預覽)
+ * 2. action === "login"     -> 會員帳密登入驗證
+ * 3. action === "score"     -> 寫入寶可夢打卡成績紀錄
+ */
+function doPost(e) {
+  // 建立安全防護，避免前端傳入空資料導致程式出錯
+  if (!e || !e.parameter) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: "錯誤：未接收到任何參數"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var params = e.parameter;
+  var action = params.action; // 讀取前端指定的動作
+  
+  // 取得當前的試算表
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // =========================================================================
+  // 【新增】功能零：單純用帳號查詢姓名 (用於前端 AJAX 即時顯示確認)
+  // =========================================================================
+  if (action === "checkUser") {
+    var inputUser = params.帳號 ? params.帳號.toString().trim() : "";
+    
+    // 如果前端沒傳帳號，直接回傳失敗
+    if (inputUser === "") {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        name: "",
+        message: "請輸入帳號"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var memberSheet = spreadsheet.getSheetByName("會員資料");
+    if (!memberSheet) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: "找不到『會員資料』頁簽" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var memberData = memberSheet.getDataRange().getValues();
+    var foundName = "";
+    
+    // 尋找對應帳號的姓名
+    for (var i = 1; i < memberData.length; i++) {
+      var sheetUser = memberData[i][0] ? memberData[i][0].toString().trim() : "";
+      if (sheetUser === inputUser) {
+        foundName = memberData[i][2] ? memberData[i][2].toString().trim() : ""; // 抓取第三欄 C 欄的姓名
+        break;
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: foundName !== "",
+      name: foundName,
+      message: foundName !== "" ? "成功找到姓名" : "查無此帳號"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // =========================================================================
+  // 功能一：會員登入驗證 (比對帳號與密碼)
+  // =========================================================================
+  if (action === "login") {
+    var inputUser = params.帳號 ? params.帳號.toString().trim() : "";
+    var inputPassword = params.密碼 ? params.密碼.toString().trim() : "";
+    
+    if (inputUser === "" || inputPassword === "") {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: "請輸入帳號與密碼"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var memberSheet = spreadsheet.getSheetByName("會員資料");
+    if (!memberSheet) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: "找不到『會員資料』頁簽" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var memberData = memberSheet.getDataRange().getValues();
+    var loginSuccess = false;
+    var userName = "";
+    
+    for (var i = 1; i < memberData.length; i++) {
+      var sheetUser = memberData[i][0] ? memberData[i][0].toString().trim() : "";
+      var sheetPassword = memberData[i][1] ? memberData[i][1].toString().trim() : "";
+      
+      if (sheetUser === inputUser && sheetPassword === inputPassword) {
+        loginSuccess = true;
+        userName = memberData[i][2] ? memberData[i][2].toString().trim() : "";
+        break;
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: loginSuccess,
+      name: userName,
+      message: loginSuccess ? "驗證成功！歡迎回來" : "帳號或密碼錯誤，請重新輸入"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // =========================================================================
+  // 功能二：寫入打卡成績紀錄 (用於寶可夢地圖打卡成功時)
+  // =========================================================================
+  if (action === "score") {
+    var recordSheet = spreadsheet.getSheetByName("打卡紀錄");
+    if (!recordSheet) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, message: "找不到『打卡紀錄』頁簽" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var userNo = params.編號 ? params.編號.toString().trim() : "未知編號";
+    var userName = params.姓名 ? params.姓名.toString().trim() : "未知姓名";
+    var score = params.成績 ? params.成績.toString().trim() : "0";
+    var spot = params.據點 ? params.據點.toString().trim() : "未註明據點";
+    
+    // 寫入打卡紀錄分頁
+    recordSheet.appendRow([userNo, userName, score, spot, new Date()]);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: "🎉 寶可夢打卡數據已成功同步至試算表！"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // =========================================================================
+  // 防呆：無效指令
+  // =========================================================================
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    message: "錯誤：無效的 action 指令"
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+
+
+
+
+
+
+
+
 寶可夢程式碼.gs  程式碼
 function doPost(e) {
   var lock = LockService.getScriptLock();
