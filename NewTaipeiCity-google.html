@@ -172,7 +172,7 @@
 
     <!-- 訓練家登入系統 -->
     <div id="login-modal">
-        <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
+        <h2>⚔️ 歡迎來到泰山寶本夢據點</h2>
         <p>請輸入您的訓練家姓名以開始定位打卡</p>
         <input type="text" id="username" placeholder="請輸入姓名/暱稱">
         <button class="btn" style="max-width: 200px;" onclick="loginTrainer()">進入地圖</button>
@@ -211,10 +211,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // 🎯 您的專屬 Google Apps Script Web App 網址已自動配置完成
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
         
         let userName = localStorage.getItem('trainerName') || "";
+        
+        // 🎯 判斷上傳是否成功的全域狀態文字變數
+        let lastSyncStatus = "尚未進行打卡同步"; 
 
         // 登入驗證
         function loginTrainer() {
@@ -238,6 +240,9 @@
             params.append('name', userName);
             params.append('score', score);
 
+            // 觸發傳送時先設定為傳送中
+            lastSyncStatus = "正在嘗試上傳至雲端試算表...";
+
             fetch(GAS_URL, {
                 method: 'POST',
                 headers: {
@@ -246,10 +251,14 @@
                 body: params.toString()
             })
             .then(response => {
+                // 🎯 判斷成功：如果伺服器回傳成功，將狀態字串更新
+                lastSyncStatus = "🟢 成功上傳至雲端試算表！";
                 console.log('試算表雲端同步成功');
             })
             .catch(error => {
-                console.error('同步至 Google 試算表失敗，請檢查網路或 GAS 網址權限:', error);
+                // 🎯 判斷失敗：如果網路斷線或網址有問題，擷取錯誤
+                lastSyncStatus = "🔴 上傳失敗，請檢查手機網路或 GAS 部署權限設定！";
+                console.error('同步至 Google 試算表失敗:', error);
             });
         }
 
@@ -270,20 +279,27 @@
             localStorage.setItem('gameHistory', JSON.stringify(history));
         }
 
+        // 查看歷史數據功能（已新增雲端試算表判斷狀態欄）
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
             const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT\n資料庫欄位 (Key): gameHistory`;
 
+            let report = "";
             if (history.length === 0) {
-                alert(`【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n💾 本地存檔位置：\n${storagePathText}`);
+                report = `【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n`;
             } else {
-                let report = `【訓練家 ${userName} 的歷史紀錄】\n\n`;
+                report = `【訓練家 ${userName} 的歷史紀錄】\n\n`;
                 history.forEach((entry, index) => {
                     report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
                 });
-                report += `\n💾 本地存檔位置：\n${storagePathText}`;
-                alert(report);
+                report += `\n`;
             }
+            
+            // 🎯 在彈窗的最末端加入「雲端試算表傳送狀態」判斷行
+            report += `☁️ 雲端試算表連線狀態：\n${lastSyncStatus}\n\n`;
+            report += `💾 本地手機存檔位置：\n${storagePathText}`;
+            
+            alert(report);
         }
 
         const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
@@ -443,7 +459,7 @@
                     // 2. 雲端同步上傳
                     syncToSheet(100);
                     
-                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！\n數據已同步上傳至 Google 試算表。`);
+                    alert(`🌟 核對成功！\n經影像核對，樹木外型相似度達標：${precisionScore}%\n恭喜獲得寶可夢積分：+100 分！\n數據已嘗試同步上傳至 Google 試算表。`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！順利得分。</span>");
                 } else {
