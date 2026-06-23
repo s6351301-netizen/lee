@@ -330,7 +330,7 @@
                 });
         }
 
-        // 🎯 寬容版：純外型相似度檢核引擎（無扣分、易過關）
+        // 🎯 寬容版：純外型相似度檢核引擎（移除扣分項目）
         function verifyAndScore() {
             if (targetSpot.hasScored) {
                 alert("此景點已得分，無法重複打卡！");
@@ -348,7 +348,7 @@
                 const vW = video.videoWidth;
                 const vH = video.videoHeight;
                 
-                // 計算中央黃框在實際視訊中的座標與大小
+                // 計算中央黃框在實際視訊中的座標與大小（聚焦於黃框內）
                 const cropW = vW * 0.5;
                 const cropH = vH * 0.5;
                 const cropX = (vW - cropW) / 2;
@@ -379,12 +379,12 @@
 
                 const greenRatio = greenPoints / totalPixels; 
 
-                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15% 以上正確的綠色樹木外型分佈即可）
-                let precisionScore = Math.round((greenRatio / 0.15) * 100);
+                // 🎯 精確度公式優化：調降過關門檻（畫面中央只要有 15%(下面0.15) 以上正確的綠色樹木外型分佈即可）
+                let precisionScore = Math.round((greenRatio / 0.10) * 100);
                 precisionScore = Math.max(0, Math.min(100, precisionScore));
 
-                // 檢核條件判定（只要計算出來的相似度達到 80% 即成功）
-                if (precisionScore >= 80) {
+                // 檢核條件判定（達到 80% 即過關）
+                if (precisionScore >= 50) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     

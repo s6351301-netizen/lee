@@ -409,64 +409,99 @@ function convertAddressNumbers($addressString)
         .sender-address {
             position: absolute;
             left: 25px;
-            top: 100px;
+            top: 120px;
             height: 360px;
-            font-size: 14px;
+            font-size: 16px;
             color: #000000;
             line-height: 25px;
         }
 
         /* 攜伴下拉選單樣式 */
-#companion_status {
-    border: none;
-    font-family: inherit;
-    font-size: inherit;
-    color: inherit;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-    width: 1.2em;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
+        #companion_status {
+            border: none;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            background: transparent;
+            cursor: pointer;
+            outline: none;
+            width: 1.2em;
+            padding: 0;
+            margin: 0;
+            line-height: 1;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            -webkit-text-orientation: upright;
+        }
 
-/* 姓名輸入方框樣式 */
-#companion_input {
-    display: none;
-    width: 1.2em;
-    height: 5em;
-    border: 1px solid #ccc;
-    outline: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: inherit;
-    padding: 2px;
-    margin: 0;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
+        /* 姓名輸入方框樣式 */
+        #companion_input {
+            display: none;
+            width: 1.2em;
+            height: 5em;
+            border: 1px solid #ccc;
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 2px;
+            margin: 0;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            -webkit-text-orientation: upright;
+        }
 
-/* 葷素食與共計名額的數字輸入區樣式 */
-.count-editable {
-    outline: none;
-    display: -webkit-inline-box;
-    min-width: 1em;
-    text-align: center;
-    line-height: 1;
-    border: none;
-    padding: 0;
-    margin: 0;
-    text-orientation: upright;
-    -webkit-text-orientation: upright;
-}
+        /* 讓第二段"攜伴"文字維持直排基準，超出的字自然融入 */
+        .section-two {
+            display: inline;
+            /* 🌟 改回純 inline：順應自然直排字流 */
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            -webkit-text-orientation: upright;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 🌟 最終修正：完全無外框、隨打字字數自動換行的輸入區 */
+        #companion_input_div {
+            display: none;
+            /* 預設隱藏，由 JS 切換顯示 */
+            outline: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            font-weight: inherit;
+            padding: 0;
+            margin: 0;
+            line-height: 1.1;
+            word-break: break-all;
+
+            /* 🎯 限制高度與對齊的核心語法 */
+            display: inline-block;
+            /* 必須改為 inline-block 才能精準限制最高高度 */
+            max-height: 11.5em;
+            /* 🌟 精準限制高度，使其剛好與「農曆115」底部等高 */
+            vertical-align: top;
+            /* 🌟 讓第一個字頭與上排的「，」完美切齊，不往右擠 */
+        }
+
+        /* 葷素食與共計名額的數字輸入區樣式 */
+        .count-editable {
+            outline: none;
+            display: -webkit-inline-box;
+            min-width: 1em;
+            text-align: center;
+            line-height: 1;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-orientation: upright;
+            -webkit-text-orientation: upright;
+        }
 
         /* =======================================================================
            【左側：明信片背面 - 內文面樣式】
@@ -776,12 +811,17 @@ function convertAddressNumbers($addressString)
                                     一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
                                     <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
                                     &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
-                                    二、參加人員有本人外<select id="companion_status"><option value="none">無攜伴</option><option value="has">攜伴</option></select><input type="text" name="companion_input" id="companion_input" placeholder="">
+
+                                    二、參加人員有本人外<select id="companion_status">
+                                        <option value="none">無攜伴</option>
+                                        <option value="has">攜伴</option>
+                                    </select>，<span contenteditable="true"></span><input type="hidden" name="companion_info" id="companion_info" value="">葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。<br>
+                                    <!--二、參加人員有本人外<select id="companion_status"><option value="none">無攜伴</option><option value="has">攜伴</option></select><input type="text" name="companion_input" id="companion_input" placeholder="">
                                     <input type="hidden" name="companion_info" id="companion_info" value=""><br>
                                     &emsp;&emsp;，葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個
                                     ，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。
-                                    
-                                    <br>
+            -->
+
                                     三、若本人無法出席，將授權由<span class="combine-num">編號</span>姓名代理出席。<br>
                                 </div>
                                 <!--
@@ -848,8 +888,8 @@ function convertAddressNumbers($addressString)
                             </div>
 
                             <div class="sender-address vertical-text-mode">
-                                寄件人：台中市李武略派下李氏宗親會 敬啟<br>
-                                &emsp;&emsp;&emsp;&emsp;臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span
+                                台中市李武略派下李氏宗親會 敬啟<br>
+                                臺中市大甲區義和里中山路一段<span class="combine-num">484</span>巷<span
                                     class="combine-num">45</span>號
                             </div>
 
@@ -960,49 +1000,55 @@ function convertAddressNumbers($addressString)
         })();
     </script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const statusSelect = document.getElementById('companion_status');
-    const compInput = document.getElementById('companion_input');
-    const compHidden = document.getElementById('companion_info');
-    
-    const meatDisplay = document.getElementById('meat_count_display');
-    const vegDisplay = document.getElementById('veg_count_display');
-    const totalDisplay = document.getElementById('total_people_display');
-    
-    const meatHidden = document.getElementById('meat_count');
-    const vegHidden = document.getElementById('veg_count');
-    const totalHidden = document.getElementById('total_people');
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const statusSelect = document.getElementById('companion_status');
+            const compInputDiv = document.getElementById('companion_input_div'); // 綁定新版 span 容器
+            const compHidden = document.getElementById('companion_info');
 
-    // 1. 純粹控制空白文字方框的顯示與隱藏
-    statusSelect.addEventListener('change', function() {
-        if (this.value === 'has') {
-            compInput.style.display = 'inline-block';
-            compInput.focus();
-        } else {
-            compInput.style.display = 'none';
-            compInput.value = '';
-            compHidden.value = '';
-        }
-    });
+            const meatDisplay = document.getElementById('meat_count_display');
+            const vegDisplay = document.getElementById('veg_count_display');
+            const totalDisplay = document.getElementById('total_people_display');
 
-    // 2. 使用者打什麼就傳什麼，完全不作任何程式判斷
-    compInput.addEventListener('input', function() {
-        compHidden.value = this.value; 
-    });
+            const meatHidden = document.getElementById('meat_count');
+            const vegHidden = document.getElementById('veg_count');
+            const totalHidden = document.getElementById('total_people');
 
-    // 3. 葷素食與共計人數：純手動輸入變更，僅同步隱藏表單欄位
-    meatDisplay.addEventListener('input', function() {
-        if(meatHidden) meatHidden.value = this.innerText.trim();
-    });
-    vegDisplay.addEventListener('input', function() {
-        if(vegHidden) vegHidden.value = this.innerText.trim();
-    });
-    totalDisplay.addEventListener('input', function() {
-        if(totalHidden) totalHidden.value = this.innerText.trim();
-    });
-});
-</script>
+            // 1. 控制無邊框輸入方框的顯示與隱藏（改用 inline 模式防止被高度壓縮）
+            statusSelect.addEventListener('change', function() {
+                if (this.value === 'has') {
+                    compInputDiv.style.display = 'inline'; // 🌟 關鍵：用 inline 模式展開，有空間可打字且不跑位
+                    compInputDiv.focus();
+                } else {
+                    compInputDiv.style.display = 'none';
+                    compInputDiv.innerText = '';
+                    compHidden.value = '';
+                }
+            });
+
+            // 2. 監聽打字：抓取 innerText 並同步傳值給後台
+            compInputDiv.addEventListener('input', function() {
+                compHidden.value = this.innerText.trim();
+            });
+
+            // 3. 葷素食與共計人數手動輸入同步
+            if (meatDisplay) {
+                meatDisplay.addEventListener('input', function() {
+                    if (meatHidden) meatHidden.value = this.innerText.trim();
+                });
+            }
+            if (vegDisplay) {
+                vegDisplay.addEventListener('input', function() {
+                    if (vegHidden) vegHidden.value = this.innerText.trim();
+                });
+            }
+            if (totalDisplay) {
+                totalDisplay.addEventListener('input', function() {
+                    if (totalHidden) totalHidden.value = this.innerText.trim();
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>
