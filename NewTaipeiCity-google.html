@@ -61,7 +61,7 @@
             cursor: not-allowed;
         }
         .btn-history { background-color: #2196F3; }
-        .btn-logout { background-color: #ff9800; } /* 新增登出按鈕顏色 */
+        .btn-logout { background-color: #ff9800; }
         
         /* 手機鏡頭畫面遮罩層 */
         #camera-view {
@@ -184,7 +184,7 @@
     <div id="action-container">
         <button id="ar-btn" class="btn" disabled onclick="openCameraWithComparison()">距離太遠（GPS 鎖定中）</button>
         <button class="btn btn-history" onclick="viewHistory()">查看歷史數據</button>
-        <button class="btn btn-logout" onclick="logoutTrainer()">切換/更換訓練家姓名</button> <!-- 🎯 修正點 1: 新增更換名字按鈕 -->
+        <button class="btn btn-logout" onclick="logoutTrainer()">更換訓練家姓名</button>
     </div>
 
     <div id="camera-view">
@@ -225,10 +225,10 @@
             localStorage.setItem('trainerName', nameInput);
             userName = nameInput;
             document.getElementById('login-modal').style.display = 'none';
-            location.reload(); // 重新整理網頁刷新地圖狀態
+            location.reload(); 
         }
 
-        // 🎯 修正點 1: 清除快取並強制跳回登入頁面
+        // 手動清除快取更換名字
         function logoutTrainer() {
             if(confirm("確定要更換訓練家姓名嗎？這將會清除目前的登入狀態。")) {
                 localStorage.removeItem('trainerName');
@@ -247,11 +247,12 @@
 
         // 遠端試算表資料同步函式
         function syncToSheet(score) {
-            // 🎯 修正點 2: 同時發送 URL 參數 與 FormData，並加上常用後端接收名稱欄位，確保無論 GAS 怎麼寫都能抓到
             const params = new URLSearchParams();
-            params.append('name', userName);
-            params.append('username', userName); // 備份欄位
-            params.append('score', score);
+            // 🎯 關鍵修正：直接以中文「姓名」與「成績」作為參數標題發送，與後端 GAS 完美互通
+            params.append('姓名', userName);
+            params.append('成績', score);
+            params.append('name', userName); // 英文備份欄位
+            params.append('score', score); // 英文備份欄位
 
             lastSyncStatus = "正在嘗試上傳至雲端試算表...";
 
@@ -292,8 +293,6 @@
 
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
-            const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT\n資料庫欄位 (Key): gameHistory`;
-
             let report = "";
             if (history.length === 0) {
                 report = `【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n`;
@@ -305,8 +304,7 @@
                 report += `\n`;
             }
             
-            report += `☁️ 雲端試算表連線狀態：\n${lastSyncStatus}\n\n`;
-            report += `💾 本地手機存檔位置：\n${storagePathText}`;
+            report += `☁️ 雲端試算表連線狀態：\n${lastSyncStatus}\n`;
             
             alert(report);
         }
