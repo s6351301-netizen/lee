@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泰山寶可夢據點 - 訓練家登入</title>
+    <style>
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background: #121212; color: #ffffff;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+        }
+        h2 { margin-bottom: 5px; color: #ffeb3b; }
+        p { color: #aaa; font-size: 14px; margin-bottom: 25px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 14px; margin-bottom: 5px; color: #ccc; }
+        input {
+            width: 100%; padding: 12px; box-sizing: border-box;
+            border-radius: 8px; border: 1px solid #444;
+            background: #222; color: #fff; font-size: 16px;
+        }
+        input:focus { border-color: #4CAF50; outline: none; }
+        .btn {
+            background-color: #4CAF50; color: white; border: none;
+            padding: 14px; font-size: 18px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; width: 100%;
+            margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>⚔️ 身份驗證</h2>
+        <p>請輸入您的培訓資料以進入寶可夢地圖</p>
+        
+        <div class="input-group">
+            <label for="user-no">帳號 或 編號 (座號)</label>
+            <input type="text" id="user-no" placeholder="例如：01">
+        </div>
+        
+        <div class="input-group">
+            <label for="user-password">密碼</label>
+            <input type="password" id="user-password" placeholder="請輸入密碼">
+        </div>
+        
+        <button class="btn" onclick="handleLogin()">驗證並進入地圖</button>
+    </div>
+
+    <script>
+        // 🎯 請在下方貼上您部署「登入驗證.gs」後取得的網頁應用程式網址
+        const GAS_URL = "您的_GAS_網頁應用程式_URL"; 
+
+        function handleLogin() {
+            const noInput = document.getElementById('user-no').value.trim();
+            const passwordInput = document.getElementById('user-password').value.trim();
+            
+            if (!noInput || !passwordInput) {
+                return alert("請填寫帳號與密碼！");
+            }
+            
+            // 封裝要傳送給後端 .gs 的資料
+            const params = new URLSearchParams();
+            params.append('action', 'login'); // 👈 告訴後端我們要進行「登入」比對
+            params.append('帳號', noInput);
+            params.append('密碼', passwordInput);
+
+            // 發送請求給 Google 雲端
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`歡迎回來，${data.name} 訓練家！`);
+                    
+                    // 🟢 成功後將資料寫入瀏覽器快取，下一頁地圖直接讀取
+                    localStorage.setItem('trainerNo', noInput);
+                    localStorage.setItem('trainerName', data.name);
+                    
+                    // 🟢 跳轉至您的寶可夢地圖頁面 (請依據您的地圖網頁檔名調整，例如 map.html)
+                    window.location.href = "NewTaipeiCity.html"; 
+                } else {
+                    // 🔴 失敗時顯示後端回傳的錯誤訊息 (例如：帳號或密碼錯誤)
+                    alert("❌ 登入失敗：" + data.message);
+                }
+            })
+            .catch(error => {
+                alert("連線失敗，請檢查網路或 GAS 網址！");
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>

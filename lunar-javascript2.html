@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP語言與資料庫程式設計應用班課表</title>
+    <style>
+        /* CSS 樣式整合區 */
+        body { 
+            font-family: "Microsoft JhengHei", Arial, sans-serif; 
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: auto; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2, h3 { text-align: center; }
+        .nav { text-align: center; margin-bottom: 20px; }
+        .nav a { margin: 0 10px; text-decoration: none; color: #007bff; }
+        
+        .calendar { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+        .calendar th { 
+            background-color: #f1f3f5; 
+            padding: 12px; 
+            border: 1px solid #dee2e6; 
+            text-align: center;
+        }
+        .calendar td { 
+            border: 1px solid #dee2e6; 
+            padding: 8px; 
+            height: 100px; 
+            vertical-align: top; 
+            width: 14.28%;
+            position: relative;
+        }
+        
+        /* 日期數字與課程文字樣式 */
+        .day-num { font-weight: bold; color: #555; }
+        .course-item { 
+            display: block; 
+            margin-top: 5px; 
+            font-size: 0.85em; 
+            color: #0056b3;
+            background: #e7f1ff;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        
+        /* 特殊日處理 */
+        .holiday { background-color: #f8d7da; }
+        .other-month { background-color: #f1f3f5; color: #adb5bd; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>泰山訓練場-班級課表</h2>
+    <h3>115年度 PHP資料庫網頁設計(政策性課程) 第1期</h3>
+    
+    <div class="nav">
+        <a href="#">全期課表</a> | <a href="#">月課表</a> | <a href="#">周課表</a>
+    </div>
+
+    <table class="calendar">
+        <thead>
+            <tr>
+                <th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="other-month"><div class="day-num">31 / 5</div></td>
+                <td><div class="day-num">01 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">02 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td><div class="day-num">03 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td><div class="day-num">04 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">05 / 6</div><span class="course-item">班會/聯課活動</span></td>
+                <td><div class="day-num">06 / 6</div></td>
+            </tr>
+            <tr>
+                <td><div class="day-num">07 / 6</div></td>
+                <td><div class="day-num">08 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">09 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">10 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td><div class="day-num">11 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td><div class="day-num">12 / 6</div><span class="course-item">視覺影像設計</span></td>
+                <td><div class="day-num">13 / 6</div></td>
+            </tr>
+            <tr>
+                <td><div class="day-num">14 / 6</div></td>
+                <td><div class="day-num">15 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">16 / 6</div><span class="course-item">資料庫程式設計</span></td>
+                <td><div class="day-num">17 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td><div class="day-num">18 / 6</div><span class="course-item">網頁動態技術</span></td>
+                <td class="holiday"><div class="day-num">19 / 6</div><span class="course-item">端午節</span></td>
+                <td><div class="day-num">20 / 6</div></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

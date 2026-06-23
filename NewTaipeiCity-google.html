@@ -209,6 +209,15 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+// 地圖頁開頭：直接抓取前一頁存好的快取資料
+let userNo = localStorage.getItem('trainerNo');
+let userName = localStorage.getItem('trainerName');
+
+// 防呆：如果發現快取沒資料，代表他沒走前一頁登入，強制踢回登入頁
+if (!userNo || !userName) {
+    alert("請先完成身份驗證！");
+    window.location.href = "google-login.html"; 
+}
         // 🎯 已更新為您的第 3 版 GAS 最新部署網址
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyzXILXlGRyOKWFAxcpycRo9rUI9sRItATzgzE4TUvhPuVEdaerzKsU_Dbyw_pJTy1C/exec";
         
