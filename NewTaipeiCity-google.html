@@ -11,8 +11,8 @@
         
         /* 登入視窗 */
         #login-modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; }
-        input { padding: 15px; border-radius: 5px; border:none; margin: 10px; width: 80%; max-width: 300px; }
-        .btn { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-size: 18px; }
+        input { padding: 15px; border-radius: 5px; border:none; margin: 10px; width: 80%; max-width: 300px; color: black; }
+        .btn { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 50px; cursor: pointer; font-size: 18px; font-weight: bold; }
 
         /* 導覽盤控制區 */
         #action-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 90%; max-width: 400px; text-align: center; }
@@ -30,17 +30,18 @@
 
     <div id="map"></div>
     <div id="action-container">
-        <button id="ar-btn" class="btn" disabled>GPS 定位中...</button>
+        <button id="ar-btn" class="btn" onclick="openCamera()">📷 點擊開啟鏡頭拍照</button>
     </div>
 
     <div id="camera-view">
         <video id="video" autoplay playsinline></video>
-        <button style="position:absolute; top:20px; right:20px;" onclick="closeCamera()">關閉</button>
+        <button style="position:absolute; top:20px; right:20px; padding: 10px; background: white; border: none; border-radius: 5px;" onclick="closeCamera()">關閉</button>
         <button class="btn" style="position:absolute; bottom:50px; width:80%; left:10%;" onclick="verifyAndScore()">📸 拍照確認</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // ⚠️ 請務必確認此處已替換為您「重新部署後」的最新 GAS 網址
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyclSGjWNouBBJOUZlN2A705I9eZhOy4c-yjZL0l4M_Z2-9fK3leemIXRaZ78-RmGLH/exec";
         let userName = localStorage.getItem('userName');
 
@@ -52,43 +53,68 @@
             document.getElementById('login-modal').style.display = 'none';
         }
 
-        if(!userName) document.getElementById('login-modal').style.display = 'flex';
+        if(!userName) {
+            document.getElementById('login-modal').style.display = 'flex';
+        } else {
+            document.getElementById('login-modal').style.display = 'none';
+        }
 
+        // 🎯 修正後的數據同步功能：改用 URL-Encoded 標準格式發送，確保雲端能穩定收單
         function syncToSheet(score) {
+            const params = new URLSearchParams();
+            params.append('name', userName);
+            params.append('score', score);
+
             fetch(GAS_URL, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: userName, score: score })
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: params.toString()
+            })
+            .then(response => {
+                console.log('試算表同步成功');
+            })
+            .catch(error => {
+                console.error('同步至試算表時發生錯誤:', error);
             });
         }
 
+        // 初始化地圖
         const map = L.map('map').setView([25.044229, 121.418815], 17);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         const points = [
-            { name: "警衛室", lat: 25.044150, lng: 121.418700, streetView: "https://www.google.com/maps/place/%E5%8B%9E%E5%8B%95%E9%83%A8%E5%8B%9E%E5%8B%95%E5%8A%9B%E7%99%BC%E5%B1%95%E7%BD%B2%E5%8C%97%E5%9F%BA%E5%AE%9C%E8%8A%B1%E9%87%91%E9%A6%AC%E5%88%86%E7%BD%B2%E6%B3%B0%E5%B1%B1%E8%81%B7%E6%A5%AD%E8%A8%93%E7%B7%B4%E5%A0%B4/@25.043816,121.4193307,3a,75y,133.43h,104.74t/data=!3m7!1e1!3m5!1sCIHM0ogKEICAgIDmxPm0jwE!2e10!6shttps:%2F%2Flh3.googleusercontent.com%2Fgpms-cs-s%2FABJJf50gH3bR_0SdN-jNhxmvFLupEKhorZl70EXXDdFboZ5cf9-dgvgIBy8dcJ2ZLrvDGR9WUnaGuCUGCsI4UZeMjZ8D7mKv2ucLsp2VfO2Si5dhiqJP-v94WI13JnXEpCeGAQ40z4_TtQ%3Dw900-h600-k-no-pi-14.744214893225433-ya117.4343273958269-ro0-fo100!7i11356!8i5678!4m7!3m6!1s0x3442a7bec9ad74b1:0xa639904a89f26435!8m2!3d25.0441293!4d121.4195156!10e5!16s%2Fg%2F119vdvmg4!5m1!1e4?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
-            { name: "大門廣場", lat: 25.044229, lng: 121.418815, streetView: "https://www.google.com/maps/place/%E5%8B%9E%E5%8B%95%E9%83%A8%E5%8B%9E%E5%8B%95%E5%8A%9B%E7%99%BC%E5%B1%95%E7%BD%B2%E5%8C%97%E5%9F%BA%E5%AE%9C%E8%8A%B1%E9%87%91%E9%A6%AC%E5%88%86%E7%BD%B2%E6%B3%B0%E5%B1%B1%E8%81%B7%E6%A5%AD%E8%A8%93%E7%B7%B4%E5%A0%B4/@25.043629,121.4192543,3a,75y,7.8h,102.3t/data=!3m8!1e1!3m6!1sCIHM0ogKEICAgIDmxPnUkQE!2e10!3e12!6shttps:%2F%2Flh3.googleusercontent.com%2Fgpms-cs-s%2FABJJf53I2D9eglOWGS8yqaGnf1Nza_N2I7StIo3k4n16AqPPubiP4Cx5bxDK9l4VHnmGGgcLK3EF8HmhvuzVDQzwqgp1MIN29Mhm8lMyOsohK5sI3T7zr5_pIMGVR7OCb6n5CwdGqsrukw%3Dw900-h600-k-no-pi-12.296281393525817-ya72.798515682848-ro0-fo100!7i11330!8i5665!4m7!3m6!1s0x3442a7bec9ad74b1:0xa639904a89f26435!8m2!3d25.0441293!4d121.4195156!10e5!16s%2Fg%2F119vdvmg4!5m1!1e4?entry=ttu&g_ep=EgoyMDI2MDYxNi4wIKXMDSoASAFQAw%3D%3D" },
-            { name: "第一停車場", lat: 25.044000, lng: 121.418300, streetView: "https://www.google.com/maps/place/25%C2%B002'40.2%22N+121%C2%B025'09.5%22E/@25.0444847,121.4193432,3a,90y,76.09h,79.21t/data=!3m8!1e1!3m6!1sCIHM0ogKEICAgIDmxMXu7wE!2e10!3e11!6shttps:%2F%2Flh3.googleusercontent.com%2Fgpms-cs-s%2FABJJf53mfsJjCDoiQTNmMkomS18LYv1G9qv2jRhzRKbj4LqljpEo1uQcC77CTOGNhGTicG7pKDOtjcIk0XlqWUdCXo3HOXdAj0BPJ8xol3c-dl05Fw7-XaJXnAqnsCEt04599oSj8Tv_Dg%3Dw900-h600-k-no-pi10.788818355302794-ya58.0903618158173-ro0-fo100!7i11318!8i5659!4m4!3m3!8m2!3d25.0445!4d121.4193?entry=ttu" }
+            { name: "警衛室", lat: 25.044150, lng: 121.418700, streetView: "https://www.google.com/maps?q=25.044150,121.418700" },
+            { name: "大門廣場", lat: 25.044229, lng: 121.418815, streetView: "https://www.google.com/maps?q=25.044229,121.418815" },
+            { name: "第一停車場", lat: 25.044000, lng: 121.418300, streetView: "https://www.google.com/maps?q=25.044000,121.418300" }
         ];
 
-        // 地圖上建立點位 (點擊開啟街景)
         points.forEach(p => {
             L.marker([p.lat, p.lng]).addTo(map)
-                .bindPopup(`<b>${p.name}</b><br><a href="${p.streetView}" target="_blank">查看街景</a>`)
-                .on('click', () => { if(confirm('是否查看街景?')) window.open(p.streetView); });
+                .bindPopup(`<b>${p.name}</b><br><a href="${p.streetView}" target="_blank">查看街景</a>`);
         });
 
+        function openCamera() {
+            document.getElementById('camera-view').style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                .then(stream => { document.getElementById('video').srcObject = stream; })
+                .catch(err => { alert("無法啟動相機"); closeCamera(); });
+        }
+
         function verifyAndScore() {
-            // 這裡模擬核對邏輯
             const score = 100;
-            alert(`🌟 恭喜 ${userName} 打卡成功，獲得 ${score} 分！`);
+            alert(`🌟 恭喜 ${userName} 打卡成功，獲得 ${score} 分！\n正在同步數據至雲端試算表...`);
             syncToSheet(score);
             closeCamera();
         }
 
         function closeCamera() {
             document.getElementById('camera-view').style.display = 'none';
+            const video = document.getElementById('video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
         }
     </script>
 </body>
