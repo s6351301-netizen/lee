@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泰山寶可夢據點 - 訓練家登入</title>
+    <style>
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background: #121212; color: #ffffff;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+        }
+        h2 { margin-bottom: 5px; color: #ffeb3b; }
+        p { color: #aaa; font-size: 14px; margin-bottom: 25px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        
+        /* 標籤列布局，讓標籤與姓名提示並排 */
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        label { font-size: 14px; color: #ccc; }
+        
+        /* AJAX 姓名動態顯示樣式 */
+        #user-name-preview {
+            font-size: 14px;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        .status-searching { color: #ff9800; } /* 搜尋中：橘色 */
+        .status-success { color: #00ff00; }   /* 找到姓名：綠色 */
+        .status-fail { color: #ff3b30; }      /* 找不到：紅色 */
+
+        input {
+            width: 100%; padding: 12px; box-sizing: border-box;
+            border-radius: 8px; border: 1px solid #444;
+            background: #222; color: #fff; font-size: 16px;
+        }
+        input:focus { border-color: #4CAF50; outline: none; }
+        .btn {
+            background-color: #4CAF50; color: white; border: none;
+            padding: 14px; font-size: 18px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; width: 100%;
+            margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>⚔️ 身份驗證</h2>
+        <p>請輸入您的培訓資料以進入寶可夢地圖</p>
+        
+        <div class="input-group">
+            <div class="label-row">
+                <label for="user-no">帳號 或 編號 (座號)</label>
+                <!-- 🎯 AJAX 姓名動態顯示區 -->
+                <span id="user-name-preview"></span>
+            </div>
+            <!-- 當輸入框失去焦點 (onblur) 或手動點選密碼欄時，即時觸發 AJAX 查詢 -->
+            <input type="text" id="user-no" placeholder="例如：01" onblur="checkUserRealtime()">
+        </div>
+        
+        <div class="input-group">
+            <label for="user-password">密碼</label>
+            <input type="password" id="user-password" placeholder="請輸入密碼">
+        </div>
+        
+        <button class="btn" onclick="handleLogin()">驗證並進入地圖</button>
+    </div>
+
+    <script>
+        
+        // 🎯 網址已完美更新為您的第 5 版最新部署網址
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwc8q_X4_p4ZXcVoDZUxWd3wnaIdqUdhIF6XkL6CCsg5aI7WTjyzVvQD35ueFYTU-_L/exec"; 
+
+        // 🔄 核心 AJAX 功能：即時透過帳號比對試算表並顯示姓名
+        function checkUserRealtime() {
+            const noInput = document.getElementById('user-no').value.trim();
+            const previewSpan = document.getElementById('user-name-preview');
+            
+            // 如果使用者清空了帳號欄位，就跟著清空提示字
+            if (!noInput) {
+                previewSpan.innerText = "";
+                return;
+            }
+
+            // 先顯示正在飛速查詢中
+            previewSpan.className = "status-searching";
+            previewSpan.innerText = "🔍 查詢中...";
+
+            const params = new URLSearchParams();
+            params.append('action', 'checkUser'); // 呼叫第 5 版新增的單純查名動作
+            params.append('帳號', noInput);
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 🟢 綠色字體：成功比對到試算表上的訓練家姓名
+                    previewSpan.className = "status-success";
+                    previewSpan.innerText = `👤 訓練家：${data.name}`;
+                } else {
+                    // 🔴 紅色字體：試算表會員資料分頁找不到此帳號
+                    previewSpan.className = "status-fail";
+                    previewSpan.innerText = "❌ 查無此帳號/座號";
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                previewSpan.className = "status-fail";
+                previewSpan.innerText = "⚠️ 連線失敗";
+            });
+        }
+
+        // 🔐 帳號密碼完整登入驗證功能
+        function handleLogin() {
+            const noInput = document.getElementById('user-no').value.trim();
+            const passwordInput = document.getElementById('user-password').value.trim();
+            
+            if (!noInput || !passwordInput) {
+                return alert("請填寫帳號與密碼！");
+            }
+            
+            const params = new URLSearchParams();
+            params.append('action', 'login'); 
+            params.append('帳號', noInput);
+            params.append('密碼', passwordInput);
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`歡迎回來，${data.name} 訓練家！`);
+                    
+                    // 快取存檔，讓下一頁地圖可以直接讀取使用
+                    localStorage.setItem('trainerNo', noInput);
+                    localStorage.setItem('trainerName', data.name);
+                    
+                    // 成功登入後跳轉地圖
+                    window.location.href = "NewTaipeiCity.html"; 
+                } else {
+                    alert("❌ 登入失敗：" + data.message);
+                }
+            })
+            .catch(error => {
+                alert("連線失敗，請檢查網路或 GAS 網址！");
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>
