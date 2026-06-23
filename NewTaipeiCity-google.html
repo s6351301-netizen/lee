@@ -170,8 +170,8 @@
     <div id="login-modal">
         <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
         <p>請輸入您的基本資料以開始定位打卡</p>
-        <input type="text" id="user-no" placeholder="第一欄：請輸入編號 (座號)">
-        <input type="text" id="username" placeholder="第二欄：請輸入姓名">
+        <input type="text" id="user-no" placeholder="請輸入編號或座號">
+        <input type="text" id="username" placeholder="請輸入姓名">
         <button class="btn" style="max-width: 200px; margin-top: 15px;" onclick="loginTrainer()">進入地圖</button>
     </div>
 
@@ -220,7 +220,7 @@
             const noInput = document.getElementById('user-no').value.trim();
             const nameInput = document.getElementById('username').value.trim();
             
-            if(!noInput) return alert("請輸入有效的編號 (座號)！");
+            if(!noInput) return alert("請輸入有效的編號或座號！");
             if(!nameInput) return alert("請輸入有效的姓名！");
             
             // 儲存至瀏覽器快取
@@ -380,12 +380,12 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
-                if (distance <= 80) {
+                if (distance <= 70) {
                     if (!targetSpot.hasScored) {
-                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 80 米打卡區！請啟動鏡頭。</span>");
+                        info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 70 米打卡區！請啟動鏡頭。</span>");
                         arBtn.disabled = false;
                         arBtn.style.backgroundColor = "#4CAF50";
-                        arBtn.innerText = "⚡ 進入 80 米範圍：開啟鏡頭核對";
+                        arBtn.innerText = "⚡ 進入 70 米範圍：開啟鏡頭核對";
                     } else {
                         info.update(distance, "此據點已完成打卡。");
                         arBtn.disabled = true;
@@ -393,7 +393,7 @@
                         arBtn.innerText = "已完成打卡";
                     }
                 } else {
-                    info.update(distance, "未進入 80 米範圍 (請繼續靠近)");
+                    info.update(distance, "未進入 70 米範圍 (請繼續靠近)");
                     arBtn.disabled = true;
                     arBtn.style.backgroundColor = "#cccccc";
                     arBtn.innerText = "距離太遠（GPS 鎖定中）";
@@ -472,7 +472,7 @@
                 let precisionScore = Math.round((greenRatio / 0.15) * 100);
                 precisionScore = Math.max(0, Math.min(100, precisionScore));
 
-                if (precisionScore >= 80) {
+                if (precisionScore >= 90) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
                     
@@ -486,7 +486,7 @@
                     alert(`❌ 核對失敗（目前核對精確度：${precisionScore}%）\n\n【提示】：請將相機對準現場綠色樹木，並嘗試靠近或移動位置，讓樹木填入中央黃色框線中。`);
                 }
             } else {
-                alert("❌ 打卡失敗！您已離開 80 公尺範圍。");
+                alert("❌ 打卡失敗！您已離開 70 公尺範圍。");
                 closeCamera();
             }
         }
