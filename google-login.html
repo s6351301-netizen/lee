@@ -24,7 +24,26 @@
         h2 { margin-bottom: 5px; color: #ffeb3b; }
         p { color: #aaa; font-size: 14px; margin-bottom: 25px; }
         .input-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 14px; margin-bottom: 5px; color: #ccc; }
+        
+        /* 標籤列布局，讓標籤與姓名提示並排 */
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        label { font-size: 14px; color: #ccc; }
+        
+        /* AJAX 姓名動態顯示樣式 */
+        #user-name-preview {
+            font-size: 14px;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        .status-searching { color: #ff9800; } /* 搜尋中：橘色 */
+        .status-success { color: #00ff00; }   /* 找到姓名：綠色 */
+        .status-fail { color: #ff3b30; }      /* 找不到：紅色 */
+
         input {
             width: 100%; padding: 12px; box-sizing: border-box;
             border-radius: 8px; border: 1px solid #444;
@@ -48,8 +67,13 @@
         <p>請輸入您的培訓資料以進入寶可夢地圖</p>
         
         <div class="input-group">
-            <label for="user-no">帳號 或 編號 (座號)</label>
-            <input type="text" id="user-no" placeholder="例如：01">
+            <div class="label-row">
+                <label for="user-no">帳號 或 編號 (座號)</label>
+                <!-- 🎯 AJAX 姓名動態顯示區 -->
+                <span id="user-name-preview"></span>
+            </div>
+            <!-- 當輸入框失去焦點 (onblur) 或手動點選密碼欄時，即時觸發 AJAX 查詢 -->
+            <input type="text" id="user-no" placeholder="例如：01" onblur="checkUserRealtime()">
         </div>
         
         <div class="input-group">
@@ -61,9 +85,53 @@
     </div>
 
     <script>
-        // 🎯 請在下方貼上您部署「登入驗證.gs」後取得的網頁應用程式網址
-        const GAS_URL = "您的_GAS_網頁應用程式_URL"; 
+        
+        // 🎯 網址已完美更新為您的第 5 版最新部署網址
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwc8q_X4_p4ZXcVoDZUxWd3wnaIdqUdhIF6XkL6CCsg5aI7WTjyzVvQD35ueFYTU-_L/exec"; 
 
+        // 🔄 核心 AJAX 功能：即時透過帳號比對試算表並顯示姓名
+        function checkUserRealtime() {
+            const noInput = document.getElementById('user-no').value.trim();
+            const previewSpan = document.getElementById('user-name-preview');
+            
+            // 如果使用者清空了帳號欄位，就跟著清空提示字
+            if (!noInput) {
+                previewSpan.innerText = "";
+                return;
+            }
+
+            // 先顯示正在飛速查詢中
+            previewSpan.className = "status-searching";
+            previewSpan.innerText = "🔍 查詢中...";
+
+            const params = new URLSearchParams();
+            params.append('action', 'checkUser'); // 呼叫第 5 版新增的單純查名動作
+            params.append('帳號', noInput);
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 🟢 綠色字體：成功比對到試算表上的訓練家姓名
+                    previewSpan.className = "status-success";
+                    previewSpan.innerText = `👤 訓練家：${data.name}`;
+                } else {
+                    // 🔴 紅色字體：試算表會員資料分頁找不到此帳號
+                    previewSpan.className = "status-fail";
+                    previewSpan.innerText = "❌ 查無此帳號/座號";
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                previewSpan.className = "status-fail";
+                previewSpan.innerText = "⚠️ 連線失敗";
+            });
+        }
+
+        // 🔐 帳號密碼完整登入驗證功能
         function handleLogin() {
             const noInput = document.getElementById('user-no').value.trim();
             const passwordInput = document.getElementById('user-password').value.trim();
@@ -72,13 +140,11 @@
                 return alert("請填寫帳號與密碼！");
             }
             
-            // 封裝要傳送給後端 .gs 的資料
             const params = new URLSearchParams();
-            params.append('action', 'login'); // 👈 告訴後端我們要進行「登入」比對
+            params.append('action', 'login'); 
             params.append('帳號', noInput);
             params.append('密碼', passwordInput);
 
-            // 發送請求給 Google 雲端
             fetch(GAS_URL, {
                 method: 'POST',
                 body: params
@@ -88,14 +154,13 @@
                 if (data.success) {
                     alert(`歡迎回來，${data.name} 訓練家！`);
                     
-                    // 🟢 成功後將資料寫入瀏覽器快取，下一頁地圖直接讀取
+                    // 快取存檔，讓下一頁地圖可以直接讀取使用
                     localStorage.setItem('trainerNo', noInput);
                     localStorage.setItem('trainerName', data.name);
                     
-                    // 🟢 跳轉至您的寶可夢地圖頁面 (請依據您的地圖網頁檔名調整，例如 map.html)
+                    // 成功登入後跳轉地圖
                     window.location.href = "NewTaipeiCity.html"; 
                 } else {
-                    // 🔴 失敗時顯示後端回傳的錯誤訊息 (例如：帳號或密碼錯誤)
                     alert("❌ 登入失敗：" + data.message);
                 }
             })
