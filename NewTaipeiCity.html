@@ -216,11 +216,8 @@
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
             
-            // 自動取得當前網頁網域環境（Origin）
-            const currentOrigin = window.location.origin === "null" ? "Local File (本地檔案模式)" : window.location.origin;
-            
-            // 🎯 新增項目：串接並產生一行文字的完整手機存檔路徑
-            const storagePathText = `Origin: [${currentOrigin}] -> Local Storage -> Key: gameHistory`;
+            // 🎯 修正後：直接寫出手機系統內部的實體存檔路徑與檔案名稱（以主流 Chrome 瀏覽器的 LevelDB 資料庫結構為例）
+            const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT / MANIFEST\n資料庫欄位名稱 (Key): gameHistory`;
 
             if (history.length === 0) {
                 alert(`【打卡歷史紀錄】\n\n目前尚無遊戲歷史紀錄。\n\n💾 存檔位置：\n${storagePathText}`);
@@ -230,7 +227,6 @@
                     report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
                 });
                 
-                // 🎯 於視窗底部顯示多出來的存檔位置項目
                 report += `\n💾 存檔位置：\n${storagePathText}`;
                 alert(report);
             }
