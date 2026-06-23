@@ -465,29 +465,24 @@ function convertAddressNumbers($addressString)
             padding: 0;
         }
 
-        /* 🌟 最終修正：完全無外框、隨打字字數自動換行的輸入區 */
-        #companion_input_div {
-            display: none;
-            /* 預設隱藏，由 JS 切換顯示 */
-            outline: none;
-            background: transparent;
-            font-family: inherit;
-            font-size: inherit;
-            color: inherit;
-            font-weight: inherit;
-            padding: 0;
-            margin: 0;
-            line-height: 1.1;
-            word-break: break-all;
-
-            /* 🎯 限制高度與對齊的核心語法 */
-            display: inline-block;
-            /* 必須改為 inline-block 才能精準限制最高高度 */
-            max-height: 11.5em;
-            /* 🌟 精準限制高度，使其剛好與「農曆115」底部等高 */
-            vertical-align: top;
-            /* 🌟 讓第一個字頭與上排的「，」完美切齊，不往右擠 */
-        }
+        /* 🌟 最終完美修正：限制最高高度、隨字數多寡自動往左換行的字流包廂 */
+#companion_input_div {
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    font-weight: inherit;
+    padding: 0;
+    margin: 0;
+    line-height: 1.2;          /* 微調行高，讓換行後的字體間距更美觀 */
+    word-break: break-all;
+    
+    /* 🎯 限制高度與對齊的核心語法 */
+    display: inline-block;     /* 🌟 必須是 inline-block，max-height 才會生效 */
+    max-height: 11.5em;        /* 🌟 精準限制最高高度，剛好與「農曆115」底部完全切齊 */
+    vertical-align: top;       /* 🌟 讓字頭永遠與上排的「，」緊緊切齊，絕對不歪斜、不右擠 */
+}
 
         /* 葷素食與共計名額的數字輸入區樣式 */
         .count-editable {
@@ -502,6 +497,28 @@ function convertAddressNumbers($addressString)
             text-orientation: upright;
             -webkit-text-orientation: upright;
         }
+/* 🌟 修正：強制讓直排中的數字立正站好，徹底消除上方空隙 */
+.combine-num {
+    display: inline-block;
+    
+    /* 🎯 讓半形數字在直排中保持正立不橫躺（核心語法） */
+    -webkit-text-combine: horizontal;
+    text-combine-upright: all;
+    
+    /* 🎯 徹底清空所有外框與間距 */
+    border: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 2px !important; /* 左右微調 2px 讓字距與中文字更協調 */
+    background: transparent;
+    line-height: 1 !important;
+}
+
+/* 確保點擊輸入時不會跳出瀏覽器的預設黑框 */
+.count-editable:focus {
+    outline: none !important;
+    border: none !important;
+}
 
         /* =======================================================================
            【左側：明信片背面 - 內文面樣式】
@@ -811,11 +828,19 @@ function convertAddressNumbers($addressString)
                                     一、本人願意參加本公業民國<span class="combine-num" id="cal_solar_year">？</span>年<span class="combine-num" id="cal_solar_month">？</span>月
                                     <span class="combine-num" id="cal_solar_day">？</span>日(農曆<span class="combine-num" id="cal_lunar_year">？</span><br>
                                     &emsp;&emsp;年<span class="combine-num">11</span>月<span class="combine-num">13</span>日)星期<span class="combine-num" id="cal_solar_week">？</span>，會員大會(祭祖並聚餐)。<br>
-
+                                    
                                     二、參加人員有本人外<select id="companion_status">
                                         <option value="none">無攜伴</option>
                                         <option value="has">攜伴</option>
-                                    </select>，<span contenteditable="true"></span><input type="hidden" name="companion_info" id="companion_info" value="">葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個，共計<input type="hidden" name="total_people" id="total_people" value="1"><span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。<br>
+                                    </select>，
+                                    <span id="companion_input_div" contenteditable="true"></span>
+                                    <input type="hidden" name="companion_info" id="companion_info" value="">
+                                    <br>&emsp;&emsp;葷食
+                                    <span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食
+                                    <span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個，
+                                    共計<input type="hidden" name="total_people" id="total_people" value="1">
+                                    <span class="combine-num count-editable" id="total_people_display" contenteditable="true">1</span>名。<br>
+
                                     <!--二、參加人員有本人外<select id="companion_status"><option value="none">無攜伴</option><option value="has">攜伴</option></select><input type="text" name="companion_input" id="companion_input" placeholder="">
                                     <input type="hidden" name="companion_info" id="companion_info" value=""><br>
                                     &emsp;&emsp;，葷食<span class="combine-num count-editable" id="meat_count_display" contenteditable="true">1</span>個素食<span class="combine-num count-editable" id="veg_count_display" contenteditable="true">0</span>個

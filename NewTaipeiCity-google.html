@@ -172,7 +172,7 @@
 
     <!-- 訓練家登入系統 -->
     <div id="login-modal">
-        <h2>⚔️ 歡迎來到泰山寶本夢據點</h2>
+        <h2>⚔️ 歡迎來到泰山寶可夢據點</h2>
         <p>請輸入您的訓練家姓名以開始定位打卡</p>
         <input type="text" id="username" placeholder="請輸入姓名/暱稱">
         <button class="btn" style="max-width: 200px;" onclick="loginTrainer()">進入地圖</button>
@@ -215,7 +215,7 @@
         
         let userName = localStorage.getItem('trainerName') || "";
         
-        // 🎯 判斷上傳是否成功的全域狀態文字變數
+        // 判斷上傳是否成功的全域狀態文字變數
         let lastSyncStatus = "尚未進行打卡同步"; 
 
         // 登入驗證
@@ -240,23 +240,23 @@
             params.append('name', userName);
             params.append('score', score);
 
-            // 觸發傳送時先設定為傳送中
             lastSyncStatus = "正在嘗試上傳至雲端試算表...";
 
+            // 🎯 關鍵修正點：新增 mode: 'no-cors' 繞過瀏覽器的重新導向阻擋
             fetch(GAS_URL, {
                 method: 'POST',
+                mode: 'no-cors', 
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 body: params.toString()
             })
             .then(response => {
-                // 🎯 判斷成功：如果伺服器回傳成功，將狀態字串更新
+                // 在 no-cors 模式下，只要請求成功發出就會進入這裡
                 lastSyncStatus = "🟢 成功上傳至雲端試算表！";
-                console.log('試算表雲端同步成功');
+                console.log('試算表雲端同步成功（不檢查回傳內容）');
             })
             .catch(error => {
-                // 🎯 判斷失敗：如果網路斷線或網址有問題，擷取錯誤
                 lastSyncStatus = "🔴 上傳失敗，請檢查手機網路或 GAS 部署權限設定！";
                 console.error('同步至 Google 試算表失敗:', error);
             });
@@ -279,7 +279,7 @@
             localStorage.setItem('gameHistory', JSON.stringify(history));
         }
 
-        // 查看歷史數據功能（已新增雲端試算表判斷狀態欄）
+        // 查看歷史數據功能
         function viewHistory() {
             const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
             const storagePathText = `手機實體路徑: /data/user/0/com.android.chrome/app_tabs/0/localstorage/leveldb\n儲存檔案名稱: 000003.log / CURRENT\n資料庫欄位 (Key): gameHistory`;
@@ -295,7 +295,6 @@
                 report += `\n`;
             }
             
-            // 🎯 在彈窗的最末端加入「雲端試算表傳送狀態」判斷行
             report += `☁️ 雲端試算表連線狀態：\n${lastSyncStatus}\n\n`;
             report += `💾 本地手機存檔位置：\n${storagePathText}`;
             
