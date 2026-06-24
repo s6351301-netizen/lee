@@ -341,7 +341,7 @@
             .then(data => {
                 if (data.success) {
                     previewSpan.className = "status-success";
-                    previewSpan.innerText = `👤 訓練家(姓名)：${data.name}`;
+                    previewSpan.innerText = `👤訓練家/姓名：${data.name}`;
                 } else {
                     previewSpan.className = "status-fail";
                     previewSpan.innerText = "❌ 查無此帳號/座號";
