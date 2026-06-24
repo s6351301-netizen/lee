@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>泰山寶可夢據點-訓練家登入</title>
+    <title>泰山寶可夢據點 - 訓練家登入</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -170,41 +170,6 @@
         .password-container p.subtitle { color: #bbb; font-size: 13px; text-align: center; margin-bottom: 20px; margin-top: 0; }
         .readonly-input { background: #333 !important; color: #aaa !important; cursor: not-allowed; }
         .flex-buttons { display: flex; gap: 10px; margin-top: 15px; }
-
-        /* 🎯 新增的內嵌提示訊息區塊樣式 */
-        .error-message-box {
-            font-size: 13px;
-            font-weight: bold;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            display: none;
-            line-height: 1.5;
-        }
-        .box-fail { background: rgba(255, 59, 48, 0.15); color: #ff453a; border: 1px solid rgba(255, 59, 48, 0.3); }
-        .box-success { background: rgba(48, 209, 88, 0.15); color: #30d158; border: 1px solid rgba(48, 209, 88, 0.3); }
-
-        /* =========================================================================
-           🆕 用來完美取代瀏覽器 alert 的全局自訂提示燈箱
-           ========================================================================= */
-        .custom-alert-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 11000;
-            justify-content: center;
-            align-items: center;
-        }
-        .custom-alert-container {
-            width: 85%;
-            max-width: 320px;
-            background: #222;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #444;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -256,11 +221,7 @@
         <div class="password-container">
             <h3>🔑 建議變更新密碼</h3>
             <p class="subtitle">為了您的帳號安全，建議定期修改初始密碼</p>
-            
-            <!-- 🎯 新增的內嵌動態錯誤/成功提示框 -->
-            <div id="pwd-error-msg" class="error-message-box"></div>
-
-            <div class="flex-buttons" style="margin-bottom: 15px;">
+            <div class="flex-buttons">
                 <button class="btn" style="background-color:#555; margin-top:0;" onclick="skipPasswordChange()">下一次再修改</button>
             </div>            
             <div class="input-group">
@@ -287,34 +248,16 @@
         </div>
     </div>
 
-    <!-- 🆕 全局自訂乾淨警告燈箱 -->
-    <div class="custom-alert-modal" id="customAlertModal">
-        <div class="custom-alert-container">
-            <h4 id="customAlertTitle" style="margin-top:0; color:#ffeb3b; font-size:16px;">系統提示</h4>
-            <p id="customAlertText" style="color:#eee; font-size:14px; line-height:1.6; margin-bottom:20px;"></p>
-            <button class="btn" style="margin-top:0; padding:10px;" onclick="closeCustomAlert()">確定</button>
-        </div>
-    </div>
-
     <script>
         
-        // 🎯 您最新的第 7 版 GAS 網址
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbysDvRYqZjHLV-VFfw-XrM3A9Qp1pRuxnnc5zNgURNLFyT6wvDaPSq6ecKmhwEiCZe4/exec";
+        // 🎯 已完美同步更新為您最新的第 7 版 GAS 網址
+        //const GAS_URL = "https://script.google.com/macros/s/AKfycbwdL-iQ6aU7x_1xsJGbrFmc1kBXUEr4FS-dv_74xNW6TDNhI4gGPAKNJAfAswg5ix55/exec"; 
+          const GAS_URL = "https://script.google.com/macros/s/AKfycbysDvRYqZjHLV-VFfw-XrM3A9Qp1pRuxnnc5zNgURNLFyT6wvDaPSq6ecKmhwEiCZe4/exec";
 
         // 全域暫存變數
         let globalTrainerNo = "";
         let globalTrainerName = "";
         let globalCurrentPassword = "";
-
-        // 🆕 自訂 Alert 呼叫器
-        function showModalAlert(text, title = "系統提示") {
-            document.getElementById('customAlertTitle').innerText = title;
-            document.getElementById('customAlertText').innerText = text;
-            document.getElementById('customAlertModal').style.display = "flex";
-        }
-        function closeCustomAlert() {
-            document.getElementById('customAlertModal').style.display = "none";
-        }
 
         // 🔄 核心 AJAX 功能：即時透過帳號比對試算表並顯示姓名
         function checkUserRealtime() {
@@ -360,7 +303,7 @@
             const passwordInput = document.getElementById('user-password').value.trim();
             
             if (!noInput || !passwordInput) {
-                return showModalAlert("請填寫帳號與密碼！");
+                return alert("請填寫帳號與密碼！");
             }
             
             const params = new URLSearchParams();
@@ -375,16 +318,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // 暫存登入成功後的資料
                     globalTrainerNo = noInput;
                     globalTrainerName = data.name;
                     globalCurrentPassword = passwordInput;
+
+                    // 開啟「建議變更密碼」燈箱
                     openPasswordModal();
                 } else {
-                    showModalAlert("❌ 登入失敗：" + data.message);
+                    alert("❌ 登入失敗：" + data.message);
                 }
             })
             .catch(error => {
-                showModalAlert("連線失敗，請檢查網路或 GAS 網址！");
+                alert("連線失敗，請檢查網路或 GAS 網址！");
                 console.error(error);
             });
         }
@@ -398,16 +344,12 @@
             document.getElementById('pwd-current').value = globalCurrentPassword;
             document.getElementById('pwd-new').value = "";
             document.getElementById('pwd-confirm').value = "";
-            
-            // 隱藏上一次遺留的錯誤訊息
-            const msgBox = document.getElementById('pwd-error-msg');
-            msgBox.style.display = "none";
-
             document.getElementById('passwordModal').style.display = "flex";
         }
 
         // 下一次再修改 (直接進入地圖)
         function skipPasswordChange() {
+            alert(`已為您保留原密碼，歡迎回來 ${globalTrainerName} 訓練家！`);
             localStorage.setItem('trainerNo', globalTrainerNo);
             localStorage.setItem('trainerName', globalTrainerName);
             window.location.href = "NewTaipeiCity.html";
@@ -417,34 +359,20 @@
         function submitNewPassword() {
             const newPwd = document.getElementById('pwd-new').value.trim();
             const confirmPwd = document.getElementById('pwd-confirm').value.trim();
-            const msgBox = document.getElementById('pwd-error-msg');
-
-            // 初始化訊息框
-            msgBox.style.display = "none";
-            msgBox.className = "error-message-box";
 
             if (!newPwd || !confirmPwd) {
-                msgBox.classList.add("box-fail");
-                msgBox.innerText = "❌ 請輸入完整的新密碼與確認密碼！";
-                msgBox.style.display = "block";
-                return;
+                return alert("請輸入完整的新密碼與確認密碼！");
             }
 
             // 密碼複雜度規則：大寫、小寫、數字，長度 4-6 字元
             const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{4,6}$/;
 
             if (!passwordRule.test(newPwd)) {
-                msgBox.classList.add("box-fail");
-                msgBox.innerText = "⚠️ 密碼驗證規則：\n新密碼必須包含【英文大寫】、【英文小寫】以及【數字】三種混合，且長度必須在 4 到 6 個字元之間。";
-                msgBox.style.display = "block";
-                return;
+                return alert("⚠️ 密碼驗證規則說明：\n新密碼必須包含【英文大寫】、【英文小寫】以及【數字】三種混合，且長度必須在 4 到 6 個字元之間。");
             }
 
             if (newPwd !== confirmPwd) {
-                msgBox.classList.add("box-fail");
-                msgBox.innerText = "❌ 警告：變更新密碼與再輸入一次新密碼結果不一致！";
-                msgBox.style.display = "block";
-                return;
+                return alert("❌ 警告：變更新密碼與再輸入一次新密碼結果不一致！");
             }
 
             // 發送指令到第 7 版 GAS 更新密碼
@@ -460,25 +388,17 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success || data.message === "Success") {
-                    msgBox.classList.add("box-success");
-                    msgBox.innerText = "🎉 密碼修改成功！正在導向地圖...";
-                    msgBox.style.display = "block";
-
+                    alert("🎉 密碼修改成功！新密碼已同步至會員試算表。");
                     localStorage.setItem('trainerNo', globalTrainerNo);
                     localStorage.setItem('trainerName', globalTrainerName);
-                    
-                    // 延遲 1.5 秒讓使用者看到成功紅綠燈指示，隨後自動轉跳
-                    setTimeout(() => {
-                        window.location.href = "NewTaipeiCity.html";
-                    }, 1500);
+                    window.location.href = "NewTaipeiCity.html";
                 } else {
-                    msgBox.classList.add("box-fail");
-                    msgBox.innerText = "密碼變更失敗：" + data.message;
-                    msgBox.style.display = "block";
+                    alert("密碼變更失敗：" + data.message);
                 }
             })
             .catch(error => {
                 console.error(error);
+                alert("連線異常，即將導向地圖。");
                 localStorage.setItem('trainerNo', globalTrainerNo);
                 localStorage.setItem('trainerName', globalTrainerName);
                 window.location.href = "NewTaipeiCity.html";
@@ -603,7 +523,7 @@
                 captchaModal.style.display = "none";
                 handleLogin(); 
             } else {
-                showModalAlert('❌ 驗證失敗！請將拼圖對準，或避免使用自動化外掛。', '安全驗證未通過');
+                alert('❌ 驗證失敗！請將拼圖對準，或避免使用自動化外掛。');
                 resetCaptcha();
             }
         }
@@ -629,7 +549,7 @@
             const passwordInput = document.getElementById('user-password').value.trim();
             
             if (!noInput || !passwordInput) {
-                return showModalAlert("請填寫帳號與密碼！");
+                return alert("請填寫帳號與密碼！");
             }
             
             captchaModal.style.display = "flex";
