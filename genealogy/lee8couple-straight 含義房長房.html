@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>李氏家族八代宗親夫妻並列族譜 (D3.js 直式優化版)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; overflow: hidden; background-color: #f4f7f9; }
+        #title-container { position: absolute; top: 15px; left: 20px; z-index: 10; background: rgba(255, 255, 255, 0.95); padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 5px solid #1a5276; }
+        h1 { margin: 0 0 5px 0; font-size: 22px; color: #1a5276; }
+        p { margin: 0; font-size: 13px; color: #555; line-height: 1.4; }
+        .node circle.husband { fill: #e3f2fd; stroke: #1e88e5; stroke-width: 2px; cursor: pointer; }
+        .node circle.wife { fill: #fce4ec; stroke: #d81b60; stroke-width: 2px; cursor: pointer; }
+        .node text { font-size: 16px; font-weight: bold; fill: #222222; }
+        .text-gen-info { font-size: 12px !important; font-weight: bold !important; fill: #566573 !important; }
+        .spouse-line { stroke: #383838; stroke-width: 2.2px; stroke-dasharray: 2,2; }
+        .link { fill: none; stroke: #566573; stroke-width: 2px; stroke-linejoin: round; }
+        #hint { position: absolute; bottom: 15px; right: 20px; background: #333; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 4px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div id="title-container">
+        <h1>隴西李氏家族族譜 - 直式夫妻並列版</h1>
+        <p><strong>字輩順序：</strong>繩 ➔ 祖 ➔ 武 ➔ 德 ➔ 業 ➔ 貽 ➔ 孫 ➔ 謀</p>
+    </div>
+    <div id="hint">💡 提示：點擊任何圓圈可【展開/收合】子孫。滑鼠滾輪可【放大/縮小】、按住可【拖曳畫布】。</div>
+    <div id="tree-container"></div>
+
+    <script>
+        const generationGens = ["繩", "祖", "武", "德", "業", "貽", "孫", "謀"];
+        function generateFamilyData() {
+            const namePool = ["山", "川", "海", "峰", "宇", "宏", "強", "明", "志", "文", "武", "德", "賢", "才", "良", "平", "安", "康", "健", "新", "興", "昌", "盛", "榮", "華", "富", "貴", "生", "其", "克", "紹", "先", "光", "大", "廷"];
+            const wifeSurPool = ["陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊", "許", "鄭", "謝", "洪", "郭", "邱", "曾", "廖", "賴", "徐"];
+            const wifeNamePool = ["美", "玲", "婷", "芬", "芳", "娟", "蘭", "秀", "華", "鳳", "珍", "燕", "莉", "梅", "雅", "淑", "惠", "晴", "妤", "萱"];
+            
+            let rootNode = { name: "李繩廷", wifeName: "賴淑華", children: [] };
+            let currentGenNodes = [rootNode];
+            const genSizes = [3, 10, 20, 50, 100, 150, 200]; 
+
+            for (let g = 0; g < genSizes.length; g++) {
+                let nextGenNodes = [];
+                for (let i = 0; i < genSizes[g]; i++) {
+                    let parentNode = currentGenNodes[i % currentGenNodes.length];
+                    let child = { name: `李${generationGens[g+1]}${namePool[Math.floor(Math.random()*namePool.length)]}`, wifeName: `${wifeSurPool[Math.floor(Math.random()*wifeSurPool.length)]}${wifeNamePool[Math.floor(Math.random()*wifeNamePool.length)]}${wifeNamePool[Math.floor(Math.random()*wifeNamePool.length)]}`, children: [] };
+                    parentNode.children.push(child);
+                    nextGenNodes.push(child);
+                }
+                currentGenNodes = nextGenNodes;
+            }
+
+            // BFS 產生編號
+            let queue = [rootNode], idCounter = 1;
+            while (queue.length > 0) {
+                let curr = queue.shift();
+                curr.memberId = idCounter++;
+                if (curr.children) queue.push(...curr.children);
+            }
+            return rootNode;
+        }
+
+        const familyData = generateFamilyData();
+        const width = window.innerWidth, height = window.innerHeight;
+        const svg = d3.select("#tree-container").append("svg").attr("width", width).attr("height", height);
+        const gMain = svg.append("g");
+        svg.call(d3.zoom().scaleExtent([0.02, 3]).on("zoom", (e) => gMain.attr("transform", e.transform)));
+
+        const tree = d3.tree().nodeSize([175, 190]);
+        let i = 0, root = d3.hierarchy(familyData);
+        root.x0 = width / 2; root.y0 = 0;
+        root.children.forEach(function collapse(d) { if(d.children){ d._children = d.children; d._children.forEach(collapse); d.children = null; } });
+
+        update(root);
+
+        function update(source) {
+            const nodes = tree(root).descendants();
+            const links = tree(root).links();
+            const node = gMain.selectAll('g.node').data(nodes, d => d.id || (d.id = ++i));
+
+            const nodeEnter = node.enter().append('g').attr('class', 'node')
+                .attr("transform", `translate(${source.x0 + width/2}, ${source.y0 + 150})`);
+
+            const genTextGroup = nodeEnter.append('text').attr('class', 'text-gen-info').attr("x", -10).attr("text-anchor", "end");
+            
+            // 頂部文字邏輯
+            genTextGroup.append('tspan').attr("x", -10).attr("dy", "-3.5em").text(d => d.depth === 0 ? "義房長房體系" : `No.${d.data.memberId}`);
+            genTextGroup.append('tspan').attr("x", -10).attr("dy", "1.2em").text(d => d.depth === 0 ? "英敏公第3大房" : `第${d.parent ? d.parent.children.indexOf(d) + 1 : 1}大房`);
+            genTextGroup.append('tspan').attr("x", -10).attr("dy", "1.2em").text(d => `${19 + d.depth + 1}世${d.depth + 1}代`);
+
+            nodeEnter.append('circle').attr('class', 'husband').attr('r', 1e-6).on('click', click);
+            nodeEnter.append('text').attr('class', 'text-husband').attr("dy", ".35em").attr("x", -10).attr("text-anchor", "end").text(d => d.data.name);
+            nodeEnter.append('line').attr('class', 'spouse-line');
+            nodeEnter.append('circle').attr('class', 'wife').attr('r', 1e-6).on('click', click);
+            nodeEnter.append('text').attr('class', 'text-wife').attr("dy", ".35em").attr("x", 40).text(d => d.data.wifeName);
+
+            const nodeUpdate = nodeEnter.merge(node).transition().duration(750)
+                .attr("transform", d => `translate(${d.x + width/2}, ${d.y + 150})`);
+
+            nodeUpdate.select('circle.husband').attr('r', 6).style("fill", d => d._children ? "#1e88e5" : "#fff");
+            nodeUpdate.select('circle.wife').attr('r', 6).attr('cx', 28);
+            nodeUpdate.select('line.spouse-line').attr('x1', 6).attr('x2', 22);
+            
+            node.exit().transition().duration(750).remove();
+
+            const link = gMain.selectAll('path.link').data(links, d => d.target.id);
+            link.enter().insert('path', 'g').attr('class', 'link').merge(link).transition().duration(750)
+                .attr('d', d => `M ${d.source.x + width/2} ${d.source.y + 150} L ${d.source.x + width/2} ${(d.source.y + d.target.y)/2 + 150} L ${d.target.x + width/2} ${(d.source.y + d.target.y)/2 + 150} L ${d.target.x + width/2} ${d.target.y + 150}`);
+            link.exit().transition().duration(750).remove();
+        }
+
+        function click(e, d) {
+            if (d.children) { d._children = d.children; d.children = null; }
+            else { d.children = d._children; d._children = null; }
+            update(d);
+        }
+    </script>
+</body>
+</html>
