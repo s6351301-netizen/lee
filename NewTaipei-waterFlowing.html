@@ -292,12 +292,12 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
-                if (distance <= 80) {
+                if (distance <= 180) {
                     if (!targetSpot.hasScored) {
                         info.update(distance, "<span style='color:green; font-weight:bold;'>已進入水流聲範圍！請開啟麥克風。</span>");
                         arBtn.disabled = false;
                         arBtn.style.backgroundColor = "#2196F3";
-                        arBtn.innerText = "🎵 進入 80 米範圍：開啟聲音比對";
+                        arBtn.innerText = "🎵 進入 180 米範圍：開啟聲音比對";
                     } else {
                         info.update(distance, "此據點已完成聲音打卡。");
                         arBtn.disabled = true;
@@ -305,7 +305,7 @@
                         arBtn.innerText = "已完成聲音打卡";
                     }
                 } else {
-                    info.update(distance, "未進入 80 米範圍 (請靠近休息區流水)");
+                    info.update(distance, "未進入 180 米範圍 (請靠近休息區流水)");
                     arBtn.disabled = true;
                     arBtn.style.backgroundColor = "#cccccc";
                     arBtn.innerText = "距離太遠（GPS 鎖定中）";
@@ -397,7 +397,7 @@
             const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
             const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
 
-            if (currentDist <= 80) {
+            if (currentDist <= 180) {
                 if (!analyser) {
                     alert("音訊分析器未就緒。");
                     return;
@@ -439,7 +439,7 @@
                     alert(`❌ 聲音核對失敗（特徵吻合度：${audioScore}%）\n\n【提示】：請更靠近休息區的水流，並試著保持環境安靜，讓麥克風準確收錄穩定的水流白噪音。`);
                 }
             } else {
-                alert("❌ 打卡失敗！您已離開 80 公尺範圍。");
+                alert("❌ 打卡失敗！您已離開 180 公尺範圍。");
                 closeAudio();
             }
         }
