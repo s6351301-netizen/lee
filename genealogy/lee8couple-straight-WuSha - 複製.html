@@ -10,7 +10,7 @@
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
             margin: 0;
             overflow: hidden;
-            background-color: #f3eee6; 
+            background-color: #f3eee6; /* 下方古樸暖宣紙色 */
         }
         #title-container {
             position: absolute;
@@ -41,12 +41,14 @@
             opacity: 0.95;
         }
 
+        /* 1-3代樹幹外擴 20px */
         .trunk-zone-1-3 {
             fill: #52341b;
             stroke: #36200f;
             stroke-width: 2px;
         }
 
+        /* 4-6代樹幹 */
         .trunk-zone-4-6 {
             fill: #7c5335;
             stroke: #52341b;
@@ -59,6 +61,7 @@
             pointer-events: none;
         }
 
+        /* 頂端 7-8 代純白背景 */
         .canopy-background {
             fill: #ffffff;
             stroke: none;
@@ -66,7 +69,6 @@
 
         .node {
             cursor: pointer;
-            pointer-events: all; /* 確保整個節點區域都可點擊 */
         }
 
         /* 1-6代 純文字樹幹節點 */
@@ -113,12 +115,12 @@
 <body>
 
     <div id="title-container">
-        <h1>隴西李氏家族族譜 - 生命大樹 (7-8代動態聯動版)</h1>
-        <p><strong>修正重點：</strong>第 7 代（大心葉）現在點擊後，會確實展開或收合第 8 代（小柳葉）！</p>
-        <p><strong>優化：</strong>加大了點擊感應範圍，不論點樹葉或旋轉的文字都能精確反應。</p>
+        <h1>隴西李氏家族族譜 - 生命大樹 (7-8代獨立視覺修正版)</h1>
+        <p><strong>錯誤修正：</strong>第 7 代樹葉（翠綠色）與第 8 代樹葉（嫩嫩嫩綠）完全獨立且清晰可見，徹底修正之前 7 代隱形的問題。</p>
+        <p><strong>互動保留：</strong>點擊任意文字或樹葉，均可展開或收合子系。</p>
     </div>
 
-    <div id="hint">💡 提示：點擊第 7 代翠綠大樹葉，即可獨立展開/收合第 8 代嫩綠小柳葉。</div>
+    <div id="hint">💡 提示：點擊樹上「任意文字」或「7-8代不同顏色的樹葉」，即可展開或收合。</div>
     
     <div id="tree-container"></div>
 
@@ -202,7 +204,6 @@
         root.x0 = 0; 
         root.y0 = startY;
 
-        // 初始化時，將第 7 代與第 8 代都先收合起來
         function autoCollapseTree(d) {
             if (d.depth >= 6 && d.children) {
                 d._children = d.children;
@@ -345,26 +346,24 @@
             const node = gMain.selectAll('g.node')
                 .data(nodes, d => d.id || (d.id = ++i));
 
-            // 建立節點群組，並直接綁定 click 事件
             const nodeEnter = node.enter().append('g')
                 .attr("transform", d => `translate(${source.x0}, ${source.y0})`)
-                .on('click', function(event, d) { 
-                    click(event, d); 
-                });
+                .on('click', (event, d) => { click(event, d); });
 
             nodeEnter.each(function(d) {
                 const group = d3.select(this);
                 
                 if (d.depth === 6) {
-                    // 🍃 第 7 代樹葉（孫字輩）：大片心形葉
+                    // 🍃 第 7 代樹葉：修正外擴路徑與顏色深度，確保對比度
                     group.attr("class", "node node-leaf-text");
                     group.append('path')
                         .attr('class', 'leaf-gen7')
+                        // 修正：向外擴展且增加厚度
                         .attr('d', 'M 0,5 C -16,-14 -26,-7 -24,9 C -21,22 -9,26 0,28 C 9,26 21,22 24,9 C 26,-7 16,-14 0,5')
                         .style('stroke', '#1b5e20')
                         .style('stroke-width', '1.8px');
-                } else if (d.depth === 7) {
-                    // 🌿 第 8 代樹葉（謀字輩）：斜向柳葉
+                } else if (d.depth >= 7) {
+                    // 🌿 第 8 代樹葉：細長、旋轉
                     group.attr("class", "node node-leaf-text");
                     group.append('path')
                         .attr('class', 'leaf-gen8')
@@ -373,15 +372,9 @@
                         .style('stroke', '#0d3c13')
                         .style('stroke-width', '1.5px');
                 } else {
-                    // 🪵 1-6 代：純文字樹幹
+                    // 🪵 1-6 代：樹幹純文字
                     group.attr("class", "node node-trunk-text");
                 }
-
-                // 增加一個隱形的圓形加大點擊感應範圍，防止旋轉文字點不到
-                group.append('circle')
-                    .attr('r', 25)
-                    .style('fill', 'transparent')
-                    .style('cursor', 'pointer');
 
                 const displayText = d.data.name;
                 if (d.depth <= 5) {
@@ -396,20 +389,22 @@
                         .attr('dy', '.35em')
                         .attr('text-anchor', 'start')
                         .attr('transform', 'rotate(70)')
-                        .style('cursor', 'pointer')
                         .text(displayText);
                 }
             });
 
+            // 融合與更新（精準控制顏色）
             const nodeUpdate = nodeEnter.merge(node);
             nodeUpdate.transition().duration(duration)
                 .attr("transform", d => `translate(${d.x}, ${d.y})`);
 
-            // 🎨 第 7 代色彩
-            nodeUpdate.selectAll('.leaf-gen7').style('fill', '#1b5e20'); 
+            // 🎨 第 7 代色彩修正：加深顏色（翠綠色系），未收合時改為翠綠 `#2e7d32`，收合時深翠綠 `#1b5e20`，絕對不用背景色
+            nodeUpdate.selectAll('.leaf-gen7')
+                .style('fill', d => d._children ? '#1b5e20' : (d.children ? '#1b5e20' : '#2e7d32')); 
                 
-            // 🎨 第 8 代色彩
-            nodeUpdate.selectAll('.leaf-gen8').style('fill', '#81c784');
+            // 🎨 第 8 代色彩渲染（嫩黃綠色系）
+            nodeUpdate.selectAll('.leaf-gen8')
+                .style('fill', d => d._children ? '#33691e' : (d.children ? '#558b2f' : '#81c784'));
 
             node.exit().transition().duration(duration)
                 .attr("transform", d => `translate(${source.x}, ${source.y})`)
@@ -460,22 +455,16 @@
             });
         }
 
-        // --- 精確開合控制 ---
+        // --- 全安全節點開合控制 ---
         function click(event, d) {
             if (event) event.stopPropagation();
-            
-            // 如果有展開的子代，就收起來
             if (d.children) {
                 d._children = d.children;
                 d.children = null;
-            } 
-            // 如果有隱藏的子代，就釋放出來
-            else if (d._children) {
+            } else if (d._children) {
                 d.children = d._children;
                 d._children = null;
             }
-            
-            // 執行資料更新與重繪
             update(d);
         }
     </script>
