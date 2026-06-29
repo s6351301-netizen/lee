@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>車牌辨識系統</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
+        #camera-view { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 1000; }
+        #video { width: 100%; height: 75%; object-fit: cover; }
+        .controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 15px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 50px; border: none; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+
+    <div id="main-panel">
+        <h2>車牌自動辨識系統</h2>
+        <p>點擊下方按鈕開始辨識</p>
+        <button onclick="openCamera()" style="background:#4CAF50;">📸 啟動鏡頭</button>
+    </div>
+
+    <div id="camera-view">
+        <video id="video" autoplay playsinline></video>
+        <div class="controls">
+            <button onclick="captureAndUpload()" style="background:#2196F3;">確認拍照</button>
+            <button onclick="closeCamera()" style="background:#f44336;">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        // 替換為您的實際 Web App 網址
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyKovdZjNouoxxy_KrMP3TkUMMs40_U7ZoV8JEA6tD9orN3O8beSNcgK09Vd072C0Co/exec";
+
+        async function openCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('camera-view').style.display = 'block';
+            } catch (err) {
+                alert("無法存取相機，請確認已授權權限：" + err);
+            }
+        }
+
+        function closeCamera() {
+            const video = document.getElementById('video');
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('camera-view').style.display = 'none';
+        }
+
+        function captureAndUpload() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
+            
+            alert("辨識中，請稍候...");
+
+            fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ image: base64 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("✅ 辨識結果已儲存: " + data.plate);
+                closeCamera();
+            })
+            .catch(err => {
+                alert("❌ 上傳失敗: " + err);
+            });
+        }
+    </script>
+</body>
+</html>
