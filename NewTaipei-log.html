@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新北市泰山職訓打卡地圖-實景影像核對</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -14,10 +16,12 @@
             font-family: "Microsoft JhengHei", Arial, sans-serif;
             overflow: hidden;
         }
+
         #map {
             width: 100%;
             height: 100%;
         }
+
         /* 右上角動態資訊面板 */
         .info-panel {
             padding: 12px 15px;
@@ -28,10 +32,24 @@
             border-left: 5px solid #1a73e8;
             min-width: 200px;
         }
-        .info-panel h4 { margin: 0 0 5px 0; color: #333; font-size: 16px; }
-        .info-panel p { margin: 3px 0; color: #666; }
-        .highlight { color: #e81123; font-weight: bold; font-size: 18px; }
-        
+
+        .info-panel h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .info-panel p {
+            margin: 3px 0;
+            color: #666;
+        }
+
+        .highlight {
+            color: #e81123;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
         /* 底部操作控制區 */
         #action-container {
             position: absolute;
@@ -43,6 +61,7 @@
             width: 90%;
             max-width: 400px;
         }
+
         .btn {
             background-color: #4CAF50;
             color: white;
@@ -52,38 +71,52 @@
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             width: 100%;
             margin-bottom: 10px;
         }
+
         .btn:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        .btn-history { background-color: #2196F3; }
-        
+
+        .btn-history {
+            background-color: #2196F3;
+        }
+
         /* 手機鏡頭畫面遮罩層 */
         #camera-view {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: #000;
             z-index: 2000;
         }
+
         #video {
-            width: 100%; height: 100%; object-fit: cover;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-        
+
         /* 滿版核對觀景窗 */
         #comparison-frame {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
         }
+
         .frame-blind {
             background: rgba(0, 0, 0, 0.75);
             color: white;
@@ -91,37 +124,44 @@
             padding: 15px;
             font-size: 16px;
         }
+
         .center-row {
             display: flex;
             flex-grow: 1;
             justify-content: space-between;
         }
+
         .side-blind {
             background: rgba(0, 0, 0, 0.75);
             width: 5%;
         }
+
         /* 實景比對窗 */
         .clear-window {
             border: 4px solid #ffeb3b;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4); 
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
             flex-grow: 1;
             border-radius: 12px;
             margin: 20px 0;
             position: relative;
-            overflow: hidden; 
+            overflow: hidden;
         }
+
         /* 模擬現場圓弧拱門建築與天空輪廓的AR疊加層 */
         .clear-window::before {
             content: "";
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             /* 模擬現場街景建築與頂棚結構的 AR 示意透視線 */
             background: radial-gradient(circle at 50% 100%, transparent 60%, rgba(26, 115, 232, 0.4) 62%),
-                        linear-gradient(to top, rgba(255,235,59,0.2) 0%, transparent 50%);
+                linear-gradient(to top, rgba(255, 235, 59, 0.2) 0%, transparent 50%);
             border-bottom: 3px dashed #ffeb3b;
-            opacity: 0.75;    
+            opacity: 0.75;
         }
-        
+
         /* 下方操作提示台 */
         .ar-control-panel {
             position: absolute;
@@ -133,17 +173,19 @@
             text-align: center;
             z-index: 2100;
         }
+
         .ar-tip-text {
             color: #00FF00;
             font-size: 15px;
             font-weight: bold;
             text-shadow: 0 0 8px #000;
-            background: rgba(0,0,0,0.75);
+            background: rgba(0, 0, 0, 0.75);
             padding: 8px 12px;
             border-radius: 8px;
             margin-bottom: 12px;
             border: 1px solid #ffeb3b;
         }
+
         .capture-btn {
             background-color: #ff3b30;
             color: white;
@@ -153,20 +195,27 @@
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
             width: 100%;
         }
+
         .close-btn {
             position: absolute;
-            top: 20px; right: 20px;
-            background: rgba(255,255,255,0.8);
-            border: none; padding: 8px 16px; border-radius: 5px;
-            font-size: 14px; font-weight: bold; z-index: 2200;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 2200;
             color: black;
             cursor: pointer;
         }
     </style>
 </head>
+
 <body>
 
     <div id="map"></div>
@@ -179,7 +228,7 @@
     <!-- 鏡頭畫面遮罩層 -->
     <div id="camera-view">
         <video id="video" autoplay playsinline></video>
-        
+
         <div id="comparison-frame">
             <div class="frame-blind">📷 現場建築外觀實景照片核對模式</div>
             <div class="center-row">
@@ -189,7 +238,7 @@
             </div>
             <div class="frame-blind" style="padding-bottom:120px;">⚠️ 畫面外觀若與街景建築不符則不計分</div>
         </div>
-        
+
         <div class="ar-control-panel">
             <div class="ar-tip-text">
                 🧩 請面向北方仰望圓弧頂棚建築，<br>讓現場景物完美契合黃框輪廓！
@@ -206,7 +255,7 @@
         // 🎯 已更新：使用您提供的 Google 地圖最新指定打卡街景點
         const targetSpot = {
             name: "泰山職訓中心建築大樓",
-            lat: 25.043629, 
+            lat: 25.043629,
             lng: 121.4192543,
             score: 0,
             hasScored: false
@@ -232,14 +281,14 @@
                 history.forEach((entry, index) => {
                     report += `${index + 1}. ${entry.date} | 得分: +${entry.score}\n`;
                 });
-                
+
                 report += `\n💾 存檔位置：\n${storagePathText}`;
                 alert(report);
             }
         }
 
         const map = L.map('map').setView([targetSpot.lat, targetSpot.lng], 16);
-        
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
@@ -251,7 +300,7 @@
             color: 'green',
             fillColor: '#4CAF50',
             fillOpacity: 0.1,
-            radius: 80 
+            radius: 80
         }).addTo(map);
 
         let userMarker = null;
@@ -278,14 +327,14 @@
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
         }
 
         if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(function(position) {
+            navigator.geolocation.watchPosition(function (position) {
                 const uLat = position.coords.latitude;
                 const uLng = position.coords.longitude;
 
@@ -298,6 +347,7 @@
                 const distance = getDistance(uLat, uLng, targetSpot.lat, targetSpot.lng);
                 const arBtn = document.getElementById('ar-btn');
 
+                /* ..  關閉GPS不能開啟視訊鏡頭
                 if (distance <= 80) {
                     if (!targetSpot.hasScored) {
                         info.update(distance, "<span style='color:green; font-weight:bold;'>已進入 80 米範圍！請啟動後鏡頭核對實景。</span>");
@@ -316,8 +366,15 @@
                     arBtn.style.backgroundColor = "#cccccc";
                     arBtn.innerText = "距離太遠（GPS 鎖定中）";
                 }
+                    .. */
 
-            }, function(error) {
+                // 修改後：移除距離檢查，強制解鎖按鈕
+                info.update(distance, "已強制解除 GPS 限制，您可以直接開啟相機。");
+                arBtn.disabled = false;
+                arBtn.style.backgroundColor = "#4CAF50";
+                arBtn.innerText = "📸 啟動實景相機";
+
+            }, function (error) {
                 console.error(error);
                 info.update(null, "<span style='color:red;'>請開啟手機高精度 GPS 權限</span>");
             }, {
@@ -334,10 +391,10 @@
             cameraView.style.display = 'block';
             // 呼叫手機實體後置鏡頭 (facingMode: environment)
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-                .then(function(stream) {
+                .then(function (stream) {
                     video.srcObject = stream;
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     alert("無法啟動相機鏡頭。請確認是否提供相機權限且在 HTTPS 環境下執行。");
                     closeCamera();
                 });
@@ -351,16 +408,16 @@
                 return;
             }
 
-            const currentLatLng = userMarker ? userMarker.getLatLng() : {lat: 0, lng: 0};
+            const currentLatLng = userMarker ? userMarker.getLatLng() : { lat: 0, lng: 0 };
             const currentDist = getDistance(currentLatLng.lat, currentLatLng.lng, targetSpot.lat, targetSpot.lng);
 
             if (currentDist <= 80) {
                 const canvas = document.getElementById('hidden-canvas');
                 const ctx = canvas.getContext('2d');
-                
+
                 const vW = video.videoWidth || 640;
                 const vH = video.videoHeight || 480;
-                
+
                 // 計算擷取黃形比對框內的正中央核心影像
                 const cropW = vW * 0.6;
                 const cropH = vH * 0.6;
@@ -369,7 +426,7 @@
 
                 canvas.width = 100;
                 canvas.height = 100;
-                
+
                 ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
                 const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
 
@@ -379,8 +436,8 @@
                 // 寬容的環境特徵矩陣演算法：比對畫面上半部的「藍天/白雲比例」與下半部的「大樓建物色調」
                 for (let i = 0; i < frameData.length; i += 4) {
                     const r = frameData[i];
-                    const g = frameData[i+1];
-                    const b = frameData[i+2];
+                    const g = frameData[i + 1];
+                    const b = frameData[i + 2];
                     const pixelIndex = i / 4;
                     const row = Math.floor(pixelIndex / canvas.width);
 
@@ -397,7 +454,7 @@
                     }
                 }
 
-                const matchRatio = matchPoints / totalPixels; 
+                const matchRatio = matchPoints / totalPixels;
 
                 // 🎯 影像精確度公式優化：設定寬容門檻，特徵分佈趨勢達標即可
                 let precisionScore = Math.round((matchRatio / 0.55) * 100);
@@ -407,9 +464,9 @@
                 if (precisionScore >= 70) {
                     targetSpot.score += 100;
                     targetSpot.hasScored = true;
-                    
+
                     saveScoreToHistory(100);
-                    
+
                     alert(`🌟 影像核對成功！\n現場建築外觀特徵吻合度：${precisionScore}%\n恭喜獲得寶可夢打卡積分：+100 分！`);
                     closeCamera();
                     info.update(currentDist, "<span style='color:gold; font-weight:bold;'>🎉 任務完成！實景大樓影像核對成功。</span>");
@@ -430,4 +487,5 @@
         }
     </script>
 </body>
+
 </html>
