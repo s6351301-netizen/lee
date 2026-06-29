@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>車牌辨識系統</title>
+    <!-- 引入 Tesseract.js -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
         body { font-family: "Microsoft JhengHei", sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
         #camera-view { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 1000; }
@@ -23,14 +25,12 @@
     <div id="camera-view">
         <video id="video" autoplay playsinline></video>
         <div class="controls">
-            <button onclick="captureAndUpload()" style="background:#2196F3;">確認拍照</button>
+            <button onclick="processImage()" style="background:#2196F3;">確認拍照</button>
             <button onclick="closeCamera()" style="background:#f44336;">關閉</button>
         </div>
     </div>
 
     <script>
-        // 替換為您的實際 Web App 網址
-       // const GAS_URL = "https://script.google.com/macros/s/AKfycbyKovdZjNouoxxy_KrMP3TkUMMs40_U7ZoV8JEA6tD9orN3O8beSNcgK09Vd072C0Co/exec";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyxGlW0JvB8itdSztrM99wdlDegrOoV3piCHmvrop58p0qMqkHGp91yLyaq8a0Ke3fW/exec";
 
         async function openCamera() {
@@ -51,24 +51,31 @@
             document.getElementById('camera-view').style.display = 'none';
         }
 
-        function captureAndUpload() {
+        async function processImage() {
             const video = document.getElementById('video');
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             
-            const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
-            
-            alert("辨識中，請稍候...");
+            alert("正在進行離線車牌辨識，請稍候...");
 
+            // 1. 使用 Tesseract.js 進行 OCR
+            const { data: { text } } = await Tesseract.recognize(canvas, 'eng'); // 車牌通常是英文數字
+            const plateResult = text.trim();
+            
+            console.log("辨識結果:", plateResult);
+            alert("辨識到文字: " + plateResult + "\n準備上傳...");
+
+            // 2. 上傳到 Google 試算表
             fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify({ image: base64 })
+                mode: 'no-cors', // 解決簡單跨域問題
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plate: plateResult })
             })
-            .then(res => res.json())
-            .then(data => {
-                alert("✅ 辨識結果已儲存: " + data.plate);
+            .then(() => {
+                alert("✅ 已成功上傳: " + plateResult);
                 closeCamera();
             })
             .catch(err => {
