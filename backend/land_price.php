@@ -1,23 +1,13 @@
 <?php
-// ==========================================
-// 1. 資料庫連線設定 (PDO)
-// ==========================================
-$host = 'localhost';
-$db   = 'lee';
-$user = 'root';
-$pass = '';
-$dsn  = "mysql:host=$host;dbname=$db;charset=utf8mb4";
+// 關閉緩衝，確保輸出能即時顯示在瀏覽器
+while (ob_get_level()) ob_end_clean();
+ob_implicit_flush(true);
 
-try {
-    $pdo = new PDO($dsn, $user, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("資料庫連線失敗: " . $e->getMessage());
-}
+// 1. 資料庫連線 (PDO)
+$host = 'localhost'; $db = 'lee'; $user = 'root'; $pass = '';
+$pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
-// ==========================================
 // 2. 待查詢清單
-// ==========================================
 $search_list = [
     ['section' => '義水段', 'no' => '0855-0000'],
     ['section' => '義水段', 'no' => '0861-0000'],
@@ -40,45 +30,42 @@ $search_list = [
     ['section' => '水美東段', 'no' => '0565-0000'],
 ];
 
-// ==========================================
-// 3. 準備寫入 SQL (ON DUPLICATE KEY 避免重複錯誤)
-// ==========================================
-$sql = "INSERT INTO land_price 
-        (record_date, section_name, land_number, posted_land_value, declared_land_value, land_area) 
-        VALUES (:date, :section, :number, :posted, :declared, :area)
-        ON DUPLICATE KEY UPDATE 
-        posted_land_value = VALUES(posted_land_value), 
-        declared_land_value = VALUES(declared_land_value), 
-        land_area = VALUES(land_area)";
+echo "<h3>系統提示：正在進行公告地價資料撈取，請稍候 (約需 2-3 分鐘)...</h3>";
+echo "<div id='status-log' style='font-family: monospace; background: #f4f4f4; padding: 10px; margin-bottom: 20px;'>";
 
-$stmt = $pdo->prepare($sql);
-
-// ==========================================
-// 4. 執行迴圈處理
-// ==========================================
+$results = [];
 foreach ($search_list as $item) {
-    echo "正在處理: {$item['section']} {$item['no']} ... ";
-
-    // 這裡呼叫您的爬取邏輯 (需實作 cURL)
+    echo "正在處理: 115年01月 - {$item['section']} {$item['no']} ... ";
+    
+    // 呼叫爬蟲函式 (此處為示意，需自行填入實際邏輯)
     $data = fetchLandData($item['section'], $item['no']);
-
+    
     if ($data) {
-        $stmt->execute([
-            ':date'     => $data['date'],
-            ':section'  => $item['section'],
-            ':number'   => $item['no'],
-            ':posted'   => $data['posted'],
-            ':declared' => $data['declared'],
-            ':area'     => $data['area']
-        ]);
-        echo "寫入成功。\n";
+        // 寫入資料庫
+        $sql = "INSERT INTO land_price (record_date, section_name, land_number, posted_land_value, declared_land_value, land_area) VALUES (?,?,?,?,?,?) 
+                ON DUPLICATE KEY UPDATE posted_land_value=VALUES(posted_land_value), declared_land_value=VALUES(declared_land_value), land_area=VALUES(land_area)";
+        $pdo->prepare($sql)->execute(['2026-01', $item['section'], $item['no'], $data['posted'], $data['declared'], $data['area']]);
+        
+        $item['status'] = "寫入成功";
+        echo "<span style='color:green'>完成</span><br>";
     } else {
-        echo "查無資料。\n";
+        $item['status'] = "查無資料";
+        echo "<span style='color:red'>失敗</span><br>";
     }
-
-    // 隨機暫停 2-5 秒，避免對政府伺服器造成壓力
-    sleep(rand(2, 5));
+    $results[] = $item;
+    sleep(rand(2, 4)); // 隨機延遲保護伺服器
 }
+echo "</div>";
+
+// 3. 最終表格顯示
+echo "<h3>資料處理結果摘要</h3>";
+echo "<table border='1' style='border-collapse: collapse; width: 600px;'>
+        <tr style='background:#eee;'><th>地段</th><th>地號</th><th>處理結果</th></tr>";
+foreach ($results as $res) {
+    $color = ($res['status'] == "查無資料") ? "red" : "black";
+    echo "<tr><td>{$res['section']}</td><td>{$res['no']}</td><td style='color:{$color};'>{$res['status']}</td></tr>";
+}
+echo "</table>";
 
 // ==========================================
 // 5. 爬取邏輯函式 (需依照實際網頁內容補完)
