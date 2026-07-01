@@ -170,3 +170,60 @@ INSERT INTO ethnic_property (status, city, district, section_code, section_name,
 ('持有', '臺中市', '大甲區', '3652', '義水段', '0995-0000', '840512', 8278.29, '城鄉發展地區第一類', '住宅區', '國有:1.65%\n本國人:95.48%\n祭祀公業:2.88%'),
 ('持有', '臺中市', '大甲區', '3652', '義水段', '1035-0000', '840512', 1657.81, '城鄉發展地區第一類', '綠地用地', '省市有:1.82%\n國有:1.28%\n本國人:94.02%\n祭祀公業:2.88%'),
 ('持有', '臺中市', '大甲區', '3652', '義水段', '1040-0000', '840512', 458.55, '城鄉發展地區第一類', '乙種工業區', '國有:1.81%\n本國人:95.32%\n祭祀公業:2.88%');
+
+
+
+
+
+
+Windows PowerShell
+著作權（C） Microsoft Corporation。保留擁有權利。
+
+安裝最新的 PowerShell 以取得新功能和改進功能！https://aka.ms/PSWindows
+
+PS C:\WINDOWS\system32> playwright install chromium
+playwright : 無法辨識 'playwright' 詞彙是否為 Cmdlet、函數、指令檔或可執行程式的名稱。請檢查名稱拼字是否正確，如果包含
+路徑的話，請確認路徑是否正確，然後再試一次。
+位於 線路:1 字元:1
++ playwright install chromium
++ ~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (playwright:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\WINDOWS\system32> python -m playwright install chromium
+C:\Users\user\AppData\Local\Python\pythoncore-3.14-64\python.exe: No module named playwright
+PS C:\WINDOWS\system32> python -m pip install playwright
+Collecting playwright
+  Downloading playwright-1.61.0-py3-none-win_amd64.whl.metadata (3.3 kB)
+Collecting pyee<14,>=13 (from playwright)
+  Downloading pyee-13.0.1-py3-none-any.whl.metadata (3.0 kB)
+Collecting greenlet<4.0.0,>=3.1.1 (from playwright)
+  Downloading greenlet-3.5.3-cp314-cp314-win_amd64.whl.metadata (3.9 kB)
+Requirement already satisfied: typing-extensions in C:\Users\user\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages (from pyee<14,>=13->playwright) (4.15.0)
+Downloading playwright-1.61.0-py3-none-win_amd64.whl (37.8 MB)
+   ---------------------------------------- 37.8/37.8 MB 5.8 MB/s  0:00:06
+Downloading greenlet-3.5.3-cp314-cp314-win_amd64.whl (240 kB)
+Downloading pyee-13.0.1-py3-none-any.whl (15 kB)
+Installing collected packages: pyee, greenlet, playwright
+   -------------------------- ------------- 2/3 [playwright]  WARNING: The script playwright.exe is installed in 'C:\Users\user\AppData\Local\Python\pythoncore-3.14-64\Scripts' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+Successfully installed greenlet-3.5.3 playwright-1.61.0 pyee-13.0.1
+
+[notice] A new release of pip is available: 26.0.1 -> 26.1.2
+[notice] To update, run: C:\Users\user\AppData\Local\Python\pythoncore-3.14-64\python.exe -m pip install --upgrade pip
+PS C:\WINDOWS\system32> python -m playwright install chromium
+Downloading Chrome for Testing 149.0.7827.55 (playwright chromium v1228) from https://cdn.playwright.dev/builds/cft/149.0.7827.55/win64/chrome-win64.zip
+183.6 MiB [====================] 100% 0.0s
+Chrome for Testing 149.0.7827.55 (playwright chromium v1228) downloaded to C:\Users\user\AppData\Local\ms-playwright\chromium-1228
+Downloading FFmpeg (playwright ffmpeg v1011) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-win64.zip
+1.3 MiB [====================] 100% 0.0s
+FFmpeg (playwright ffmpeg v1011) downloaded to C:\Users\user\AppData\Local\ms-playwright\ffmpeg-1011
+Downloading Chrome Headless Shell 149.0.7827.55 (playwright chromium-headless-shell v1228) from https://cdn.playwright.dev/builds/cft/149.0.7827.55/win64/chrome-headless-shell-win64.zip
+113.6 MiB [====================] 100% 0.0s
+Chrome Headless Shell 149.0.7827.55 (playwright chromium-headless-shell v1228) downloaded to C:\Users\user\AppData\Local\ms-playwright\chromium_headless_shell-1228
+Downloading Winldd (playwright winldd v1007) from https://cdn.playwright.dev/dbazure/download/playwright/builds/winldd/1007/winldd-win64.zip
+0.1 MiB [====================] 100% 0.0s
+Winldd (playwright winldd v1007) downloaded to C:\Users\user\AppData\Local\ms-playwright\winldd-1007
+PS C:\WINDOWS\system32> where playwright
+PS C:\WINDOWS\system32> where playwright
+PS C:\WINDOWS\system32>
