@@ -139,7 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 
             <!-- 查詢結果表單上面的動態統計文字 -->
             <div class="alert alert-info py-2 px-3 mb-3 fw-bold" id="search-summary-text" style="font-size: 0.95rem;">
-                查詢"?"與"?"與"?"條件，在"D.公告年月"其總價值(元)：0 
+                查詢A.狀態"?"與B.地區"?"與C.地號"?"條件，在"D.公告年月"其總價值(元)：0 
             </div>
 
             <div class="table-responsive">
@@ -314,7 +314,7 @@ function filterPriceTable() {
 
     // 四捨五入算整數
     let roundedTotalValue = Math.round(totalValueSum);
-    document.getElementById('search-summary-text').innerText = `查詢"${filterStatus}"與"${filterDistrict}"與"${filterLandNumber}"條件，在"${filterRecordDate}"其總價值(元)：${roundedTotalValue.toLocaleString()}`;
+    document.getElementById('search-summary-text').innerText = `查詢A.狀態"${filterStatus}"與B.地區"${filterDistrict}"與C.地號"${filterLandNumber}"條件，在D.公告年月"${filterRecordDate}"其總價值(元)：${roundedTotalValue.toLocaleString()}`;
 
     renderPriceTablePage();
 }
