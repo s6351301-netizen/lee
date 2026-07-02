@@ -19,7 +19,7 @@ $conn->set_charset("utf8mb4");
 // 2. 處理 AJAX 請求 (API 路由)
 // ==========================================
 
-// 新增功能：AJAX 獲取所有"持有"土地資料
+// 獲取所有"持有"土地資料
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['action'] == 'get_hold_lands') {
     header('Content-Type: application/json');
     $hold_lands = [];
@@ -31,7 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     exit;
 }
 
-// A. 供表單各欄位透過 AJAX 獲取不重複歷史紀錄
+// 供表單各欄位透過 AJAX 獲取不重複歷史紀錄
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['action'] == 'get_field_suggestions') {
     header('Content-Type: application/json');
     $field = $_GET['field'] ?? '';
@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     exit;
 }
 
-// B. 處理資料表單新增 (AJAX POST)
+// 處理資料表單新增 (AJAX POST)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET['action']) && $_GET['action'] == 'insert') {
     header('Content-Type: application/json');
     
@@ -103,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET['action']) && $_GET['act
     exit;
 }
 
-// 新增功能：整批儲存年度地價資料
+// 整批儲存年度地價資料
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET['action']) && $_GET['action'] == 'batch_insert_price') {
     header('Content-Type: application/json');
     $record_date = trim($_POST['batch_record_date'] ?? '');
@@ -144,20 +144,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET['action']) && $_GET['act
     exit;
 }
 
-// C. 獲取底層表格完整不重複歷史紀錄 (AJAX GET)
+// 獲取歷史紀錄 (AJAX GET)
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['action'] == 'get_history') {
     header('Content-Type: application/json');
     $history_data = [];
     
-    // 2. 依照地區(district), 地號(land_number)由小排到大修改
     $res_ethnic = $conn->query("SELECT DISTINCT status, city, district, section_code, section_name, land_number, register_date, area, zoning, land_use, owner_type FROM ethnic_property ORDER BY district ASC, land_number ASC");
     while ($row = $res_ethnic->fetch_assoc()) {
         $history_data['ethnic'][] = $row;
-    }
-    
-    $res_price = $conn->query("SELECT DISTINCT record_date, section_name, land_number, posted_land_value, declared_land_value, land_area FROM land_price ORDER BY record_date DESC");
-    while ($row = $res_price->fetch_assoc()) {
-        $history_data['price'][] = $row;
     }
     
     echo json_encode($history_data);
@@ -178,11 +172,10 @@ if ($current_md <= '01-02') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>族產與歷年地價管理系統</title>
+    <title>族產與地價新增管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
-        /* 調整總體表單佔 95% */
         .custom-container { max-width: 95%; margin: 0 auto; }
         .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; }
         .table-responsive { max-height: 400px; overflow-y: auto; }
@@ -192,8 +185,12 @@ if ($current_md <= '01-02') {
 <body>
 
 <div class="container-fluid custom-container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📂 族產與地價資料登錄系統</h2>
+        <a href="property_search.php" class="btn btn-outline-primary">🔍 切換至歷年地價查詢頁面</a>
+    </div>
 
-    <!-- 壹、填寫年度地價資料 新增項目 (取消所有表單的內距 p-0) -->
+    <!-- 壹、填寫年度地價資料 新增項目 -->
     <div class="card mb-5">
         <div class="card-header bg-dark text-white p-3">
             <h4 class="mb-0">📋 壹、填寫年度地價資料</h4>
@@ -225,9 +222,10 @@ if ($current_md <= '01-02') {
         </div>
     </div>
 
+    <!-- 貳、族產資料與地價新增表單 -->
     <div class="card mb-5">
         <div class="card-header bg-primary text-white p-3">
-            <h4 class="mb-0">📋貳、族產資料與地價新增表單</h4>
+            <h4 class="mb-0">📋 貳、族產資料與地價新增表單</h4>
         </div>
         <div class="card-body p-4">
             
@@ -238,11 +236,11 @@ if ($current_md <= '01-02') {
 
             <form id="property-form">
                 <!-- 第一部分：族產基本資料 -->
-                <h5 class="text-secondary border-bottom pb-2 mb-3">第一部分：族產基本資料 (點擊或輸入時，將動態透過 AJAX 撈取歷史選項)</h5>
+                <h5 class="text-secondary border-bottom pb-2 mb-3">第一部分：族產基本資料</h5>
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <label class="form-label">狀態<span class="required-star">*</span></label>
-                        <input type="text" class="form-control ajax-suggest" name="status" list="suggest-status" placeholder="輸入或選擇狀態" required>
+                        <input type="text" class="form-control ajax-suggest" name="status" list="suggest-status" placeholder="持有或已賣" required>
                         <datalist id="suggest-status"></datalist>
                     </div>
                     <div class="col-md-3 mb-3">
@@ -333,92 +331,37 @@ if ($current_md <= '01-02') {
     </div>
 
     <!-- 歷史資料展示區 -->
-    <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">📜族產歷史資料清單 (不重複)</h5>
-                    <button class="btn btn-sm btn-outline-light" onclick="loadHistory()">🔄 重新整理</button>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem;">
-                            <thead class="table-secondary sticky-top">
-                                <tr>
-                                    <th>狀態</th><th>縣市</th><th>鄉鎮</th><th>代碼</th><th>段小段</th><th>地號</th><th>登記日</th><th>面積</th><th>分區</th><th>用途</th><th>權利人</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ethnic-history-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">📜 族產歷史資料清單 (不重複)</h5>
+            <button class="btn btn-sm btn-outline-light" onclick="loadHistory()">🔄 重新整理</button>
         </div>
-
-        <!-- 3. 📊 歷年公告地價清單 修改為下拉式選單篩選模式 -->
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">📊 歷年公告地價清單 (land_price 不重複)</h5>
-                </div>
-                <div class="card-body p-3">
-                    <div class="row g-2 mb-3 bg-light p-2 rounded align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label text-xs">A.持有或已賣</label>
-                            <select id="filter-status" class="form-select form-select-sm">
-                                <option value="持有" selected>持有</option>
-                                <option value="已賣">已賣</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-xs">B.地區</label>
-                            <select id="filter-district" class="form-select form-select-sm">
-                                <option value="大甲" selected>大甲</option>
-                                <option value="外埔">外埔</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-xs">C.地號</label>
-                            <select id="filter-land-number" class="form-select form-select-sm">
-                                <option value="0995-0000" selected>0995-0000</option>
-                            </select>
-                        </div>
-                        <!-- 新增需求：按鈕對應前端事件執行查詢過濾 -->
-                        <div class="col-md-3">
-                            <button type="button" id="search-btn" class="btn btn-sm btn-primary w-100">🔍 查詢資料</button>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem;">
-                            <thead class="table-secondary sticky-top">
-                                <tr>
-                                    <th>公告年月</th><th>段小段</th><th>地號</th><th>公告土地現值(元)</th><th>公告地價(元)</th><th>面積(㎡)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="price-history-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem;">
+                    <thead class="table-secondary sticky-top">
+                        <tr>
+                            <th>狀態</th><th>縣市</th><th>鄉鎮</th><th>代碼</th><th>段小段</th><th>地號</th><th>登記日</th><th>面積</th><th>分區</th><th>用途</th><th>權利人</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ethnic-history-tbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// 全域儲存撈取的原始地價歷史與族產關聯，用來做前端下拉選單篩選
-let globalPriceData = [];
-let globalEthnicData = [];
-
 document.addEventListener("DOMContentLoaded", function() {
-    loadHoldLands();            // 載入壹、持有土地的表格資料
-    loadHistory();              // 載入表格歷史
-    fetchAllFieldSuggestions(); // 網頁初始化時，撈取所有欄位的歷史紀錄做成提示選項
+    loadHoldLands();            
+    loadHistory();              
+    fetchAllFieldSuggestions(); 
 
-    // 監聽壹、填寫年度地價資料表單提交 (AJAX POST)
+    // 監聽批次年度地價表單提交
     document.getElementById('batch-price-form').addEventListener('submit', function(e){
         e.preventDefault();
         const formData = new FormData(this);
-        fetch('add_property.php?action=batch_insert_price', {
+        fetch('property_add.php?action=batch_insert_price', {
             method: 'POST',
             body: formData
         })
@@ -426,17 +369,18 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(data => {
             alert(data.message);
             if(data.status === 'success') {
-                loadHistory();
+                document.getElementById('batch-price-form').reset();
+                loadHoldLands();
             }
         });
     });
 
-    // 監聽表單提交 (AJAX POST)指向 add_property.php
+    // 監聽單筆資料表單提交
     document.getElementById('property-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
         
-        fetch('add_property.php?action=insert', {
+        fetch('property_add.php?action=insert', {
             method: 'POST',
             body: formData
         })
@@ -450,9 +394,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 alertBox.classList.add('alert-success');
                 alertMsg.innerText = data.message;
                 document.getElementById('property-form').reset();
-                loadHistory();              // 刷新歷史表格
-                loadHoldLands();            // 刷新持有土地表格
-                fetchAllFieldSuggestions(); // 新增成功後再度刷新欄位的 AJAX 聯想選項
+                loadHistory();              
+                loadHoldLands();            
+                fetchAllFieldSuggestions(); 
             } else {
                 alertBox.classList.add('alert-danger');
                 alertMsg.innerText = data.message;
@@ -460,14 +404,10 @@ document.addEventListener("DOMContentLoaded", function() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
-
-    // 移除原有的 change 監聽，改為點擊「查詢」按鈕才去篩選出資料顯示出來
-    document.getElementById('search-btn').addEventListener('click', filterPriceTable);
 });
 
-// 壹、使用 AJAX 載入所有"持有"土地並生成對應欄位全部可寫入、修改之 input 標籤
 function loadHoldLands() {
-    fetch('add_property.php?action=get_hold_lands')
+    fetch('property_add.php?action=get_hold_lands')
     .then(res => res.json())
     .then(lands => {
         const tbody = document.getElementById('hold-lands-tbody');
@@ -482,8 +422,8 @@ function loadHoldLands() {
                         <td><input type="text" class="form-control form-control-sm text-center" name="price[${index}][section_name]" value="${item.section_name || ''}"></td>
                         <td><input type="text" class="form-control form-control-sm text-center" name="price[${index}][land_number]" value="${item.land_number || ''}"></td>
                         <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][area]" value="${item.area || ''}"></td>
-                        <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][posted_land_value]" placeholder="輸入土地現值"></td>
-                        <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][declared_land_value]" placeholder="輸入公告地價"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][posted_land_value]" placeholder="土地現值"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][declared_land_value]" placeholder="公告地價"></td>
                         <td><input type="number" step="0.01" class="form-control form-control-sm text-center" name="price[${index}][land_area]" value="${item.area || ''}"></td>
                     </tr>
                 `;
@@ -494,7 +434,6 @@ function loadHoldLands() {
     });
 }
 
-// 向後端 add_property.php 查詢所有欄位的不重複歷史紀錄，並動態組裝成 Datalist 選項
 function fetchAllFieldSuggestions() {
     const inputs = document.querySelectorAll('.ajax-suggest');
     inputs.forEach(input => {
@@ -502,7 +441,7 @@ function fetchAllFieldSuggestions() {
         const datalist = document.getElementById(`suggest-${fieldName}`);
         
         if (datalist) {
-            fetch(`add_property.php?action=get_field_suggestions&field=${fieldName}`)
+            fetch(`property_add.php?action=get_field_suggestions&field=${fieldName}`)
             .then(res => res.json())
             .then(options => {
                 datalist.innerHTML = ''; 
@@ -511,48 +450,20 @@ function fetchAllFieldSuggestions() {
                     option.value = val;
                     datalist.appendChild(option);
                 });
-                
-                // 同步更新篩選器內的地段/地號清單
-                if(fieldName === 'district') updateFilterOptions('filter-district', options, '大甲');
-                if(fieldName === 'land_number') updateFilterOptions('filter-land-number', options, '0995-0000');
-            })
-            .catch(err => console.error(`無法透過 AJAX 獲取欄位【${fieldName}】的歷史資料:`, err));
+            });
         }
     });
 }
 
-function updateFilterOptions(selectId, options, defaultVal) {
-    const select = document.getElementById(selectId);
-    if(!select) return;
-    const currentVal = select.value || defaultVal;
-    select.innerHTML = '';
-    
-    if(!options.includes(defaultVal)) {
-        options.unshift(defaultVal);
-    }
-    
-    options.forEach(val => {
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.innerText = val;
-        if(val === currentVal) opt.selected = true;
-        select.appendChild(opt);
-    });
-}
-
-// 撈取下方表格完整歷史不重複清單
 function loadHistory() {
-    fetch('add_property.php?action=get_history')
+    fetch('property_add.php?action=get_history')
     .then(response => response.json())
     .then(data => {
-        globalPriceData = data.price || [];
-        globalEthnicData = data.ethnic || [];
-
-        // 族產歷史 (已透過後端SQL限制由district, land_number由小排到大)
+        const ethnicData = data.ethnic || [];
         const ethnicTbody = document.getElementById('ethnic-history-tbody');
         ethnicTbody.innerHTML = '';
-        if(globalEthnicData.length > 0) {
-            globalEthnicData.forEach(item => {
+        if(ethnicData.length > 0) {
+            ethnicData.forEach(item => {
                 ethnicTbody.innerHTML += `
                     <tr>
                         <td><span class="badge ${item.status === '持有' ? 'bg-success' : 'bg-danger'}">${item.status}</span></td>
@@ -571,54 +482,7 @@ function loadHistory() {
         } else {
             ethnicTbody.innerHTML = '<tr><td colspan="11" class="text-muted py-3">暫無資料</td></tr>';
         }
-
-        // 初始化時，直接先執行一次預設條件之篩選
-        filterPriceTable();
     });
-}
-
-// 查詢按鈕對應之連動篩選處理
-function filterPriceTable() {
-    const filterStatus = document.getElementById('filter-status').value;
-    const filterDistrict = document.getElementById('filter-district').value;
-    const filterLandNumber = document.getElementById('filter-land-number').value;
-
-    const priceTbody = document.getElementById('price-history-tbody');
-    priceTbody.innerHTML = '';
-
-    const filteredPrices = globalPriceData.filter(priceItem => {
-        const matchEthnic = globalEthnicData.find(e => e.section_name === priceItem.section_name && e.land_number === priceItem.land_number);
-        
-        let statusMatch = false;
-        let districtMatch = false;
-        let landMatch = (priceItem.land_number === filterLandNumber);
-
-        if (matchEthnic) {
-            statusMatch = (matchEthnic.status === filterStatus);
-            districtMatch = (matchEthnic.district && matchEthnic.district.includes(filterDistrict));
-        } else {
-            statusMatch = (filterStatus === '持有'); 
-            districtMatch = false;
-        }
-
-        return statusMatch && districtMatch && landMatch;
-    });
-
-    if(filteredPrices.length > 0) {
-        filteredPrices.forEach(item => {
-            priceTbody.innerHTML += `
-                <tr>
-                    <td><strong>${item.record_date}</strong></td>
-                    <td>${item.section_name}</td>
-                    <td>${item.land_number}</td>
-                    <td class="text-end text-success">${item.posted_land_value ? '$'+Number(item.posted_land_value).toLocaleString() : '-'}</td>
-                    <td class="text-end text-primary">${item.declared_land_value ? '$'+Number(item.declared_land_value).toLocaleString() : '-'}</td>
-                    <td>${item.land_area || '-'}</td>
-                </tr>`;
-        });
-    } else {
-        priceTbody.innerHTML = '<tr><td colspan="6" class="text-muted py-3">無符合篩選條件之公告地價紀錄</td></tr>';
-    }
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
