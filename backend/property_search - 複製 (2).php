@@ -48,6 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     header('Content-Type: application/json');
     $search_data = [];
     
+    // 修正點：補上完整的 SELECT 欄位與 FROM 資料表名稱
     $res_ethnic = $conn->query("SELECT DISTINCT status, district, section_name, land_number, owner_type FROM ethnic_property");
     if ($res_ethnic) {
         while ($row = $res_ethnic->fetch_assoc()) {
@@ -55,6 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
         }
     }
     
+    // 獲取歷年公告地價清單
     $res_price = $conn->query("SELECT DISTINCT record_date, section_name, land_number, posted_land_value, declared_land_value, land_area FROM land_price ORDER BY record_date DESC");
     if ($res_price) {
         while ($row = $res_price->fetch_assoc()) {
@@ -73,121 +75,28 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>查詢族產歷年公告地價與現值</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- 引入 SheetJS 用於純前端生成標準不警告的 .xlsx 檔案 -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
         .custom-container { width: 100%; max-width: 100%; margin: 0 auto; }
         .main-wrapper { border: none; box-shadow: none; background: transparent; }
         .table-responsive { max-height: 500px; overflow-y: auto; }
         .text-xs { font-size: 0.85rem; font-weight: bold; color: #555; }
-        
-        /* 初始化隱藏純列印專用的頁碼容器 */
-        .print-page-footer { display: none; }
-
-        /* ==========================================
-           列印專用樣式設定 (window.print())
-           ========================================== */
-        @media print {
-            /* 1. 設定物理紙張邊界：上下留 2cm，左右為 0 (由 body padding 接管左右) */
-            @page { 
-                margin-top: 2cm !important;
-                margin-bottom: 2cm !important;
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-            }
-            
-            /* 2. body 設定左右留白 1.5cm，上下設為 0 避免與 @page 疊加 */
-            body { 
-                background-color: #fff !important; 
-                margin: 0 !important;
-                padding: 0 1.5cm 0 1.5cm !important; /* 順序：上(0) 右(1.5cm) 下(0) 左(1.5cm) */
-                /* 初始化列印計數器 */
-                counter-reset: page;
-            }
-            
-            /* 隱藏網頁按鈕與非必要元件 */
-            .no-print, #search-btn, .btn, .row.g-2, #pagination-nav, .pagination, a[href^="property_add.php"] { 
-                display: none !important; 
-            }
-            
-            /* 展開表格響應式外殼，確保跨頁不被截斷 */
-            .table-responsive { 
-                max-height: none !important; 
-                overflow: visible !important; 
-            }
-            
-            /* 3. 強制表格所有欄位與欄位標題上黑色邊框格線 */
-            .table { 
-                width: 100% !important; 
-                border-collapse: collapse !important; 
-                border: 2px solid #000000 !important; 
-            }
-            
-            /* 確保若跨多頁，每頁頂部自動重印標題 */
-            .table thead {
-                display: table-header-group !important; 
-            }
-
-            /* 欄位標題四邊黑色格線 */
-            .table thead th {
-                background-color: #e9ecef !important;
-                color: #000000 !important;
-                border: 2px solid #000000 !important; 
-                font-weight: bold !important;
-                padding: 8px 4px !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact;
-            }
-            
-            /* 資料欄位四邊黑色格線 */
-            .table tbody td { 
-                border: 1px solid #000000 !important; 
-                padding: 6px 4px !important; 
-                background-color: transparent !important;
-            }
-
-            /* 4. 每頁右下角自動計算、印出頁碼 */
-            .print-page-footer {
-                display: block !important;
-                position: fixed !important;
-                /* 安全放置在下邊距 2cm 的留白區域正中央，絕對不壓資料 */
-                bottom: -1.3cm !important; 
-                right: 1.5cm !important;
-                font-size: 10pt !important;
-                font-family: "Microsoft JhengHei", sans-serif !important;
-                color: #000000 !important;
-            }
-
-            /* 讓瀏覽器每遇到一個 tr 就自動把頁碼計數器往上加 */
-            .table tbody tr {
-                counter-increment: page;
-            }
-
-            /* 利用偽元素動態印出當頁頁碼 */
-            .print-page-footer::after {
-                content: "第 " counter(page) " 頁";
-            }
-        }
     </style>
 </head>
 <body>
 
 <div>    
     <div class="main-wrapper">
-        <!-- 標題功能列 -->
-        <div class="bg-transparent text-dark p-3 d-flex justify-content-between align-items-center rounded-top flex-wrap gap-2">
+        <!-- 背景改為無顏色，文字與按鈕全改為黑色 -->
+        <div class="bg-transparent text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
             <h4 class="mb-0 fw-bold">📊查詢歷年公告地價與現值</h4>
-            <div class="d-flex gap-1 flex-wrap">
-                <button type="button" class="btn btn-sm btn-success fw-bold text-white" onclick="exportToExcel()">📊 匯出 EXCEL</button>
-                <button type="button" class="btn btn-sm btn-info fw-bold text-white" onclick="exportToWord()">📝 匯出 WORD</button>
-                <button type="button" class="btn btn-sm btn-secondary fw-bold" onclick="window.print()">🖨️ 列印表單</button>
-                <a href="property_add.php" class="btn btn-sm btn-outline-dark fw-bold no-print">➕ 切至新增族產地價</a>
+            <div>
+                <a href="property_add.php" class="btn btn-sm btn-outline-dark fw-bold">➕ 切至新增族產地價</a>
             </div>
         </div>
   
         <div class="p-3 rounded-bottom">
-            <div class="row g-2 mb-3 bg-light p-2 rounded align-items-end no-print">
+            <div class="row g-2 mb-3 bg-light p-2 rounded align-items-end">
                 <div class="col-md-2">
                     <label class="form-label text-xs">A.持有或已賣</label>
                     <select id="filter-status" class="form-select form-select-sm">
@@ -232,6 +141,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
             </div>
 
             <div class="table-responsive">
+                <!-- 加入 table-bordered 確保整個表格有 1px 框線 -->
                 <table class="table table-bordered table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem; border: 1px solid #dee2e6;">
                     <thead class="table-secondary sticky-top">
                         <tr>
@@ -239,13 +149,14 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                         </tr>
                     </thead>
                     <tbody id="price-history-tbody">
+                        <!-- 欄位數增加，將 colspan 改為 9 -->
                         <tr><td colspan="9" class="text-muted py-3">數據載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <!-- 分頁功能 -->
-            <div class="d-flex justify-content-between align-items-center mt-3 no-print">
+            <div class="d-flex justify-content-between align-items-center mt-3">
                 <div id="page-info" class="text-muted style-xs">顯示第 0 到 0 筆，共 0 筆</div>
                 <nav id="pagination-nav">
                     <ul class="pagination pagination-sm mb-0" id="pagination-ul"></ul>
@@ -255,9 +166,6 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     </div>
 </div>
 
-<!-- 列印專用的頁碼獨立容器（固定在頁尾右側留白範圍內） -->
-<div class="print-page-footer"></div>
-
 <script>
 let globalPriceData = [];
 let globalEthnicData = [];
@@ -265,15 +173,17 @@ let currentPage = 1;
 let filteredTotalData = [];
 
 document.addEventListener("DOMContentLoaded", function() {
-    loadSearchData();            
-    fetchFilterOptions();        
+    loadSearchData();            // 載入核心對照數據
+    fetchFilterOptions();        // 獲取下拉選單選項
 
+    // 監聽「查詢」按鈕
     document.getElementById('search-btn').addEventListener('click', function() {
         currentPage = 1; 
         filterPriceTable();
     });
 });
 
+// 撈取篩選器的不重複選項
 function fetchFilterOptions() {
     ['district', 'land_number', 'record_date'].forEach(field => {
         fetch(`property_search.php?action=get_filter_suggestions&field=${field}`)
@@ -285,6 +195,7 @@ function fetchFilterOptions() {
     });
 }
 
+// 更新下拉選單
 function updateFilterOptions(selectId, options) {
     const select = document.getElementById(selectId);
     if(!select) return;
@@ -297,16 +208,18 @@ function updateFilterOptions(selectId, options) {
     });
 }
 
+// 撈取核心對照數據
 function loadSearchData() {
     fetch('property_search.php?action=get_search_data')
     .then(response => response.json())
     .then(data => {
         globalPriceData = data.price || [];
         globalEthnicData = data.ethnic || [];
-        filterPriceTable(); 
+        filterPriceTable(); // 預設執行首波篩選 (持有)
     });
 }
 
+// 連動篩選處理
 function filterPriceTable() {
     const filterStatus = document.getElementById('filter-status').value;
     const filterDistrict = document.getElementById('filter-district').value;
@@ -321,6 +234,7 @@ function filterPriceTable() {
         let landMatch = false;
         let dateMatch = false;
 
+        // A. 持有或已賣：選擇「全部」時，兩個資料都要完整呈現出來
         if (filterStatus === '全部') {
             statusMatch = true; 
         } else if (matchEthnic) {
@@ -329,6 +243,7 @@ function filterPriceTable() {
             statusMatch = false; 
         }
 
+        // B. 地區：選擇「全部」時，兩個資料都要呈現出來
         if (filterDistrict === '全部') {
             districtMatch = true;
         } else if (matchEthnic) {
@@ -337,12 +252,14 @@ function filterPriceTable() {
             districtMatch = false;
         }
 
+        // C. 地號
         if (filterLandNumber === '全部') {
             landMatch = true;
         } else {
             landMatch = (priceItem.land_number === filterLandNumber);
         }
 
+        // D. 公告年月
         if (filterRecordDate === '全部') {
             dateMatch = true;
         } else {
@@ -352,6 +269,7 @@ function filterPriceTable() {
         return statusMatch && districtMatch && landMatch && dateMatch;
     });
 
+    // 排序邏輯：按「地區」分組排序，同地區內再依「地號」升冪(由小到大)排列
     filteredTotalData.sort((a, b) => {
         const matchEthnicA = globalEthnicData.find(e => e.section_name === a.section_name && e.land_number === a.land_number);
         const matchEthnicB = globalEthnicData.find(e => e.section_name === b.section_name && e.land_number === b.land_number);
@@ -359,18 +277,21 @@ function filterPriceTable() {
         const distA = matchEthnicA ? (matchEthnicA.district || '') : '';
         const distB = matchEthnicB ? (matchEthnicB.district || '') : '';
         
+        // 先比對地區
         if (distA !== distB) {
             return distA.localeCompare(distB, 'zh-Hant');
         }
+        // 同地區內，再依地號升冪排列
         return a.land_number.localeCompare(b.land_number, undefined, {numeric: true, sensitivity: 'base'});
     });
 
+    // 計算查詢結果的「總價值(元)」，並更新上方文字
     let totalValueSum = 0;
     filteredTotalData.forEach(item => {
         const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
         let ownerTypeStr = matchEthnic ? (matchEthnic.owner_type || "") : "";
         
-        let holdingValue = 1; 
+        let holdingValue = 1; // 預設持分為1
         
         let match = ownerTypeStr.match(/祭祀公業:(.*?)%/);
         if (match && match[1]) {
@@ -391,11 +312,13 @@ function filterPriceTable() {
         totalValueSum += rowValue;
     });
 
+    // 四捨五入算整數
     let roundedTotalValue = Math.round(totalValueSum);
     document.getElementById('search-summary-text').innerText = `查詢A.狀態"${filterStatus}"與B.地區"${filterDistrict}"與C.地號"${filterLandNumber}"條件,在D.公告年月"${filterRecordDate}",共 ${filteredTotalData.length.toLocaleString()} 筆,其總價值：${roundedTotalValue.toLocaleString()}(元)`;
     renderPriceTablePage();
 }
 
+// 渲染表格與分頁
 function renderPriceTablePage() {
     const pageSize = parseInt(document.getElementById('filter-page-size').value, 10);
     const priceTbody = document.getElementById('price-history-tbody');
@@ -412,18 +335,23 @@ function renderPriceTablePage() {
     const pageData = filteredTotalData.slice(startIndex, startIndex + pageSize);
 
     if(pageData.length > 0) {
+        // 修改點：傳入 index 參數以計算全域累加編號
         pageData.forEach((item, index) => {
+            // 計算目前資料在全域查詢結果中的真正編號（從 1 開始）
             let rowNumber = startIndex + index + 1;
 
+            // 找出對應的 ethnic_property 以獲取 owner_type
             const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
             let ownerTypeStr = matchEthnic ? (matchEthnic.owner_type || "") : "";
             
             let holdingText = "-";
             let holdingValue = 1; 
             
+            // 正則抓取 "祭祀公業:" 後面文字直到 "%" 結束
             let match = ownerTypeStr.match(/祭祀公業:(.*?)%/);
             if (match && match[1]) {
                 holdingText = match[1] + "%";
+                // 嘗試解析分數 (如：1分之1) 或 百分比數字
                 let numMatch = match[1].match(/(\d+)分之(\d+)/);
                 if (numMatch) {
                     holdingValue = parseFloat(numMatch[1]) / parseFloat(numMatch[2]);
@@ -435,12 +363,14 @@ function renderPriceTablePage() {
                 }
             }
             
+            // 計算價值(元) = 公告土地現值 * 面積 * 持分，取小數到第二位
             let postedLandValue = item.posted_land_value ? parseFloat(item.posted_land_value) : 0;
             let landArea = item.land_area ? parseFloat(item.land_area) : 0;
             let calculatedValue = (postedLandValue * landArea * holdingValue).toFixed(2);
 
             priceTbody.innerHTML += `
                 <tr>
+                    <!-- 在最前面新增一欄累加編號 -->
                     <td>${rowNumber}</td>
                     <td><strong>${item.record_date}</strong></td>
                     <td>${item.section_name}</td>
@@ -454,10 +384,12 @@ function renderPriceTablePage() {
         });
         document.getElementById('page-info').innerText = `顯示第 ${startIndex + 1} 到 ${endIndex} 筆，共 ${totalRecords} 筆`;
     } else {
+        // 欄位數增加，將 colspan 改為 9
         priceTbody.innerHTML = '<tr><td colspan="9" class="text-muted py-3">無符合篩選條件之公告地價紀錄</td></tr>';
         document.getElementById('page-info').innerText = `顯示第 0 到 0 筆，共 0 筆`;
     }
 
+    // 分頁導覽
     const paginationUl = document.getElementById('pagination-ul');
     paginationUl.innerHTML = '';
 
@@ -481,132 +413,10 @@ function renderPriceTablePage() {
     }
 }
 
+// 變更分頁頁碼
 function changeTablePage(page) {
     currentPage = page;
     renderPriceTablePage();
-}
-
-function buildExportHtmlTable() {
-    let summaryText = document.getElementById('search-summary-text').innerText;
-    let html = `<p style="font-size:14px; font-weight:bold;">${summaryText}</p>`;
-    html += `<table border="1" style="border-collapse:collapse; text-align:center; font-family:Microsoft JhengHei;">
-                <thead style="background-color:#e9ecef;">
-                    <tr>
-                        <th>編號</th><th>公告年月</th><th>段小段</th><th>地號</th><th>公告土地現值(元)</th><th>公告地價(元)</th><th>面積(㎡)</th><th>持分</th><th>價值(元)</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-                
-    if (filteredTotalData.length === 0) {
-        html += `<tr><td colspan="9">無符合篩選條件之公告地價紀錄</td></tr>`;
-    } else {
-        filteredTotalData.forEach((item, index) => {
-            const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
-            let ownerTypeStr = matchEthnic ? (matchEthnic.owner_type || "") : "";
-            let holdingText = "-";
-            let holdingValue = 1;
-            
-            let match = ownerTypeStr.match(/祭祀公業:(.*?)%/);
-            if (match && match[1]) {
-                holdingText = match[1] + "%";
-                let numMatch = match[1].match(/(\d+)分之(\d+)/);
-                if (numMatch) {
-                    holdingValue = parseFloat(numMatch[1]) / parseFloat(numMatch[2]);
-                } else {
-                    let pureNum = parseFloat(match[1]);
-                    if (!isNaN(pureNum)) {
-                        holdingValue = pureNum / 100;
-                    }
-                }
-            }
-            
-            let postedLandValue = item.posted_land_value ? parseFloat(item.posted_land_value) : 0;
-            let landArea = item.land_area ? parseFloat(item.land_area) : 0;
-            let calculatedValue = (postedLandValue * landArea * holdingValue).toFixed(2);
-            
-            html += `<tr>
-                        <td>${index + 1}</td>
-                        <td>${item.record_date}</td>
-                        <td>${item.section_name}</td>
-                        <td>${item.land_number}</td>
-                        <td style="text-align:right;">${item.posted_land_value ? Number(item.posted_land_value).toLocaleString() : '-'}</td>
-                        <td style="text-align:right;">${item.declared_land_value ? Number(item.declared_land_value).toLocaleString() : '-'}</td>
-                        <td>${item.land_area || '-'}</td>
-                        <td>${holdingText}</td>
-                        <td style="text-align:right; font-weight:bold;">${holdingText !== '-' ? Number(calculatedValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
-                     </tr>`;
-        });
-    }
-    html += `</tbody></table>`;
-    return html;
-}
-
-function exportToExcel() {
-    let summaryText = document.getElementById('search-summary-text').innerText;
-    
-    let dataRows = [
-        [summaryText], 
-        [],            
-        ["編號", "公告年月", "段小段", "地號", "公告土地現值(元)", "公告地價(元)", "面積(㎡)", "持分", "價值(元)"]
-    ];
-    
-    filteredTotalData.forEach((item, index) => {
-        const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
-        let ownerTypeStr = matchEthnic ? (matchEthnic.owner_type || "") : "";
-        let holdingText = "-";
-        let holdingValue = 1;
-        
-        let match = ownerTypeStr.match(/祭祀公業:(.*?)%/);
-        if (match && match[1]) {
-            holdingText = match[1] + "%";
-            let numMatch = match[1].match(/(\d+)分之(\d+)/);
-            if (numMatch) {
-                holdingValue = parseFloat(numMatch[1]) / parseFloat(numMatch[2]);
-            } else {
-                let pureNum = parseFloat(match[1]);
-                if (!isNaN(pureNum)) {
-                    holdingValue = pureNum / 100;
-                }
-            }
-        }
-        
-        let postedLandValue = item.posted_land_value ? parseFloat(item.posted_land_value) : 0;
-        let landArea = item.land_area ? parseFloat(item.land_area) : 0;
-        let calculatedValue = holdingText !== '-' ? parseFloat((postedLandValue * landArea * holdingValue).toFixed(2)) : null;
-        
-        dataRows.push([
-            index + 1,
-            item.record_date,
-            item.section_name,
-            item.land_number,
-            item.posted_land_value ? parseFloat(item.posted_land_value) : null,
-            item.declared_land_value ? parseFloat(item.declared_land_value) : null,
-            item.land_area ? parseFloat(item.land_area) : null,
-            holdingText,
-            calculatedValue
-        ]);
-    });
-    
-    let wb = XLSX.utils.book_new();
-    let ws = XLSX.utils.aoa_to_sheet(dataRows);
-    
-    XLSX.utils.book_append_sheet(wb, ws, "查詢結果");
-    XLSX.writeFile(wb, "歷年公告地價查詢結果_" + new Date().toISOString().slice(0,10) + ".xlsx");
-}
-
-function exportToWord() {
-    const tableHtml = buildExportHtmlTable();
-    const template = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-        <head><meta charset="utf-8" /></head>
-        <body>${tableHtml}</body>
-        </html>`;
-        
-    const blob = new Blob([template], { type: "application/msword;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "歷年公告地價查詢結果_" + new Date().toISOString().slice(0,10) + ".doc";
-    link.click();
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
