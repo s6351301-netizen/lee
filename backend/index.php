@@ -347,8 +347,13 @@ $conn->close();
             { id: 20, name: "<span style='font-size:16px;'>4-9.祭祖活動php統計</span>", url: "ancestor-worship.php", parentId: 11 },
             { id: 21, name: "<span style='font-size:16px;'>4-10.每日撈中油油價顯示3個月統計資料</span>", url: "oil_tracker.php", parentId: 11 },            
             { id: 22, name: "<span style='font-size:16px;'>4-10.撈取公告地價資料</span>", url: "land_price.php", parentId: 11 },        
-            { id: 23, name: "<span style='font-size:16px;'>4-11.新增族產地價資料</span>", url: "property_add.php", parentId: 11 },
-            { id: 24, name: "<span style='font-size:16px;'>4-11.查詢族產地價資料</span>", url: "property_search.php", parentId: 11 }
+            { id: 23, name: "<span style='font-size:16px;'>4-11.新增族產地價</span>", url: "property_add.php", parentId: 11 },
+            { id: 24, name: "<span style='font-size:16px;'>4-11.查族產地價</span>", url: "property_search.php", parentId: 11 },
+            { id: 25, name: "<span style='font-size:16px;'>4-11.查族產地價稅</span>", url: "property_tax.php", parentId: 11 }
+ 
+       
+       
+       
         ];
 
         function buildTree(list, parentId = 0) {

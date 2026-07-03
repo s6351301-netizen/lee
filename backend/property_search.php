@@ -77,27 +77,28 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
-        .custom-container { max-width: 95%; margin: 0 auto; }
-        .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; }
+        .custom-container { width: 100%; max-width: 100%; margin: 0 auto; }
+        /* 去除最外層的白框與陰影，直接讓表格區域滿版 */
+        .main-wrapper { border: none; box-shadow: none; background: transparent; }
         .table-responsive { max-height: 500px; overflow-y: auto; }
         .text-xs { font-size: 0.85rem; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
 
-<div class="container-fluid custom-container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>📊 歷年公告地價查詢系統</h2>
-        <a href="property_add.php" class="btn btn-outline-success">➕ 切換至族產地價登錄頁面</a>
-    </div>
-
-    <!-- 📊 歷年公告地價清單篩選與展示區 -->
-    <div class="card">
-        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">📊 歷年公告地價清單 (land_price 不重複)</h5>
-            <button class="btn btn-sm btn-outline-light" onclick="loadSearchData()">🔄 刷新數據</button>
+<div class="container-fluid custom-container py-4">
+    <!-- 📊 歷年公告地價清單篩選與展示區 (已去除 card 白框效果) -->
+    <div class="main-wrapper">
+        <!-- 背景改為無顏色，文字與按鈕全改為黑色 -->
+        <div class="bg-transparent text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
+            <h5 class="mb-0 fw-bold">📊 歷年公告地價清單 (land_price 不重複)</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-dark me-2" onclick="loadSearchData()">🔄 刷新數據</button>
+                <a href="property_add.php" class="btn btn-sm btn-outline-dark fw-bold">➕ 切至新增族產地價</a>
+            </div>
         </div>
-        <div class="card-body p-3">
+        <!-- 已移除 bg-white 屬性設定 -->
+        <div class="p-3 rounded-bottom">
             <div class="row g-2 mb-3 bg-light p-2 rounded align-items-end">
                 <div class="col-md-2">
                     <label class="form-label text-xs">A.持有或已賣</label>
@@ -143,7 +144,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
             </div>
 
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem;">
+                <!-- 加入 table-bordered 確保整個表格有 1px 框線 -->
+                <table class="table table-bordered table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem; border: 1px solid #dee2e6;">
                     <thead class="table-secondary sticky-top">
                         <tr>
                             <th>公告年月</th><th>段小段</th><th>地號</th><th>公告土地現值(元)</th><th>公告地價(元)</th><th>面積(㎡)</th><th>持分</th><th>價值(元)</th>
