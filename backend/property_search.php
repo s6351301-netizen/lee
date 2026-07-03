@@ -153,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                 position: fixed !important;
                 /* 安全放置在下邊距 2cm 的留白區域正中央，絕對不壓資料 */
                 bottom: -1.3cm !important; 
-                right: 1.5cm !important;
+                right: 3.5cm !important;
                 font-size: 10pt !important;
                 font-family: "Microsoft JhengHei", sans-serif !important;
                 color: #000000 !important;
