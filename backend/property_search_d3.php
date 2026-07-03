@@ -15,9 +15,14 @@ if ($conn->connect_error) {
 }
 $conn->set_charset("utf8mb4");
 
+// 取得當前執行的 PHP 檔名，防止前端 fetch 找不到路徑
+$current_page = basename($_SERVER['PHP_SELF']);
+
 // ==========================================
-// 2. 處理 AJAX 請求 (篩選選單與主數據)
+// 2. 處理 AJAX 請求
 // ==========================================
+
+// A. 處理動態下拉複選框選項 (每次都從資料庫抓取最新不重複的清單)
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['action'] == 'get_filter_suggestions') {
     header('Content-Type: application/json');
     $field = $_GET['field'] ?? '';
@@ -34,7 +39,9 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
         }
         $res = $conn->query($sql);
         while ($row = $res->fetch_row()) {
-            $suggestions[] = $row[0];
+            if ($row[0] !== null && $row[0] !== '') {
+                $suggestions[] = $row[0];
+            }
         }
         echo json_encode($suggestions);
     } else {
@@ -43,9 +50,10 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
     exit;
 }
 
+// B. 處理初始化主數據 (核心大數據：地價表與族產表)
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['action'] == 'get_search_data') {
     header('Content-Type: application/json');
-    $search_data = [];
+    $search_data = ['ethnic' => [], 'price' => []];
     
     $res_ethnic = $conn->query("SELECT DISTINCT status, district, section_name, land_number, owner_type, land_use FROM ethnic_property");
     if ($res_ethnic) {
@@ -70,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>查詢族產歷年公告地價與現值 (複選框多選版)</title>
+    <title>族產公告地價/現值查詢與繪圖</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -80,12 +88,10 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
         .text-xs { font-size: 0.85rem; font-weight: bold; color: #333; margin-bottom: 6px; display: block; border-bottom: 2px solid #ddd; padding-bottom: 3px; }
         .print-page-footer { display: none; }
 
-        /* 複選框容器優化 */
         .checkbox-group-container { max-height: 120px; overflow-y: auto; background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 6px 10px; }
         .checkbox-inline-item { display: block; font-size: 0.85rem; margin-bottom: 2px; cursor: pointer; }
         .checkbox-inline-item input { margin-right: 6px; }
 
-        /* 圖表全面改為單行排列 */
         .chart-box { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; width: 100%; }
         .tooltip-box { position: absolute; background: rgba(0, 0, 0, 0.85); color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 13px; pointer-events: none; opacity: 0; z-index: 9999; line-height: 1.5; }
         .legend-dot { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 2px; vertical-align: middle; }
@@ -115,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 <div class="container-fluid py-3">    
     <div class="main-wrapper">
         <div class="bg-transparent text-dark p-3 d-flex justify-content-between align-items-center rounded-top flex-wrap gap-2">
-            <h4 class="mb-0 fw-bold">📊 查詢族產歷年公告地價與現值 (複選框多選版)</h4>
+            <h4 class="mb-0 fw-bold">📊族產公告地價/現值查詢與繪圖</h4>
             <div class="d-flex gap-1 flex-wrap">
                 <button type="button" class="btn btn-sm btn-primary fw-bold text-white" onclick="toggleChartSection()">📊 顯示/隱藏進階分析圖表</button>
                 <button type="button" class="btn btn-sm btn-success fw-bold text-white" onclick="exportToExcel()">📊 匯出 EXCEL</button>
@@ -147,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                     </div>
                 </div>
 
-                <!-- C. 地號大類 (已由 col-md-3 縮減至 col-md-2) -->
+                <!-- C. 地號大類 -->
                 <div class="col-md-2">
                     <span class="text-xs">C.地號</span>
                     <div class="checkbox-group-container" id="cb-container-land-number">
@@ -174,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                     </div>
                 </div>
 
-                <!-- 每頁筆數與查詢送出 (已分配挪用空間，由 col-md-1 擴大至 col-md-2) -->
+                <!-- 每頁筆數與查詢送出 -->
                 <div class="col-md-2">
                     <span class="text-xs">每頁筆數</span>
                     <select id="filter-page-size" class="form-select form-select-sm mb-2">
@@ -211,26 +217,20 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
             </nav>
         </div>
 
-        <!-- ==========================================
-             D3 四大圖表區 (全數調整為單行大圖顯示)
-             ========================================== -->
+        <!-- D3 圖表區 -->
         <div id="chart-section" class="chart-section mt-4 d-none no-print">
-            
-            <!-- 圖表一 -->
             <div class="chart-box">
                 <h5 class="fw-bold text-success mb-2">📊 圖表 (一) ：歷年公告土地現值對比圖 (元)</h5>
                 <div id="posted-legend" class="mb-2 text-start small"></div>
                 <div class="chart-scroll-container"><div id="posted-chart"></div></div>
             </div>
 
-            <!-- 圖表二 -->
             <div class="chart-box">
                 <h5 class="fw-bold text-primary mb-2">📊 圖表 (二) ：歷年公告地價對比圖 (元)</h5>
                 <div id="declared-legend" class="mb-2 text-start small"></div>
                 <div class="chart-scroll-container"><div id="declared-chart"></div></div>
             </div>
 
-            <!-- 圖表三 -->
             <div class="chart-box">
                 <h5 class="fw-bold text-dark mb-1">📈 圖表 (三) ：價差比率分析 (現值 / 地價倍數)</h5>
                 <p class="text-muted small mb-2">※ 數值越高，代表該地號市價飆升速度遠大於持有地價稅基。</p>
@@ -238,14 +238,12 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                 <div class="chart-scroll-container"><div id="ratio-chart"></div></div>
             </div>
 
-            <!-- 圖表四 -->
             <div class="chart-box">
                 <h5 class="fw-bold text-danger mb-1">🍰 圖表 (四) ：總量與個體差異分析 (資產大餅)</h5>
                 <p class="text-muted small mb-2">※ 依據各選定地號之「最新公告價值(元)」計算權重占比。</p>
                 <div class="text-center"><div id="pie-chart"></div></div>
                 <div id="pie-legend" class="mt-3 text-start small" style="max-height:160px; overflow-y:auto; border-top: 1px dashed #ccc; padding-top: 10px;"></div>
             </div>
-
         </div>
 
     </div>
@@ -255,15 +253,22 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 <div class="print-page-footer"></div>
 
 <script>
+// 動態取得目前伺服器端的檔案名稱，避免 fetch 網址打錯造成死機
+const CURRENT_PHP_FILE = "<?php echo $current_page; ?>";
+
+// 保持【唯讀】的全域最原始資料庫，絕對不會被過濾動作覆蓋！
 let globalPriceData = [];
 let globalEthnicData = [];
+
+// 前端操作動態控制變數
 let currentPage = 1;
-let filteredTotalData = [];
+let filteredTotalData = []; // 每次點查詢時，動態生成的篩選結果
 
 document.addEventListener("DOMContentLoaded", function() {
     loadSearchData();            
     setupAllMasterCheckboxes();
 
+    // 關鍵修正：點擊查詢按鈕時，永遠回到第一頁，並基於最原始的 global 數據重新過濾
     document.getElementById('search-btn').addEventListener('click', function() {
         currentPage = 1; 
         filterPriceTable();
@@ -274,7 +279,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// 全選連動邏輯
 function setupAllMasterCheckboxes() {
     const categories = ['status', 'district', 'land-number', 'record-date', 'land-use'];
     categories.forEach(cat => {
@@ -287,16 +291,17 @@ function setupAllMasterCheckboxes() {
     });
 }
 
+// 修正後的動態加載選單選項
 function fetchAndRenderCheckboxes() {
     const fields = [
         { name: 'district', defaultVal: '大甲區' },
         { name: 'land_number', defaultVal: '0995-0000' },
-        { name: 'record_date', defaultVal: '2026-01' },
+        { name: 'record_date', defaultVal: '全部' },
         { name: 'land_use', defaultVal: '全部' }
     ];
 
     fields.forEach(f => {
-        fetch(`property_search_d3.php?action=get_filter_suggestions&field=${f.name}`)
+        fetch(`${CURRENT_PHP_FILE}?action=get_filter_suggestions&field=${f.name}`)
         .then(res => res.json())
         .then(options => {
             const catId = f.name.replace('_', '-');
@@ -310,7 +315,9 @@ function fetchAndRenderCheckboxes() {
                     label.className = 'checkbox-inline-item';
                     
                     let isChecked = false;
-                    if(f.defaultVal === '全部' && document.getElementById(`cb-${catId}-all`).checked) {
+                    if(f.defaultVal === '全部') {
+                        const masterEl = document.getElementById(`cb-${catId}-all`);
+                        if(masterEl) masterEl.checked = true;
                         isChecked = true;
                     } else if (val.toString().trim() === f.defaultVal) {
                         isChecked = true;
@@ -320,18 +327,20 @@ function fetchAndRenderCheckboxes() {
                     container.appendChild(label);
                 }
             });
-        }).catch(err => console.error(`撈取複選選項[${f.name}]失敗:`, err));
+        }).catch(err => console.error(`撈取選項[${f.name}]失敗:`, err));
     });
 }
 
+// 初始化時：只進來一次，完整灌入全域變數
 function loadSearchData() {
-    fetch('property_search_d3.php?action=get_search_data')
+    fetch(`${CURRENT_PHP_FILE}?action=get_search_data`)
     .then(response => response.json())
     .then(data => {
         globalPriceData = data.price || [];
         globalEthnicData = data.ethnic || [];
         
         fetchAndRenderCheckboxes();
+        // 延遲等待核取方塊生成後，進行第一次安全預載入
         setTimeout(() => { filterPriceTable(); }, 400);
     }).catch(err => {
         console.error("載入主數據失敗:", err);
@@ -341,14 +350,15 @@ function loadSearchData() {
 
 function getSelectedCheckboxValues(catName) {
     const master = document.getElementById(`cb-${catName}-all`);
-    if(master && master.checked) return ['全部'];
-    
     const checkedItems = document.querySelectorAll(`.cb-item-${catName}:checked`);
     let vals = [];
     checkedItems.forEach(cb => vals.push(cb.value.toString().trim()));
+    
+    if((master && master.checked) || vals.length === 0) return ['全部'];
     return vals;
 }
 
+// 核心修正：每一次呼叫此函式，都必定從 globalPriceData (原始快照) 乾淨過濾，絕不產生二次查詢失效 Bug
 function filterPriceTable() {
     const selectedStatuses = getSelectedCheckboxValues('status');
     const selectedDistricts = getSelectedCheckboxValues('district');
@@ -356,6 +366,7 @@ function filterPriceTable() {
     const selectedRecordDates = getSelectedCheckboxValues('record-date');
     const selectedLandUses = getSelectedCheckboxValues('land-use');
 
+    // 關鍵點：用全域未受污染的 globalPriceData 進行陣列過濾
     filteredTotalData = globalPriceData.filter(priceItem => {
         const sName = priceItem.section_name ? priceItem.section_name.trim() : "";
         const lNum = priceItem.land_number ? priceItem.land_number.trim() : "";
@@ -367,26 +378,27 @@ function filterPriceTable() {
         
         let statusMatch = false; let districtMatch = false; let landMatch = false; let dateMatch = false; let useMatch = false;
 
-        if (selectedStatuses.includes('全部') || selectedStatuses.length === 0) statusMatch = true; 
+        if (selectedStatuses.includes('全部')) statusMatch = true; 
         else if (matchEthnic) statusMatch = selectedStatuses.includes(matchEthnic.status);
 
-        if (selectedDistricts.includes('全部') || selectedDistricts.length === 0) districtMatch = true;
+        if (selectedDistricts.includes('全部')) districtMatch = true;
         else if (matchEthnic && matchEthnic.district) {
             districtMatch = selectedDistricts.some(d => matchEthnic.district.includes(d));
         }
 
-        if (selectedLandNumbers.includes('全部') || selectedLandNumbers.length === 0) landMatch = true;
+        if (selectedLandNumbers.includes('全部')) landMatch = true;
         else landMatch = selectedLandNumbers.includes(lNum);
 
-        if (selectedRecordDates.includes('全部') || selectedRecordDates.length === 0) dateMatch = true;
+        if (selectedRecordDates.includes('全部')) dateMatch = true;
         else dateMatch = (priceItem.record_date && selectedRecordDates.includes(priceItem.record_date.toString().trim()));
 
-        if (selectedLandUses.includes('全部') || selectedLandUses.length === 0) useMatch = true;
+        if (selectedLandUses.includes('全部')) useMatch = true;
         else if (matchEthnic) useMatch = selectedLandUses.includes(matchEthnic.land_use);
 
         return statusMatch && districtMatch && landMatch && dateMatch && useMatch;
     });
 
+    // 排序邏輯
     filteredTotalData.sort((a, b) => {
         const matchEthnicA = globalEthnicData.find(e => e.section_name === a.section_name && e.land_number === a.land_number);
         const matchEthnicB = globalEthnicData.find(e => e.section_name === b.section_name && e.land_number === b.land_number);
@@ -396,6 +408,7 @@ function filterPriceTable() {
         return (a.land_number || "").localeCompare((b.land_number || ""), undefined, {numeric: true, sensitivity: 'base'});
     });
 
+    // 計算符合條件的總價值
     let totalValueSum = 0;
     filteredTotalData.forEach(item => {
         const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
@@ -415,6 +428,7 @@ function filterPriceTable() {
     let roundedTotalValue = Math.round(totalValueSum);
     document.getElementById('search-summary-text').innerText = `[多選查詢結果] 當前符合條件歷史紀錄共 ${filteredTotalData.length.toLocaleString()} 筆，估算持分總價值為：${roundedTotalValue.toLocaleString()} 元`;
     
+    // 渲染分頁表格與重新渲染圖表
     renderPriceTablePage();
     if (!document.getElementById('chart-section').classList.contains('d-none')) {
         renderAllD3Charts();
@@ -514,11 +528,12 @@ function toggleChartSection() {
 }
 
 // ==========================================================
-// D3 繪圖引擎核心邏輯 (一排一圖排版)
+// D3 繪圖引擎核心邏輯
 // ==========================================================
 function renderAllD3Charts() {
     ["#posted-chart", "#posted-legend", "#declared-chart", "#declared-legend", "#ratio-chart", "#ratio-legend", "#pie-chart", "#pie-legend"].forEach(id => {
-        document.querySelector(id).innerHTML = "";
+        const element = document.querySelector(id);
+        if(element) element.innerHTML = "";
     });
 
     if (!filteredTotalData || filteredTotalData.length === 0) return;
@@ -621,7 +636,7 @@ function renderAllD3Charts() {
                .attr("fill", colorScale(landNum))
                .on("mouseover", function(event, d) {
                     d3.select(this).attr("r", 7);
-                    tooltip.style("opacity", 1).html(`<strong>地號：</strong>${d.land_number}<br><strong>使用地類別：</strong>${d.land_use}<br><strong>公告年月：</strong>${d.record_date}<br><strong>土地現值：</strong>$${d.posted_val.toLocaleString()} 元<br><strong>公告地價：</strong>$${d.declared_val.toLocaleString()} 元<br><span class="text-warning"><strong>現值為地價的：</strong>${d.ratio} 倍</span>`);
+                    tooltip.style("opacity", 1).html(`<strong>地號：</strong>${d.land_number}<br><strong>使用地類別：</strong>${d.land_use}<br><strong>土地現值：</strong>$${d.posted_val.toLocaleString()} 元<br><strong>公告地價：</strong>$${d.declared_val.toLocaleString()} 元<br><span class="text-warning"><strong>現值為地價的：</strong>${d.ratio} 倍</span>`);
                })
                .on("mousemove", event => tooltip.style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 25) + "px"))
                .on("mouseout", function() { d3.select(this).attr("r", 5); tooltip.style("opacity", 0); });
@@ -693,7 +708,9 @@ function renderAllD3Charts() {
     }
 }
 
-// 報表匯出模組
+// ==========================================
+// 3. 報表匯出模組
+// ==========================================
 function exportToExcel() {
     let summaryText = document.getElementById('search-summary-text').innerText;
     let dataRows = [[summaryText], [], ["編號", "公告年月", "段小段", "地號", "公告土地現值(元)", "公告地價(元)", "面積(㎡)", "持分", "使用地類別", "價值(元)"]];
@@ -713,8 +730,12 @@ function exportToExcel() {
         let landArea = item.land_area ? parseFloat(item.land_area) : 0;
         dataRows.push([index + 1, item.record_date, item.section_name, item.land_number, item.posted_land_value?parseFloat(item.posted_land_value):null, item.declared_land_value?parseFloat(item.declared_land_value):null, item.land_area?parseFloat(item.land_area):null, holdingText, landUseStr, holdingText !== '-' ? parseFloat((postedLandValue * landArea * holdingValue).toFixed(2)) : null]);
     });
-    let wb = XLSX.utils.book_new(); let ws = XLSX.utils.aoa_to_sheet(dataRows);
-    XLSX.utils.book_append_sheet(wb, ws, "查詢結果"); XLSX.writeFile(wb, "查詢結果_" + new Date().toISOString().slice(0,10) + ".xlsx");
+    
+    let excelDateStr = new Date().toISOString().slice(0, 10);
+    let wb = XLSX.utils.book_new(); 
+    let ws = XLSX.utils.aoa_to_sheet(dataRows);
+    XLSX.utils.book_append_sheet(wb, ws, "查詢結果"); 
+    XLSX.writeFile(wb, "稅務查詢結果_" + excelDateStr + ".xlsx");
 }
 
 function exportToWord() {
@@ -731,8 +752,13 @@ function exportToWord() {
     });
     html += `</tbody></table>`;
     const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /></head><body>${html}</body></html>`;
+    
+    let wordDateStr = new Date().toISOString().slice(0, 10);
     const blob = new Blob([template], { type: "application/msword;charset=utf-8;" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "查詢結果_" + new Date().toISOString().slice(0,10) + ".doc"; link.click();
+    const link = document.createElement("a"); 
+    link.href = URL.createObjectURL(blob); 
+    link.download = "地價查詢結果_" + wordDateStr + ".doc"; 
+    link.click();
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
