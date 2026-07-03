@@ -73,12 +73,11 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>歷年公告地價查詢清單</title>
+    <title>查詢族產歷年公告地價與現值</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
         .custom-container { width: 100%; max-width: 100%; margin: 0 auto; }
-        /* 去除最外層的白框與陰影，直接讓表格區域滿版 */
         .main-wrapper { border: none; box-shadow: none; background: transparent; }
         .table-responsive { max-height: 500px; overflow-y: auto; }
         .text-xs { font-size: 0.85rem; font-weight: bold; color: #555; }
@@ -86,18 +85,16 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
 </head>
 <body>
 
-<div class="container-fluid custom-container py-4">
-    <!-- 📊 歷年公告地價清單篩選與展示區 (已去除 card 白框效果) -->
+<div>    
     <div class="main-wrapper">
         <!-- 背景改為無顏色，文字與按鈕全改為黑色 -->
         <div class="bg-transparent text-dark p-3 d-flex justify-content-between align-items-center rounded-top">
-            <h5 class="mb-0 fw-bold">📊 歷年公告地價清單 (land_price 不重複)</h5>
+            <h4 class="mb-0 fw-bold">📊查詢歷年公告地價與現值</h4>
             <div>
-                <button class="btn btn-sm btn-outline-dark me-2" onclick="loadSearchData()">🔄 刷新數據</button>
                 <a href="property_add.php" class="btn btn-sm btn-outline-dark fw-bold">➕ 切至新增族產地價</a>
             </div>
         </div>
-        <!-- 已移除 bg-white 屬性設定 -->
+  
         <div class="p-3 rounded-bottom">
             <div class="row g-2 mb-3 bg-light p-2 rounded align-items-end">
                 <div class="col-md-2">
@@ -148,11 +145,13 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action']) && $_GET['acti
                 <table class="table table-bordered table-striped table-hover mb-0 align-middle text-center" style="font-size:0.9rem; border: 1px solid #dee2e6;">
                     <thead class="table-secondary sticky-top">
                         <tr>
-                            <th>公告年月</th><th>段小段</th><th>地號</th><th>公告土地現值(元)</th><th>公告地價(元)</th><th>面積(㎡)</th><th>持分</th><th>價值(元)</th>
+                            <!-- 加上編號欄位 -->
+                            <th>編號</th><th>公告年月</th><th>段小段</th><th>地號</th><th>公告土地現值(元)</th><th>公告地價(元)</th><th>面積(㎡)</th><th>持分</th><th>價值(元)</th>
                         </tr>
                     </thead>
                     <tbody id="price-history-tbody">
-                        <tr><td colspan="8" class="text-muted py-3">數據載入中...</td></tr>
+                        <!-- 欄位數增加，將 colspan 改為 9 -->
+                        <tr><td colspan="9" class="text-muted py-3">數據載入中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -316,8 +315,8 @@ function filterPriceTable() {
 
     // 四捨五入算整數
     let roundedTotalValue = Math.round(totalValueSum);
-    document.getElementById('search-summary-text').innerText = `查詢A.狀態"${filterStatus}"與B.地區"${filterDistrict}"與C.地號"${filterLandNumber}"條件，在D.公告年月"${filterRecordDate}"其總價值(元)：${roundedTotalValue.toLocaleString()}`;
-
+    //document.getElementById('search-summary-text').innerText = `查詢A.狀態"${filterStatus}"與B.地區"${filterDistrict}"與C.地號"${filterLandNumber}"條件，在D.公告年月"${filterRecordDate}"其總價值(元)：${roundedTotalValue.toLocaleString()}`;
+    document.getElementById('search-summary-text').innerText = `查詢A.狀態"${filterStatus}"與B.地區"${filterDistrict}"與C.地號"${filterLandNumber}"條件,在D.公告年月"${filterRecordDate}",共 ${filteredTotalData.length.toLocaleString()} 筆,其總價值：${roundedTotalValue.toLocaleString()}(元)`;
     renderPriceTablePage();
 }
 
@@ -338,7 +337,11 @@ function renderPriceTablePage() {
     const pageData = filteredTotalData.slice(startIndex, startIndex + pageSize);
 
     if(pageData.length > 0) {
-        pageData.forEach(item => {
+        // 修改點：傳入 index 參數以計算全域累加編號
+        pageData.forEach((item, index) => {
+            // 計算目前資料在全域查詢結果中的真正編號（從 1 開始）
+            let rowNumber = startIndex + index + 1;
+
             // 找出對應的 ethnic_property 以獲取 owner_type
             const matchEthnic = globalEthnicData.find(e => e.section_name === item.section_name && e.land_number === item.land_number);
             let ownerTypeStr = matchEthnic ? (matchEthnic.owner_type || "") : "";
@@ -369,6 +372,8 @@ function renderPriceTablePage() {
 
             priceTbody.innerHTML += `
                 <tr>
+                    <!-- 在最前面新增一欄累加編號 -->
+                    <td>${rowNumber}</td>
                     <td><strong>${item.record_date}</strong></td>
                     <td>${item.section_name}</td>
                     <td>${item.land_number}</td>
@@ -376,12 +381,13 @@ function renderPriceTablePage() {
                     <td class="text-end text-primary">${item.declared_land_value ? '$'+Number(item.declared_land_value).toLocaleString() : '-'}</td>
                     <td>${item.land_area || '-'}</td>
                     <td>${holdingText}</td>
-                    <td class="text-end text-danger fw-bold">${holdingText !== '-' ? '$'+Number(calculatedValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                    <td class="text-end text-dark fw-bold">${holdingText !== '-' ? '$'+Number(calculatedValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
                 </tr>`;
         });
         document.getElementById('page-info').innerText = `顯示第 ${startIndex + 1} 到 ${endIndex} 筆，共 ${totalRecords} 筆`;
     } else {
-        priceTbody.innerHTML = '<tr><td colspan="8" class="text-muted py-3">無符合篩選條件之公告地價紀錄</td></tr>';
+        // 欄位數增加，將 colspan 改為 9
+        priceTbody.innerHTML = '<tr><td colspan="9" class="text-muted py-3">無符合篩選條件之公告地價紀錄</td></tr>';
         document.getElementById('page-info').innerText = `顯示第 0 到 0 筆，共 0 筆`;
     }
 
