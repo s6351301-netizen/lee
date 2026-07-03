@@ -1,5 +1,6 @@
 使用地類別 owner_type 土地權利人類別
-
+property_search_d3.php?action=get_search_data
+http://localhost/lee/backend/property_search_d3.php?action=get_search_data
 
 / ==========================================
 // 【新增】將使用地類別直接寫死在 PHP 陣列中 (以 段名_地號 作為唯一 Key)

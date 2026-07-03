@@ -349,8 +349,8 @@ $conn->close();
             { id: 22, name: "<span style='font-size:16px;'>4-10.撈取公告地價資料</span>", url: "land_price.php", parentId: 11 },        
             { id: 23, name: "<span style='font-size:16px;'>4-11.新增族產地價</span>", url: "property_add.php", parentId: 11 },
             { id: 24, name: "<span style='font-size:16px;'>4-11.查族產地價</span>", url: "property_search.php", parentId: 11 },
-            { id: 25, name: "<span style='font-size:16px;'>4-11.查族產地價稅</span>", url: "property_tax.php", parentId: 11 }
- 
+            { id: 25, name: "<span style='font-size:16px;'>4-11.查族產地價稅</span>", url: "property_tax.php", parentId: 11 },
+            { id: 26, name: "<span style='font-size:16px;'>4-11.繪製曲線圖</span>", url: "property_search_d3.php", parentId: 11 }
        
        
        
