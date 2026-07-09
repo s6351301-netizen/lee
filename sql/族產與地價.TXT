@@ -1,4 +1,175 @@
 
+以下是資料庫設計,請再次檢查原始碼可以通過SQL資料庫.
+
+壹、修改年度地價資料
+1.公告年月為預設抓電腦系統西元年月,若日期未過當年1月1日就寫去年的年月,
+若系統已過當年01月02日就寫今年年月.
+比如現在20260705已過0102日就寫2026-01資料,
+若為2026-01-01就寫2025-01資料代入當預設值.
+2.公告年月欄位需使用AJAX撈取land_price資料表的`register_date`欄位值
+且資料不重覆,做輸入資料的提示.
+3.公告年月欄位只限定輸入""-""輸入西元年-月資料,其他不符合規範都不允許輸入,
+並且會跳出視窗做輸入錯誤警告.
+4.在"公告年月"旁邊多一個"地號或地區"輸入文字框,提示輸入"地號"或"地區".
+此欄位需使用AJAX撈取land_price資料表的`land_number`與`district`欄位值做模糊查詢,
+且資料不重覆,做輸入資料的提示.
+5.在"公告年月"與"地號或地區"旁邊有一個"查詢"按紐,依條件將搜尋到資料做以下表格
+可修改文字框(框線1PX)值的導入.最前面,需要有編號用流水號自動往後加1值到最後一筆.
+欄位包含縣市	地區	段小段代碼	段小段名稱	地號	面積(㎡)	公告土地現值(元/㎡)	公告地價(元/㎡)	地價面積(㎡)
+6.此表格下方有一個"修改"按紐,將筆格裡面裡面有變動資料才做SQL語法變更,沒變更不需要做SQL語法變更.
+並且在下方寫出變動那些資料.
+
+
+
+以下使SQL資料庫,使用最適合的SQL資料表與語法.
+- 資料表結構 `ethnic_property`
+CREATE TABLE `ethnic_property` (
+  `id` int(11) NOT NULL COMMENT '流水號',
+  `status` varchar(10) DEFAULT NULL COMMENT '狀態(已賣/持有)',
+  `city` varchar(50) DEFAULT NULL COMMENT '縣市',
+  `district` varchar(50) DEFAULT NULL COMMENT '鄉鎮市區',
+  `section_code` varchar(50) DEFAULT NULL COMMENT '段小段代碼',
+  `section_name` varchar(50) DEFAULT NULL COMMENT '段小段',
+  `land_number` varchar(50) DEFAULT NULL COMMENT '地號',
+  `register_date` varchar(20) DEFAULT NULL COMMENT '登記日期',
+  `area` decimal(10,2) DEFAULT NULL COMMENT '面積',
+  `zoning` varchar(100) DEFAULT NULL COMMENT '使用分區',
+  `land_use` varchar(100) DEFAULT NULL COMMENT '使用地類別',
+  `owner_type` text DEFAULT NULL COMMENT '土地權利人類別'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='族產資料表';
+
+-- 建立 land_price 資料表
+CREATE TABLE land_price (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '自動遞增主鍵',
+    record_date VARCHAR(7) NOT NULL COMMENT '公告年月，格式如: 2026-01',
+    section_name VARCHAR(50) NOT NULL COMMENT '段名小段名',
+    land_number VARCHAR(20) NOT NULL COMMENT '地號',
+    posted_land_value DECIMAL(12, 2) DEFAULT NULL COMMENT '公告土地現值 (元/平方公尺)',
+    declared_land_value DECIMAL(12, 2) DEFAULT NULL COMMENT '公告地價 (元/平方公尺)',
+    land_area DECIMAL(12, 2) DEFAULT NULL COMMENT '面積 (平方公尺)',
+    
+    -- 設定唯一索引，防止同一時間、同一地段、同一地號重複輸入
+    UNIQUE KEY unique_record (record_date, section_name, land_number)
+) COMMENT='土地公告現值與公告地價資料表';
+
+-- 建立索引以優化查詢速度
+CREATE INDEX idx_section_land ON land_price(section_name, land_number);
+CREATE INDEX idx_record_date ON land_price(record_date);
+
+-- 替換檢視表以便查看 `ethnic_property_price_view`
+CREATE TABLE `ethnic_property_price_view` (
+`ethnic_id` int(11)
+,`status` varchar(10)
+,`city` varchar(50)
+,`district` varchar(50)
+,`section_code` varchar(50)
+,`section_name` varchar(50)
+,`land_number` varchar(50)
+,`register_date` varchar(20)
+,`ethnic_area` decimal(10,2)
+,`zoning` varchar(100)
+,`land_use` varchar(100)
+,`owner_type` text
+,`price_id` int(11)
+,`record_date` varchar(7)
+,`posted_land_value` decimal(12,2)
+,`declared_land_value` decimal(12,2)
+,`price_land_area` decimal(12,2)
+);
+
+
+
+以下是SQL連線資料,有需要用到才使複製使用.
+<?php
+session_start();
+
+// ==========================================
+// 1. 資料庫連線設定與角色/會員號查詢
+// ==========================================
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "lee";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+if ($conn->connect_error) {
+    die("連線失敗: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
+
+$role_title = "";  // 用來儲存轉換後的中文稱謂
+$member_no = "";   // 用來儲存會員號
+$unread_count = 0; // 🎯 新增：用來儲存未讀信件總數
+
+// 檢查是否有登入 Session
+if (isset($_SESSION['name'])) {
+    $current_user = $_SESSION['name'];
+    
+    // 使用預備陳述式同時撈取 role 與 new_member 欄位
+    $stmt = $conn->prepare("SELECT role, new_member FROM account WHERE name = ?");
+    $stmt->bind_param("s", $current_user);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        // 1. 取得會員號
+        $member_no = !empty($row['new_member']) ? $row['new_member'] : "";
+        $user_role = $row['role']; // 記錄原始 role 值
+        
+        // 2. 根據 role 欄位值轉換為中文職稱
+        switch ($row['role']) {
+            case 'admin':
+                $role_title = "（管理者）";
+                break;
+            case 'user':
+                $role_title = "（派下員）";
+                break;
+            case 'clan':
+                $role_title = "（宗親）";
+                break;
+            default:
+                $role_title = ""; 
+                break;
+        }
+
+        // ==========================================
+        // 🎯 核心追加：同步至名冊撈取世代與大房，用以精準統計未讀信件總數
+        // ==========================================
+        $my_gen = ""; $my_houses = "";
+        $stmt_mem = $conn->prepare("SELECT generation, number_of_houses FROM members WHERE name = ? LIMIT 1");
+        $stmt_mem->bind_param("s", $current_user);
+        $stmt_mem->execute();
+        $res_mem = $stmt_mem->get_result();
+        if ($row_m = $res_mem->fetch_assoc()) {
+            $my_gen = $row_m['generation'];
+            $my_houses = $row_m['number_of_houses'];
+        }
+        $stmt_mem->close();
+
+        // 統計四種收件管道交集下，所有 is_read = 0 的未讀信件總數
+        $sql_unread = "SELECT COUNT(*) as total FROM messages WHERE is_read = 0 AND (
+            (to_type = 'user' AND to_target = ?) OR
+            (to_type = 'generation' AND to_target = ?) OR
+            (to_type = 'houses' AND to_target = ?) OR
+            (to_type = 'role' AND to_target = ?)
+        )";
+        $stmt_unread = $conn->prepare($sql_unread);
+        $stmt_unread->bind_param("ssss", $member_no, $my_gen, $my_houses, $user_role);
+        $stmt_unread->execute();
+        $res_unread = $stmt_unread->get_result();
+        if ($row_u = $res_unread->fetch_assoc()) {
+            $unread_count = (int)$row_u['total'];
+        }
+        $stmt_unread->close();
+    }
+    $stmt->close();
+}
+$conn->close();
+?>
+
+
+
+
 
 -- 建立 land_price 資料表
 CREATE TABLE land_price (

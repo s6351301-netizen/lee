@@ -66,7 +66,9 @@ CREATE TABLE `ancestor_worship` (
 將此?寫入`ancestor_worship`資料表的`total_people`欄位。
 
 
-9.授權由?代理,有1個文字框(但沒有邊框),由輸入的姓名去`account_members_view`的`name`做檢查是否有這各人存在,若沒有要跳出警示無此人存在,需要
+9.授權由?代理,有1個文字框(但沒有邊框),
+由輸入的姓名去`account_members_view`的`name`做檢查是否有這各人存在,若沒有要跳出警示無此人存在.
+
 
 9.授權由?代理,有1個文字框(但沒有邊框),在此輸入文字或數字都可以,做`new_member`和`name`2個欄位的模糊查詢.
 要做一個AJAX當輸入文字或數字時,會去`account_members_view`撈出`new_member`和`name`做模糊查詢.
