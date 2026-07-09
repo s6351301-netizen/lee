@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <title>宗親會 - 官方網站</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 56px; }
+        .search-row { background: #e9ecef; padding: 15px; border-bottom: 1px solid #dee2e6; }
+        .navbar { background-color: #8b0000; }
+
+        /* 滑鼠追蹤圖片樣式 */
+        .cursor-image {
+            position: fixed;
+            width: 171px;      /* 圖片寬度 */
+            height: 191px;     /* 修改後：圖片高度縮減 50px (原為221px) */
+            pointer-events: none; /* 讓滑鼠可以穿透圖片點擊下方內容 */
+            z-index: 9999;
+            background-image: url('../icon/rice.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 100%; /* 讓圖片變成圓形顯示 */
+            transition: transform 0.1s;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 滑鼠追蹤的圖片元素 -->
+    <div class="cursor-image" id="cursor"></div>
+
+    <!-- 頂部導覽列 -->
+    <nav class="navbar navbar-dark fixed-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand" href="#">某氏宗親會</a>
+            <div></div>
+        </div>
+    </nav>
+
+    <!-- 內容區 -->
+    <div class="container-fluid mt-5">
+        <h1>歡迎來到宗親會網站</h1>
+        <p>滑鼠移動時，現在會顯示指定的植物圖片。</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => {
+            // 設定圖片位置 (X軸對準滑鼠中心，Y軸設定為對準圖片根部)
+            // 原本的 e.clientY - 100 (約圖片中心) 修改為 e.clientY - 10 (接近圖片底部)，讓滑鼠落在根部長鬚處
+            cursor.style.left = (e.clientX - 1) + 'px'; // 寬度一半 (171/2)
+            cursor.style.top = (e.clientY - 10) + 'px';  // 調整偏移量以對準圖片根部
+        });
+    </script>
+</body>
+</html>
