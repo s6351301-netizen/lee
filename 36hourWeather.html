@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中央氣象署 - 36小時天氣預報</title>
+    <!-- 引入 Chart.js 繪圖庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #333;
+            --card-bg: #fff;
+            --header-bg: #0066cc;
+            --header-hover: #0052a3;
+            --border-color: #ddd;
+            --sub-row-bg: #f8fbff;
+            --table-hover: #f1f1f1;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --card-bg: #1e1e1e;
+            --header-bg: #1f6feb;
+            --header-hover: #388bfd;
+            --border-color: #333;
+            --sub-row-bg: #16202c;
+            --table-hover: #2a2a2a;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        h1 {
+            color: var(--text-color);
+            text-align: center;
+        }
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: background-color 0.3s;
+        }
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .search-box {
+            padding: 8px 12px;
+            font-size: 1em;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 200px;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+        .filter-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .tag-btn {
+            padding: 6px 10px;
+            font-size: 0.85em;
+            background-color: var(--border-color);
+            color: var(--text-color);
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tag-btn.active {
+            background-color: var(--header-bg);
+            color: white;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+        button {
+            padding: 8px 12px;
+            background-color: var(--header-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: var(--header-hover);
+        }
+        .loading, .error-state {
+            text-align: center;
+            font-size: 1.9em;
+            color: #666;
+            margin-top: 50px;
+        }
+        .error-state button {
+            margin-top: 10px;
+        }
+        /* Skeleton Screen 樣式 */
+        .skeleton-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .skeleton-table th, .skeleton-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .skeleton-table th {
+            background-color: var(--header-bg);
+            color: white;
+            text-align: left;
+        }
+        .skeleton-row {
+            height: 40px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: var(--header-bg);
+            color: white;
+        }
+        tr.main-row {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        tr.main-row:hover {
+            background-color: var(--table-hover);
+        }
+        /* 展開收合細節列樣式 */
+        .detail-row {
+            background-color: var(--sub-row-bg);
+            display: none;
+        }
+        .detail-row.open {
+            display: table-row;
+        }
+        .detail-content {
+            padding: 15px;
+        }
+        .sub-forecast-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-top: 5px;
+        }
+        .sub-forecast-table th, .sub-forecast-table td {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .sub-forecast-table th {
+            background-color: #4a90e2;
+            color: white;
+            text-align: center;
+        }
+        .sub-forecast-table td {
+            text-align: center;
+        }
+        /* 展開圖示按鈕 */
+        .expand-icon {
+            font-size: 0.8em;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+        .main-row.open .expand-icon {
+            transform: rotate(90deg);
+        }
+        /* 降雨機率視覺化警示樣式 */
+        .pop-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .pop-high {
+            background-color: #ffcccc;
+            color: #cc0000;
+        }
+        .pop-mid {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .pop-low {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        body.dark-mode .pop-high { background-color: #5c1d1d; color: #ff9999; }
+        body.dark-mode .pop-mid { background-color: #5c4d1d; color: #ffdb70; }
+        body.dark-mode .pop-low { background-color: #1d4d2b; color: #99ffb3; }
+
+        /* 釘選按鈕樣式 */
+        .pin-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 0;
+            color: #ccc;
+        }
+        .pin-btn.pinned {
+            color: #ffc107;
+        }
+        /* 統計圖表容器 */
+        .chart-container {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* RWD 卡片式排版 (小螢幕手機) */
+        @media screen and (max-width: 600px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr.main-row {
+                margin-bottom: 15px;
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }
+            tr.detail-row {
+                margin-bottom: 15px;
+                background: var(--sub-row-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 10px;
+            }
+            tr.detail-row.open {
+                display: block;
+            }
+            td {
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+            }
+            td::before {
+                position: absolute;
+                top: 12px;
+                left: 15px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+                color: var(--text-color);
+            }
+            .main-row td:nth-of-type(1)::before { content: "釘選"; }
+            .main-row td:nth-of-type(2)::before { content: "縣市名稱"; }
+            .main-row td:nth-of-type(3)::before { content: "天氣狀況 (Wx)"; }
+            .main-row td:nth-of-type(4)::before { content: "降雨機率 (PoP)"; }
+            .main-row td:nth-of-type(5)::before { content: "溫度區間"; }
+            .main-row td:nth-of-type(6)::before { content: "舒適度 (CI)"; }
+            .main-row td:nth-of-type(7)::before { content: "明細"; }
+            td {
+                text-align: right !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>臺灣 36 小時天氣預報</h1>
+
+    <div class="header-info">
+        <div class="search-controls">
+            <input type="text" id="searchBox" class="search-box" placeholder="輸入縣市名稱搜尋..." oninput="renderTable()">
+            <div class="filter-tags">
+                <button class="tag-btn" onclick="setQuickFilter('all')" id="tag-all">全部</button>
+                <button class="tag-btn" onclick="setQuickFilter('pinned')" id="tag-pinned">⭐ 已釘選</button>
+                <button class="tag-btn" onclick="setQuickFilter('rain')" id="tag-rain">🌧️ 有降雨</button>
+                <button class="tag-btn" onclick="setQuickFilter('sunny')" id="tag-sunny">☀️ 晴朗</button>
+            </div>
+        </div>
+        <div class="controls">
+            <span id="updateTime" style="font-size: 0.85em;"></span>
+            <button id="toggleTimeBtn" onclick="toggleTimeSlot()">切換夜晚/白天</button>
+            <button id="geoBtn" onclick="requestGeoLocation()" title="自動定位鄰近縣市">📍 定位</button>
+            <button id="darkModeBtn" onclick="toggleDarkMode()">🌙 模式</button>
+            <button id="refreshBtn" onclick="fetchWeatherData()">🔄 重新整理</button>
+        </div>
+    </div>
+    
+    <!-- 溫度趨勢圖表區域 -->
+    <div class="chart-container">
+        <canvas id="tempChart" height="90"></canvas>
+    </div>
+
+    <!-- 放置表格的容器 -->
+    <div id="table-container">
+        <!-- 初始顯示骨架屏 (Skeleton Screen) -->
+        <table class="skeleton-table">
+            <thead>
+                <tr>
+                    <th>釘選</th>
+                    <th>縣市名稱</th>
+                    <th>天氣狀況 (Wx)</th>
+                    <th>降雨機率 (PoP)</th>
+                    <th>溫度區間</th>
+                    <th>舒適度 (CI)</th>
+                    <th>明細</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="7"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="7"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="7"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="7"><div class="skeleton-row"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 完整涵蓋全國 22 個縣市
+        const locationIcons = {
+            "臺北市": "🏛️", "台北市": "🏛️",
+            "新北市": "🌆",
+            "桃園市": "✈️",
+            "臺中市": "🎭", "台中市": "🎭",
+            "臺南市": "⛩️", "台南市": "⛩️",
+            "高雄市": "🚢",
+            "基隆市": "⚓",
+            "新竹市": "🔬",
+            "嘉義市": "🌳",
+            "新竹縣": "⛰️",
+            "苗栗縣": "🍓",
+            "彰化縣": "🌸",
+            "南投縣": "🌄",
+            "雲林縣": "🌾",
+            "嘉義縣": "🚂",
+            "屏東縣": "🌴",
+            "宜蘭縣": "♨️",
+            "花蓮縣": "🐋",
+            "臺東縣": "🎈", "台東縣": "🎈",
+            "澎湖縣": "⛵",
+            "金門縣": "🕊️",
+            "連江縣": "💙"
+        };
+
+        // 天氣狀況對應的圖示符號
+        const weatherIcons = {
+            "晴天": "☀️", "晴時多雲": "🌤️", "多雲時晴": "⛅", "多雲": "☁️",
+            "多雲時陰": "🌥️", "陰時多雲": "🌥️", "陰天": "☁️", "多雲陣雨": "🌧️",
+            "多雲短暫雨": "🌦️", "多雲短暫陣雨": "🌦️", "午後短暫陣雨": "🌦️",
+            "短暫陣雨": "🌧️", "多雲時晴短暫陣雨": "🌦️", "多雲時晴短暫雨": "🌦️",
+            "晴時多雲短暫陣雨": "🌦️", "晴短暫陣雨": "🌦️", "短暫雨": "🌧️",
+            "多雲時陰短暫雨": "🌦️", "多雲時陰短暫陣雨": "🌦️", "陰時多雲短暫雨": "🌧️",
+            "陰時多雲短暫陣雨": "🌧️", "雨天": "🌧️", "晴午後陰短暫雨": "🌦️",
+            "晴午後陰短暫陣雨": "🌦️", "陰短暫雨": "🌧️", "陰短暫陣雨": "🌧️",
+            "陰午後短暫陣雨": "🌧️", "多雲時陰有雨": "🌧️", "多雲時陰陣雨": "🌧️",
+            "晴時多雲陣雨": "🌦️", "多雲時晴陣雨": "🌦️", "陰時多雲有雨": "🌧️",
+            "陰時多雲有陣雨": "🌧️", "陰時多雲陣雨": "🌧️", "陰有雨": "🌧️",
+            "陰有陣雨": "🌧️", "陰雨": "🌧️", "陰陣雨": "🌧️", "陣雨": "🌧️",
+            "午後陣雨": "🌦️", "有雨": "🌧️", "多雲陣雨或雷雨": "⛈️",
+            "多雲短暫陣雨或雷雨": "⛈️", "多雲短暫雷陣雨": "⛈️", "多雲雷陣雨": "⛈️",
+            "短暫陣雨或雷雨後多雲": "⛈️", "短暫雷陣雨後多雲": "⛈️", "短暫陣雨或雷雨": "⛈️",
+            "晴時多雲短暫陣雨或雷雨": "⛈️", "晴短暫陣雨或雷雨": "⛈️", "多雲時晴短暫陣雨或雷雨": "⛈️",
+            "午後短暫雷陣雨": "⛈️", "多雲時陰陣雨或雷雨": "⛈️", "多雲時陰短暫陣雨或雷雨": "⛈️",
+            "多雲時陰短暫雷陣雨": "⛈️", "多雲時陰雷陣雨": "⛈️", "晴陣雨或雷雨": "⛈️",
+            "晴時多雲陣雨或雷雨": "⛈️", "多雲時晴陣雨或雷雨": "⛈️", "陰時多雲有雷陣雨": "⛈️",
+            "陰時多雲陣雨或雷雨": "⛈️", "陰時多雲短暫陣雨或雷雨": "⛈️", "陰時多雲短暫雷陣雨": "⛈️",
+            "陰時多雲雷陣雨": "⛈️", "陰有陣雨或雷雨": "⛈️", "陰有雷陣雨": "⛈️",
+            "陰陣雨或雷雨": "⛈️", "陰雷陣雨": "⛈️", "雷雨": "⛈️", "陣雨或雷雨後多雲": "⛈️",
+            "雷陣雨後多雲": "⛈️", "陣雨或雷雨": "⛈️", "雷陣雨": "⛈️", "午後雷陣雨": "⛈️",
+            "晴有霧": "🌫️", "晴晨霧": "🌫️", "有霧": "🌫️", "晨霧": "🌫️", "多雲午後短暫陣雨": "🌦️"
+        };
+
+        let globalData = null;
+        let currentTimeIndex = 0; // 0 代表白天，1 代表夜晚
+        let pinnedLocations = JSON.parse(localStorage.getItem('pinnedLocations')) || [];
+        let currentFilter = 'all'; // 預設快速標籤
+        let tempChartInstance = null;
+
+        const apiKey = 'CWA-DFFC9799-E66C-4E94-9AA9-A1E2DA21C4A1';
+        const targetUrl = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=${apiKey}`;
+
+        // 初始化載入狀態與主題
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('darkModeBtn').innerText = '☀️ 模式';
+        }
+
+        function fetchWeatherData() {
+            fetch(targetUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('網路回應發生錯誤');
+                    return response.json();
+                })
+                .then(data => {
+                    globalData = data;
+                    renderTable();
+                    renderChart();
+                })
+                .catch(error => {
+                    console.error('取得氣象資料失敗:', error);
+                    document.getElementById('table-container').innerHTML = `
+                        <div class="error-state">
+                            無法取得氣象資料，請檢查網路連線或 API 金鑰。<br>
+                            <button onclick="fetchWeatherData()">重新載入</button>
+                        </div>
+                    `;
+                });
+        }
+
+        function setQuickFilter(filterType) {
+            currentFilter = filterType;
+            document.querySelectorAll('.tag-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tag-${filterType}`).classList.add('active');
+            renderTable();
+        }
+
+        function renderTable() {
+            if (!globalData) return;
+
+            const locations = globalData.records.location;
+            const container = document.getElementById('table-container');
+            const query = document.getElementById('searchBox').value.trim().toLowerCase();
+
+            // 更新預報時段提示文字
+            const firstLocWx = locations[0]?.weatherElement.find(el => el.elementName === 'Wx')?.time;
+            if (firstLocWx && firstLocWx[currentTimeIndex]) {
+                const startTime = firstLocWx[currentTimeIndex].startTime.replace(/-/g, '/');
+                const endTime = firstLocWx[currentTimeIndex].endTime.replace(/-/g, '/');
+                document.getElementById('updateTime').innerText = `預報時段: ${startTime} ~ ${endTime} (${currentTimeIndex === 0 ? '白天' : '夜晚'})`;
+                document.getElementById('toggleTimeBtn').innerText = currentTimeIndex === 0 ? '切換夜晚預報' : '切換白天預報';
+            }
+
+            // 排序邏輯：釘選的縣市排在最前面
+            const sortedLocations = [...locations].sort((a, b) => {
+                const aPinned = pinnedLocations.includes(a.locationName);
+                const bPinned = pinnedLocations.includes(b.locationName);
+                if (aPinned && !bPinned) return -1;
+                if (!aPinned && bPinned) return 1;
+                return 0;
+            });
+
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">釘選</th>
+                            <th>縣市名稱</th>
+                            <th>天氣狀況 (Wx)</th>
+                            <th>降雨機率 (PoP)</th>
+                            <th>溫度區間</th>
+                            <th>舒適度 (CI)</th>
+                            <th style="text-align: center; width: 60px;">明細</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let matchCount = 0;
+
+            sortedLocations.forEach((loc, index) => {
+                const locationName = loc.locationName;
+                const weatherElements = loc.weatherElement;
+                const wx = weatherElements.find(el => el.elementName === 'Wx')?.time[currentTimeIndex]?.parameter.parameterName || '無資料';
+                const popVal = weatherElements.find(el => el.elementName === 'PoP')?.time[currentTimeIndex]?.parameter.parameterName || '0';
+                const mint = weatherElements.find(el => el.elementName === 'MinT')?.time[currentTimeIndex]?.parameter.parameterName || '--';
+                const maxt = weatherElements.find(el => el.elementName === 'MaxT')?.time[currentTimeIndex]?.parameter.parameterName || '--';
+                const ci = weatherElements.find(el => el.elementName === 'CI')?.time[currentTimeIndex]?.parameter.parameterName || '無資料';
+
+                const isPinned = pinnedLocations.includes(locationName);
+                const popNumber = parseInt(popVal) || 0;
+
+                // 搜尋文字過濾
+                if (query && !locationName.toLowerCase().includes(query)) {
+                    return;
+                }
+
+                // 快速標籤過濾
+                if (currentFilter === 'pinned' && !isPinned) return;
+                if (currentFilter === 'rain' && popNumber < 30) return;
+                if (currentFilter === 'sunny' && !wx.includes('晴')) return;
+
+                matchCount++;
+
+                const locIcon = locationIcons[locationName] || '📍';
+                const wxIcon = weatherIcons[wx] || '🌤️';
+
+                // 降雨機率樣式判斷
+                let popClass = 'pop-low';
+                if (popNumber >= 50) popClass = 'pop-high';
+                else if (popNumber >= 30) popClass = 'pop-mid';
+
+                const tempDisplay = `<span style="color:#cc0000; font-weight:bold;">${maxt}°C</span> ～ <span style="color:#0066cc; font-weight:bold;">${mint}°C</span>`;
+
+                // 未來 1-3 個時段明細
+                const wxTimes = weatherElements.find(el => el.elementName === 'Wx')?.time || [];
+                const popTimes = weatherElements.find(el => el.elementName === 'PoP')?.time || [];
+                const minTTimes = weatherElements.find(el => el.elementName === 'MinT')?.time || [];
+                const maxTTimes = weatherElements.find(el => el.elementName === 'MaxT')?.time || [];
+                const ciTimes = weatherElements.find(el => el.elementName === 'CI')?.time || [];
+
+                const periodLabels = ['未來 12 小時', '未來 24 小時', '未來 36 小時'];
+                let subTableRows = '';
+
+                [0, 1, 2].forEach(idx => {
+                    if (wxTimes[idx]) {
+                        const subStartTime = wxTimes[idx].startTime.replace(/-/g, '/').slice(5, 16);
+                        const subEndTime = wxTimes[idx].endTime.replace(/-/g, '/').slice(5, 16);
+                        const subWx = wxTimes[idx].parameter.parameterName || '無資料';
+                        const subPop = popTimes[idx]?.parameter.parameterName || '0';
+                        const subMinT = minTTimes[idx]?.parameter.parameterName || '--';
+                        const subMaxT = maxTTimes[idx]?.parameter.parameterName || '--';
+                        const subCi = ciTimes[idx]?.parameter.parameterName || '無資料';
+                        const subWxIcon = weatherIcons[subWx] || '🌤️';
+
+                        subTableRows += `
+                            <tr>
+                                <td><strong>${periodLabels[idx]}</strong><br><span style="font-size:0.8em; color:#888;">${subStartTime} ~ ${subEndTime}</span></td>
+                                <td>${subWxIcon} ${subWx}</td>
+                                <td>${subPop}%</td>
+                                <td><span style="color:#cc0000; font-weight:bold;">${subMaxT}°C</span> ～ <span style="color:#0066cc; font-weight:bold;">${subMinT}°C</span></td>
+                                <td>${subCi}</td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                tableHTML += `
+                    <tr class="main-row" id="main-row-${index}" onclick="toggleDetail(${index})">
+                        <td style="text-align: center;" onclick="event.stopPropagation()">
+                            <button class="pin-btn ${isPinned ? 'pinned' : ''}" onclick="togglePin('${locationName}')" title="${isPinned ? '取消釘選' : '釘選至頂'}">
+                                ${isPinned ? '★' : '☆'}
+                            </button>
+                        </td>
+                        <td><strong>${locIcon} ${locationName}</strong></td>
+                        <td>${wxIcon} ${wx}</td>
+                        <td><span class="pop-badge ${popClass}">${popVal}%</span></td>
+                        <td>${tempDisplay}</td>
+                        <td>${ci}</td>
+                        <td style="text-align: center;"><span class="expand-icon" id="icon-${index}">▶</span></td>
+                    </tr>
+                    <tr class="detail-row" id="detail-row-${index}">
+                        <td colspan="7">
+                            <div class="detail-content">
+                                <div style="font-weight: bold; margin-bottom: 8px; color: var(--header-bg);">📍 ${locationName} - 未來 1-3 個時段預報趨勢</div>
+                                <table class="sub-forecast-table">
+                                    <thead>
+                                        <tr>
+                                            <th>時段</th>
+                                            <th>天氣狀況 (Wx)</th>
+                                            <th>降雨機率</th>
+                                            <th>溫度區間</th>
+                                            <th>舒適度</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${subTableRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (matchCount === 0) {
+                tableHTML += `<tr><td colspan="7" style="text-align:center; padding: 20px; color:#666;">找不到符合條件的縣市</td></tr>`;
+            }
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        // 繪製全國溫度趨勢圖表
+        function renderChart() {
+            if (!globalData) return;
+            const locations = globalData.records.location;
+            
+            const labels = [];
+            const maxTemps = [];
+            const minTemps = [];
+
+            locations.forEach(loc => {
+                labels.push(loc.locationName);
+                const maxt = loc.weatherElement.find(el => el.elementName === 'MaxT')?.time[currentTimeIndex]?.parameter.parameterName || 0;
+                const mint = loc.weatherElement.find(el => el.elementName === 'MinT')?.time[currentTimeIndex]?.parameter.parameterName || 0;
+                maxTemps.push(parseInt(maxt));
+                minTemps.push(parseInt(mint));
+            });
+
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            const isDark = document.body.classList.contains('dark-mode');
+            const textColor = isDark ? '#e0e0e0' : '#333';
+            const gridColor = isDark ? '#333' : '#eee';
+
+            if (tempChartInstance) {
+                tempChartInstance.destroy();
+            }
+
+            tempChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '最高溫 (°C)',
+                            data: maxTemps,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '最低溫 (°C)',
+                            data: minTemps,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { color: textColor } },
+                        title: { display: true, text: '全國各縣市氣溫分佈直方圖', color: textColor, font: { size: 14 } }
+                    },
+                    scales: {
+                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+                    }
+                }
+            });
+        }
+
+        // 地理位置自動定位（支援座標對應至台灣各縣市）
+        function requestGeoLocation() {
+            if (!navigator.geolocation) {
+                alert('您的瀏覽器不支援地理定位功能');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                // 台灣主要縣市概略中心點比對
+                const cities = [
+                    { name: '基隆市', lat: 25.1276, lon: 121.7392 },
+                    { name: '臺北市', lat: 25.0330, lon: 121.5654 },
+                    { name: '新北市', lat: 25.0169, lon: 121.4628 },
+                    { name: '桃園市', lat: 24.9936, lon: 121.3010 },
+                    { name: '新竹市', lat: 24.8138, lon: 120.9675 },
+                    { name: '新竹縣', lat: 24.8387, lon: 121.0177 },
+                    { name: '苗栗縣', lat: 24.5602, lon: 120.8214 },
+                    { name: '臺中市', lat: 24.1477, lon: 120.6736 },
+                    { name: '彰化縣', lat: 24.0515, lon: 120.5161 },
+                    { name: '南投縣', lat: 23.9610, lon: 120.6903 },
+                    { name: '雲林縣', lat: 23.7092, lon: 120.4313 },
+                    { name: '嘉義市', lat: 23.4800, lon: 120.4491 },
+                    { name: '嘉義縣', lat: 23.4518, lon: 120.2554 },
+                    { name: '臺南市', lat: 22.9997, lon: 120.2270 },
+                    { name: '高雄市', lat: 22.6273, lon: 120.3014 },
+                    { name: '屏東縣', lat: 22.6714, lon: 120.4867 },
+                    { name: '宜蘭縣', lat: 24.7570, lon: 121.7530 },
+                    { name: '花蓮縣', lat: 23.9872, lon: 121.6016 },
+                    { name: '臺東縣', lat: 22.7554, lon: 121.1504 },
+                    { name: '澎湖縣', lat: 23.5714, lon: 119.5798 },
+                    { name: '金門縣', lat: 24.4490, lon: 118.3220 },
+                    { name: '連江縣', lat: 26.1576, lon: 119.9525 }
+                ];
+
+                let closestCity = cities[0];
+                let minDistance = Infinity;
+
+                cities.forEach(city => {
+                    const dist = Math.pow(city.lat - lat, 2) + Math.pow(city.lon - lon, 2);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestCity = city;
+                    }
+                });
+
+                // 自動填入搜尋框並釘選
+                document.getElementById('searchBox').value = closestCity.name;
+                if (!pinnedLocations.includes(closestCity.name)) {
+                    pinnedLocations.unshift(closestCity.name);
+                    localStorage.setItem('pinnedLocations', JSON.stringify(pinnedLocations));
+                }
+                setQuickFilter('all');
+                alert(`已自動定位您鄰近的縣市：${closestCity.name}`);
+            }, error => {
+                alert('無法取得您的地理位置，請確認是否授權定位。');
+            });
+        }
+
+        // 切換暗色模式
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            document.getElementById('darkModeBtn').innerText = isDark ? '☀️ 模式' : '🌙 模式';
+            renderChart();
+        }
+
+        // 切換表格列展開與收合
+        function toggleDetail(index) {
+            const detailRow = document.getElementById(`detail-row-${index}`);
+            const mainRow = document.getElementById(`main-row-${index}`);
+            
+            if (detailRow.classList.contains('open')) {
+                detailRow.classList.remove('open');
+                mainRow.classList.remove('open');
+            } else {
+                detailRow.classList.add('open');
+                mainRow.classList.add('open');
+            }
+        }
+
+        // 切換釘選狀態
+        function togglePin(locationName) {
+            if (pinnedLocations.includes(locationName)) {
+                pinnedLocations = pinnedLocations.filter(name => name !== locationName);
+            } else {
+                pinnedLocations.push(locationName);
+            }
+            localStorage.setItem('pinnedLocations', JSON.stringify(pinnedLocations));
+            renderTable();
+        }
+
+        // 切換白天/夜晚時段
+        function toggleTimeSlot() {
+            currentTimeIndex = currentTimeIndex === 0 ? 1 : 0;
+            renderTable();
+            renderChart();
+        }
+
+        // 預設啟動標籤狀態
+        document.getElementById('tag-all').classList.add('active');
+
+        // 頁面載入時執行
+        fetchWeatherData();
+    </script>
+
+</body>
+</html>
